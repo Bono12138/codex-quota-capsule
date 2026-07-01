@@ -177,6 +177,12 @@ func testQuotaLocaleResolvesPreferredLanguages() {
     expect(QuotaLocale.current(preferredLanguages: ["en-US"]) == .en, "English should resolve to en")
 }
 
+func testContactCopyIncludesDouyinInAllLocales() {
+    expect(QuotaCopy(locale: .zhHans).douyinLine.contains("huotuichang439"), "Simplified Chinese contact copy should include Douyin ID")
+    expect(QuotaCopy(locale: .zhHant).copyDouyinIdAction == "複製抖音號", "Traditional Chinese Douyin action should use natural copy")
+    expect(QuotaCopy(locale: .en).douyinQrHint.contains("Douyin"), "English QR hint should name Douyin")
+}
+
 func testBuildsEnglishDisplayModel() {
     let now = Date(timeIntervalSince1970: 1_788_270_000)
     let snapshot = AgentQuotaSnapshot(
@@ -488,6 +494,7 @@ do {
     testPredictsExpiredResetAsUnknown()
     testBuildsCompactDisplayModel()
     testQuotaLocaleResolvesPreferredLanguages()
+    testContactCopyIncludesDouyinInAllLocales()
     testBuildsEnglishDisplayModel()
     testBuildsTraditionalChineseDisplayModel()
     try testCodexAppServerClientReadsRateLimits()

@@ -110,6 +110,7 @@ Quota Capsule 的默认体验只回答一个问题：
 - Author: Bono MA
 - Email: `mmz1218bono@gmail.com`
 - X: `https://x.com/starlightsz0`
+- Douyin: 火腿肠（`huotuichang439`），二维码素材：`docs/assets/douyin-qr.png`
 - GitHub Issues: public 仓库确定后填写
 
 第一版反馈方式：
@@ -117,6 +118,7 @@ Quota Capsule 的默认体验只回答一个问题：
 - 邮箱为主。
 - GitHub Issues 为辅。
 - X 作为作者入口，不作为主要客服渠道。
+- 抖音作为后续主要内容发布和用户导流入口；应用设置页显示二维码，菜单栏提供抖音号复制。
 
 ### 发布渠道与双仓库
 

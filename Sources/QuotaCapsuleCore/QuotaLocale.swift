@@ -396,6 +396,22 @@ public struct QuotaCopy: Equatable, Sendable {
         }
     }
 
+    public var douyinLine: String {
+        switch locale {
+        case .zhHans: "抖音：火腿肠（huotuichang439）"
+        case .zhHant: "抖音：火腿腸（huotuichang439）"
+        case .en: "Douyin: 火腿肠 (huotuichang439)"
+        }
+    }
+
+    public var douyinQrHint: String {
+        switch locale {
+        case .zhHans: "扫码关注，也可以把新的意见发给我。"
+        case .zhHant: "掃碼追蹤，也可以把新的意見傳給我。"
+        case .en: "Scan to follow on Douyin and send product feedback."
+        }
+    }
+
     public var emailFeedbackAction: String {
         switch locale {
         case .zhHans: "邮件反馈"
@@ -417,6 +433,14 @@ public struct QuotaCopy: Equatable, Sendable {
         case .zhHans: "打开 X 主页"
         case .zhHant: "開啟 X 個人頁"
         case .en: "Open X profile"
+        }
+    }
+
+    public var copyDouyinIdAction: String {
+        switch locale {
+        case .zhHans: "复制抖音号"
+        case .zhHant: "複製抖音號"
+        case .en: "Copy Douyin ID"
         }
     }
 }

@@ -71,7 +71,7 @@ open "/Applications/Quota Capsule.app"
 
 - `安全 / 注意 / 危险 / 未知`
 - 按当前速度能否撑到刷新
-- 刷新图标
+- 正常状态保持安静；读取失败时显示状态提示，菜单栏可手动刷新
 
 点击胶囊可展开详情：
 
@@ -149,6 +149,19 @@ npm run probe:codex:rate-limits
 2. 如果 `codex --version` 不存在，先修复 Codex CLI 安装或 PATH。
 3. 如果 `npm run probe:codex:rate-limits` 返回 error，说明本机 Codex app-server 暂时读不到额度。
 4. 退出并重开 Quota Capsule，或从菜单栏点击“立即刷新”。
+
+## 反馈入口
+
+第一版反馈以邮箱和 GitHub Issues 为主：
+
+- Email: `mmz1218bono@gmail.com`
+- GitHub Issues: <https://github.com/Bono12138/codex-quota-capsule/issues>
+- X: <https://x.com/starlightsz0>
+- 抖音：火腿肠（`huotuichang439`）
+
+也可以扫码关注抖音并提交新的意见：
+
+![抖音二维码](docs/assets/douyin-qr.png)
 
 ## 当前限制
 

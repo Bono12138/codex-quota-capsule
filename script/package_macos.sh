@@ -12,7 +12,7 @@ pkill -x "QuotaCapsuleMac" >/dev/null 2>&1 || true
 rm -f "$ZIP_PATH"
 (
   cd "$DIST_DIR"
-  /usr/bin/ditto -c -k --keepParent "Quota Capsule.app" "$ZIP_PATH"
+  COPYFILE_DISABLE=1 /usr/bin/ditto -c -k --norsrc --noextattr --keepParent "Quota Capsule.app" "$ZIP_PATH"
 )
 
 echo "$ZIP_PATH"

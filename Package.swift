@@ -15,7 +15,8 @@ let package = Package(
         .target(name: "QuotaCapsuleCore"),
         .executableTarget(
             name: "QuotaCapsuleMac",
-            dependencies: ["QuotaCapsuleCore"]
+            dependencies: ["QuotaCapsuleCore"],
+            exclude: ["Resources"]
         ),
         .executableTarget(
             name: "QuotaCapsuleCoreSpec",

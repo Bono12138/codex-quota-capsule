@@ -460,6 +460,7 @@ P3：语音、遥测、更新提醒
   - Author: Bono MA
   - Gmail: `mmz1218bono@gmail.com`
   - X: `https://x.com/starlightsz0`
+  - Douyin: 火腿肠（`huotuichang439`），二维码素材：`docs/assets/douyin-qr.png`
 - 第一版上线要支持简中、繁中、英文。
 - 繁中不做机械转换，要适配台湾、香港、新加坡等地区的自然用语。
 - 刷新按钮结论：当前不承诺严格实时更新，继续使用 60 秒轮询 + 菜单栏手动刷新；主胶囊正常状态不显示假刷新按钮，失败态显示状态图标。

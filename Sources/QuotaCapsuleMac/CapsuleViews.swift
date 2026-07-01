@@ -1,5 +1,8 @@
 import SwiftUI
+import AppKit
 import QuotaCapsuleCore
+
+private let douyinID = "huotuichang439"
 
 struct CapsuleRootView: View {
     @ObservedObject var store: QuotaStore
@@ -255,6 +258,8 @@ struct MenuBarContent: View {
                 .font(.caption)
             Text(store.copy.xLine)
                 .font(.caption)
+            Text(store.copy.douyinLine)
+                .font(.caption)
             Button(store.copy.emailFeedbackAction) {
                 openExternalURL("mailto:mmz1218bono@gmail.com")
             }
@@ -263,6 +268,9 @@ struct MenuBarContent: View {
             }
             Button(store.copy.openXAction) {
                 openExternalURL("https://x.com/starlightsz0")
+            }
+            Button(store.copy.copyDouyinIdAction) {
+                copyToClipboard(douyinID)
             }
             Divider()
             Button(store.copy.quitAction) {
@@ -293,21 +301,45 @@ struct SettingsView: View {
                 .font(.title2.bold())
             Text(store.copy.localPrivacyDescription)
                 .foregroundStyle(.secondary)
-            Text(store.copy.authorLine)
-                .font(.caption)
-                .foregroundStyle(.secondary)
-            Text(store.copy.emailLine)
-                .font(.caption)
-                .foregroundStyle(.secondary)
-            Text(store.copy.xLine)
-                .font(.caption)
-                .foregroundStyle(.secondary)
-            HStack {
-                Button(store.copy.emailFeedbackAction) {
-                    openExternalURL("mailto:mmz1218bono@gmail.com")
+
+            HStack(alignment: .top, spacing: 18) {
+                VStack(alignment: .leading, spacing: 7) {
+                    Text(store.copy.authorLine)
+                    Text(store.copy.emailLine)
+                    Text(store.copy.xLine)
+                    Text(store.copy.douyinLine)
                 }
-                Button(store.copy.openXAction) {
-                    openExternalURL("https://x.com/starlightsz0")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+
+                Spacer(minLength: 8)
+
+                VStack(spacing: 8) {
+                    DouyinQRCodeView()
+                    Text(store.copy.douyinQrHint)
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                        .multilineTextAlignment(.center)
+                        .frame(width: 160)
+                }
+            }
+
+            VStack(alignment: .leading, spacing: 8) {
+                HStack {
+                    Button(store.copy.emailFeedbackAction) {
+                        openExternalURL("mailto:mmz1218bono@gmail.com")
+                    }
+                    Button(store.copy.githubIssuesAction) {
+                        openExternalURL("https://github.com/Bono12138/codex-quota-capsule/issues")
+                    }
+                }
+                HStack {
+                    Button(store.copy.openXAction) {
+                        openExternalURL("https://x.com/starlightsz0")
+                    }
+                    Button(store.copy.copyDouyinIdAction) {
+                        copyToClipboard(douyinID)
+                    }
                 }
             }
             Button(store.copy.refreshQuotaAction) {
@@ -315,7 +347,31 @@ struct SettingsView: View {
             }
         }
         .padding(24)
-        .frame(width: 420)
+        .frame(width: 500)
+    }
+}
+
+struct DouyinQRCodeView: View {
+    var body: some View {
+        Group {
+            if let image = bundledImage(named: "douyin-qr", extension: "png") {
+                Image(nsImage: image)
+                    .resizable()
+                    .interpolation(.high)
+                    .scaledToFit()
+            } else {
+                Image(systemName: "qrcode")
+                    .font(.system(size: 68, weight: .regular))
+                    .foregroundStyle(.secondary)
+                    .frame(width: 150, height: 224)
+            }
+        }
+        .frame(width: 150)
+        .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: 8, style: .continuous)
+                .stroke(.secondary.opacity(0.25), lineWidth: 1)
+        )
     }
 }
 
@@ -324,6 +380,26 @@ private func openExternalURL(_ value: String) {
         return
     }
     NSWorkspace.shared.open(url)
+}
+
+private func copyToClipboard(_ value: String) {
+    NSPasteboard.general.clearContents()
+    NSPasteboard.general.setString(value, forType: .string)
+}
+
+private func bundledImage(named name: String, extension fileExtension: String) -> NSImage? {
+    if let url = Bundle.main.url(forResource: name, withExtension: fileExtension) {
+        return NSImage(contentsOf: url)
+    }
+
+    let sourceURL = URL(fileURLWithPath: #filePath)
+        .deletingLastPathComponent()
+        .appendingPathComponent("Resources/\(name).\(fileExtension)")
+    if FileManager.default.fileExists(atPath: sourceURL.path) {
+        return NSImage(contentsOf: sourceURL)
+    }
+
+    return nil
 }
 
 func toneColor(_ level: CapsuleLevel) -> Color {

@@ -15,16 +15,21 @@ APP_MACOS="$APP_CONTENTS/MacOS"
 APP_RESOURCES="$APP_CONTENTS/Resources"
 APP_BINARY="$APP_MACOS/$PRODUCT_NAME"
 INFO_PLIST="$APP_CONTENTS/Info.plist"
+APP_RESOURCE_SOURCE="$ROOT_DIR/Sources/QuotaCapsuleMac/Resources"
 
 pkill -x "$PRODUCT_NAME" >/dev/null 2>&1 || true
 
 swift build -c release --product "$PRODUCT_NAME"
-BUILD_BINARY="$(swift build -c release --show-bin-path)/$PRODUCT_NAME"
+BUILD_DIR="$(swift build -c release --show-bin-path)"
+BUILD_BINARY="$BUILD_DIR/$PRODUCT_NAME"
 
 rm -rf "$APP_BUNDLE"
 mkdir -p "$APP_MACOS" "$APP_RESOURCES"
 cp "$BUILD_BINARY" "$APP_BINARY"
 chmod +x "$APP_BINARY"
+if [[ -d "$APP_RESOURCE_SOURCE" ]]; then
+  cp -R "$APP_RESOURCE_SOURCE/." "$APP_RESOURCES/"
+fi
 
 cat >"$INFO_PLIST" <<PLIST
 <?xml version="1.0" encoding="UTF-8"?>

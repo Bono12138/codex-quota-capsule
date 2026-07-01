@@ -126,6 +126,17 @@ npm run probe:codex:rate-limits
 
 这个命令会通过 `codex -s read-only -a untrusted app-server` 调用 `account/rateLimits/read`，输出脱敏后的 quota snapshot、续航 prediction 和本地 snapshot record。它不读取 prompt、session 正文或 auth token。
 
+## 联系与反馈
+
+- GitHub Issues: <https://github.com/Bono12138/codex-quota-capsule/issues>
+- Email: `mmz1218bono@gmail.com`
+- X: <https://x.com/starlightsz0>
+- 抖音：火腿肠（`huotuichang439`）
+
+扫码关注抖音，也可以把新的意见发给我：
+
+![抖音二维码](docs/assets/douyin-qr.png)
+
 ## 隐私边界
 
 - 默认本地读取、本地计算。

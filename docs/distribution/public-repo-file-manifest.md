@@ -63,6 +63,7 @@ docs/product/acceptance-criteria.md
 docs/product/feature-roadmap.md
 docs/product/visual-design-direction.md
 docs/product/bug-triage-and-release-blockers.md
+docs/assets/douyin-qr.png
 docs/distribution/codex-assisted-distribution-strategy.md
 docs/distribution/public-repo-file-manifest.md
 docs/research/data-source-probe.md
@@ -90,6 +91,7 @@ docs/research/competitors/**
 - 作者介绍。
 - 多项目 builder 入口。
 - Quota Capsule 和 DONE / 完事等其他项目的互相介绍。
+- 抖音二维码和社交账号展示位置。
 - 商业化计划。
 - 路线图中涉及遥测、历史数据、通知、自动更新的部分。
 
@@ -104,6 +106,7 @@ Public README 应优先回答：
 5. 手动安装怎么做。
 6. 遇到 `找不到 codex 命令` 怎么排查。
 7. 怎么反馈问题。
+8. 作者联系方式和抖音扫码入口。
 
 第一分发方式是 GitHub + Codex-assisted 安装提示词，不是陌生 zip 下载。
 
