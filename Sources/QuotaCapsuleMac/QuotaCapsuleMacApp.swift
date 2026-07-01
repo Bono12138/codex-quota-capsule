@@ -8,7 +8,10 @@ struct QuotaCapsuleMacApp: App {
 
     var body: some Scene {
         MenuBarExtra {
-            MenuBarContent(store: appDelegate.store)
+            MenuBarContent(
+                store: appDelegate.store,
+                onTogglePanel: appDelegate.togglePanel
+            )
         } label: {
             MenuBarLabel(store: appDelegate.store)
         }

@@ -118,6 +118,10 @@ Windows native 放后面。
 
 - `docs/product/visual-design-direction.md`
 
+产品运营、反馈、文案与数据收集原则见：
+
+- `docs/product/product-ops-feedback-and-copy.md`
+
 更详细的功能路线见：
 
 - `docs/product/feature-roadmap.md`

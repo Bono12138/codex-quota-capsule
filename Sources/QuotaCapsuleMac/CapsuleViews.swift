@@ -221,6 +221,7 @@ struct MiniStat: View {
 
 struct MenuBarContent: View {
     @ObservedObject var store: QuotaStore
+    let onTogglePanel: () -> Void
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
@@ -243,16 +244,13 @@ struct MenuBarContent: View {
                 store.refresh()
             }
             Button("显示/隐藏悬浮胶囊") {
-                (NSApp.delegate as? AppDelegate)?.togglePanel()
+                onTogglePanel()
             }
             Button("退出 Quota Capsule") {
                 NSApp.terminate(nil)
             }
         }
         .padding(.vertical, 6)
-        .onAppear {
-            (NSApp.delegate as? AppDelegate)?.attach(store: store)
-        }
     }
 }
 
