@@ -10,6 +10,7 @@ public struct CapsuleDisplayModel: Equatable, Sendable {
     public let tone: CapsuleLevel
     public let statusLabel: String
     public let defaultText: String
+    public let compactDetail: String
     public let metrics: [CapsuleMetric]
 
     public static func make(prediction: CapsulePrediction, locale: QuotaLocale = .zhHans) -> CapsuleDisplayModel {
@@ -18,6 +19,7 @@ public struct CapsuleDisplayModel: Equatable, Sendable {
             tone: prediction.level,
             statusLabel: copy.statusLabel(for: prediction.level),
             defaultText: compactText(for: prediction, locale: locale),
+            compactDetail: compactDetail(for: prediction),
             metrics: [
                 CapsuleMetric(label: copy.metricElapsed, value: formatPercent(prediction.elapsedPercent, copy: copy), numericValue: prediction.elapsedPercent),
                 CapsuleMetric(label: copy.metricUsed, value: formatPercent(prediction.quotaUsedPercent, copy: copy), numericValue: prediction.quotaUsedPercent),
@@ -56,6 +58,13 @@ public struct CapsuleDisplayModel: Equatable, Sendable {
             return prediction.headline.replacingOccurrences(of: "，但餘量不多", with: "")
         }
         return prediction.headline
+    }
+
+    private static func compactDetail(for prediction: CapsulePrediction) -> String {
+        guard let usedPercent = prediction.quotaUsedPercent else {
+            return ""
+        }
+        return "\(usedPercent)%"
     }
 
     private static func formatPercent(_ value: Int?, copy: QuotaCopy) -> String {

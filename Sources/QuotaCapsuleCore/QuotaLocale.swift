@@ -252,6 +252,38 @@ public struct QuotaCopy: Equatable, Sendable {
         }
     }
 
+    public var weeklyProjectionTitle: String {
+        switch locale {
+        case .zhHans: "本周压力"
+        case .zhHant: "本週壓力"
+        case .en: "Weekly pressure"
+        }
+    }
+
+    public var weeklyProjectionUnavailable: String {
+        switch locale {
+        case .zhHans: "暂时没有周窗口数据。"
+        case .zhHant: "暫時沒有週額度資料。"
+        case .en: "Weekly quota data is unavailable."
+        }
+    }
+
+    public func weeklyProjectionWillLast(usedPercent: Int, projectedRemaining: Int) -> String {
+        switch locale {
+        case .zhHans: "本周已用 \(usedPercent)%，按当前速度预计周刷新时剩 \(projectedRemaining)%"
+        case .zhHant: "本週已用 \(usedPercent)%，依目前速度預計週重設時剩 \(projectedRemaining)%"
+        case .en: "Weekly used \(usedPercent)%; projected \(projectedRemaining)% left at reset"
+        }
+    }
+
+    public func weeklyProjectionWillRunOut(emptyTime: String) -> String {
+        switch locale {
+        case .zhHans: "按当前速度，本周额度预计 \(emptyTime) 用完"
+        case .zhHant: "依目前速度，本週額度預計 \(emptyTime) 用完"
+        case .en: "At this pace, weekly quota runs out around \(emptyTime)"
+        }
+    }
+
     public var resetTimeTitle: String {
         switch locale {
         case .zhHans: "刷新时间"
@@ -441,6 +473,94 @@ public struct QuotaCopy: Equatable, Sendable {
         case .zhHans: "复制抖音号"
         case .zhHant: "複製抖音號"
         case .en: "Copy Douyin ID"
+        }
+    }
+
+    public var openDouyinAction: String {
+        switch locale {
+        case .zhHans: "打开抖音"
+        case .zhHant: "開啟抖音"
+        case .en: "Open Douyin"
+        }
+    }
+
+    public var userGuideAction: String {
+        switch locale {
+        case .zhHans: "查看新手引导"
+        case .zhHant: "查看新手引導"
+        case .en: "View first-run guide"
+        }
+    }
+
+    public var onboardingTitle: String {
+        switch locale {
+        case .zhHans: "先确认 Quota Capsule 在做什么"
+        case .zhHant: "先確認 Quota Capsule 在做什麼"
+        case .en: "What Quota Capsule does"
+        }
+    }
+
+    public var onboardingSubtitle: String {
+        switch locale {
+        case .zhHans: "它是一个本机额度续航提示，不是账号管理工具。"
+        case .zhHant: "它是本機額度續航提示，不是帳號管理工具。"
+        case .en: "It is a local quota runway indicator, not an account manager."
+        }
+    }
+
+    public var onboardingLocalRead: String {
+        switch locale {
+        case .zhHans: "只读本机 Codex app-server 的额度窗口。"
+        case .zhHant: "只讀本機 Codex app-server 的額度週期。"
+        case .en: "Reads local Codex app-server quota windows only."
+        }
+    }
+
+    public var onboardingPrivacy: String {
+        switch locale {
+        case .zhHans: "不上传 prompt、session、token 或 cookie。"
+        case .zhHant: "不會上傳 prompt、session、token 或 cookie。"
+        case .en: "Uploads no prompts, sessions, tokens, or cookies."
+        }
+    }
+
+    public var onboardingStatus: String {
+        switch locale {
+        case .zhHans: "颜色表示当前速度是否安全，百分比表示 5 小时窗口已用。"
+        case .zhHant: "顏色表示目前速度是否安全，百分比表示 5 小時週期已用。"
+        case .en: "Color shows pace risk; the percent is 5-hour usage."
+        }
+    }
+
+    public var onboardingInteraction: String {
+        switch locale {
+        case .zhHans: "点击悬浮胶囊看原因；菜单栏可以刷新、反馈、退出。"
+        case .zhHant: "點擊懸浮膠囊看原因；選單列可以重新整理、回饋、退出。"
+        case .en: "Click the capsule for details; use the menu bar to refresh, send feedback, or quit."
+        }
+    }
+
+    public var onboardingDiagnosticTitle: String {
+        switch locale {
+        case .zhHans: "当前读取状态"
+        case .zhHant: "目前讀取狀態"
+        case .en: "Current read status"
+        }
+    }
+
+    public var onboardingStartAction: String {
+        switch locale {
+        case .zhHans: "开始使用"
+        case .zhHant: "開始使用"
+        case .en: "Start using"
+        }
+    }
+
+    public var onboardingPrivacyAction: String {
+        switch locale {
+        case .zhHans: "查看隐私说明"
+        case .zhHant: "查看隱私說明"
+        case .en: "View privacy note"
         }
     }
 }

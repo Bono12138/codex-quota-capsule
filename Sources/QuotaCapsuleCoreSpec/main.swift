@@ -129,6 +129,37 @@ func testPredictsMissingShortWindowAsUnknownWhenWeeklyIsNotExhausted() {
     expect(prediction.level == .unknown, "missing short window should remain unknown when weekly is not exhausted")
 }
 
+func testWeeklyPredictionUsesWeeklyWindowInputsOnly() {
+    let now = Date(timeIntervalSince1970: 1_788_270_000)
+    let snapshot = AgentQuotaSnapshot(
+        provider: "codex",
+        sourceStatus: .ok,
+        fetchedAt: now,
+        shortWindow: QuotaWindow(
+            label: "5h",
+            windowMinutes: 300,
+            usedPercent: 90,
+            remainingPercent: 10,
+            resetsAt: now.addingTimeInterval(30 * 60)
+        ),
+        weeklyWindow: QuotaWindow(
+            label: "weekly",
+            windowMinutes: 10_080,
+            usedPercent: 10,
+            remainingPercent: 90,
+            resetsAt: now.addingTimeInterval(5_040 * 60)
+        ),
+        errorMessage: nil
+    )
+
+    let prediction = QuotaPredictor.predictWeekly(snapshot: snapshot, now: now)
+
+    expect(prediction?.level == .safe, "weekly prediction should be safe when weekly pace is safe even if 5h is hot")
+    expect(prediction?.quotaUsedPercent == 10, "weekly prediction numerator must use weekly usedPercent")
+    expect(prediction?.elapsedPercent == 50, "weekly prediction denominator must use weekly windowMinutes and resetsAt")
+    expect(prediction?.projectedRemainingAtReset == 80, "weekly projected remaining should use weekly pace only")
+}
+
 func testPredictsExpiredResetAsUnknown() {
     let now = Date(timeIntervalSince1970: 1_788_270_000)
     let snapshot = AgentQuotaSnapshot(
@@ -166,6 +197,7 @@ func testBuildsCompactDisplayModel() {
     let model = CapsuleDisplayModel.make(prediction: prediction)
 
     expect(model.statusLabel == "危险", "danger label should be localized")
+    expect(model.compactDetail == "95%", "compact detail should expose used percentage")
     expect(model.defaultText.contains("见底"), "danger compact text should mention bottoming out")
     expect(model.metrics.map(\.label) == ["时间进度", "额度已用", "当前速度", "刷新余量"], "metrics should preserve compact detail order")
 }
@@ -181,6 +213,7 @@ func testContactCopyIncludesDouyinInAllLocales() {
     expect(QuotaCopy(locale: .zhHans).douyinLine.contains("huotuichang439"), "Simplified Chinese contact copy should include Douyin ID")
     expect(QuotaCopy(locale: .zhHant).copyDouyinIdAction == "複製抖音號", "Traditional Chinese Douyin action should use natural copy")
     expect(QuotaCopy(locale: .en).douyinQrHint.contains("Douyin"), "English QR hint should name Douyin")
+    expect(QuotaCopy(locale: .zhHans).openDouyinAction == "打开抖音", "Douyin primary action should open Douyin")
 }
 
 func testBuildsEnglishDisplayModel() {
@@ -491,6 +524,7 @@ do {
     testPredictsExhaustedShortWindowAsDanger()
     testPredictsExhaustedWeeklyWindowAsDanger()
     testPredictsMissingShortWindowAsUnknownWhenWeeklyIsNotExhausted()
+    testWeeklyPredictionUsesWeeklyWindowInputsOnly()
     testPredictsExpiredResetAsUnknown()
     testBuildsCompactDisplayModel()
     testQuotaLocaleResolvesPreferredLanguages()

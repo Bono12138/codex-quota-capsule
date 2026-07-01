@@ -3,6 +3,7 @@ import AppKit
 import QuotaCapsuleCore
 
 private let douyinID = "huotuichang439"
+private let douyinURL = "https://v.douyin.com/Alo9NohbnoY/"
 
 struct CapsuleRootView: View {
     @ObservedObject var store: QuotaStore
@@ -58,11 +59,15 @@ struct CompactCapsuleView: View {
             Text(store.visibleStatusText)
                 .font(.system(size: 13, weight: .bold))
 
-            Text(store.visibleCompactText)
-                .font(.system(size: 13, weight: .medium))
-                .foregroundStyle(.secondary)
-                .lineLimit(1)
-                .frame(maxWidth: .infinity, alignment: .leading)
+            if !store.visibleCompactText.isEmpty {
+                Text(store.visibleCompactText)
+                    .font(.system(size: 13, weight: .bold))
+                    .monospacedDigit()
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+            }
+
+            Spacer(minLength: 4)
 
             if store.isRefreshing {
                 ProgressView()
@@ -123,6 +128,8 @@ struct DetailPopoverView: View {
                 MiniStat(title: store.copy.resetTimeTitle, value: store.resetText)
                 MiniStat(title: store.copy.successUpdateTitle, value: store.lastRefreshText)
             }
+
+            WeeklyProjectionView(store: store)
 
             VStack(alignment: .leading, spacing: 7) {
                 Text(store.copy.dataSourceTitle)
@@ -189,17 +196,45 @@ struct MetricRow: View {
                     .monospacedDigit()
             }
 
-            GeometryReader { geometry in
-                ZStack(alignment: .leading) {
-                    Capsule()
-                        .fill(.white.opacity(0.14))
-                    Capsule()
-                        .fill(toneColor(tone))
-                        .frame(width: geometry.size.width * CGFloat(metric.numericValue ?? 0) / 100)
+            if let numericValue = metric.numericValue {
+                GeometryReader { geometry in
+                    ZStack(alignment: .leading) {
+                        Capsule()
+                            .fill(.white.opacity(0.14))
+                        Capsule()
+                            .fill(toneColor(tone))
+                            .frame(width: geometry.size.width * CGFloat(numericValue) / 100)
+                    }
                 }
+                .frame(height: 7)
             }
-            .frame(height: 7)
         }
+    }
+}
+
+struct WeeklyProjectionView: View {
+    @ObservedObject var store: QuotaStore
+
+    var body: some View {
+        HStack(alignment: .top, spacing: 9) {
+            Circle()
+                .fill(toneColor(store.weeklyProjectionTone))
+                .frame(width: 7, height: 7)
+                .padding(.top, 5)
+
+            VStack(alignment: .leading, spacing: 3) {
+                Text(store.copy.weeklyProjectionTitle)
+                    .font(.system(size: 10, weight: .bold))
+                    .foregroundStyle(.secondary)
+                Text(store.weeklyProjectionText)
+                    .font(.system(size: 11, weight: .semibold))
+                    .foregroundStyle(.secondary)
+                    .lineLimit(2)
+            }
+        }
+        .padding(.horizontal, 10)
+        .padding(.vertical, 9)
+        .background(.white.opacity(0.07), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
     }
 }
 
@@ -225,6 +260,8 @@ struct MiniStat: View {
 struct MenuBarContent: View {
     @ObservedObject var store: QuotaStore
     let onTogglePanel: () -> Void
+    let onShowAboutFeedback: () -> Void
+    let onShowOnboarding: () -> Void
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
@@ -249,6 +286,12 @@ struct MenuBarContent: View {
             Button(store.copy.toggleCapsuleAction) {
                 onTogglePanel()
             }
+            Button(store.copy.aboutFeedbackTitle) {
+                onShowAboutFeedback()
+            }
+            Button(store.copy.userGuideAction) {
+                onShowOnboarding()
+            }
             Divider()
             Text(store.copy.aboutFeedbackTitle)
                 .font(.caption.bold())
@@ -269,6 +312,9 @@ struct MenuBarContent: View {
             Button(store.copy.openXAction) {
                 openExternalURL("https://x.com/starlightsz0")
             }
+            Button(store.copy.openDouyinAction) {
+                openExternalURL(douyinURL)
+            }
             Button(store.copy.copyDouyinIdAction) {
                 copyToClipboard(douyinID)
             }
@@ -287,7 +333,7 @@ struct MenuBarLabel: View {
     var body: some View {
         HStack(spacing: 4) {
             Image(systemName: "gauge.with.dots.needle.33percent")
-            Text(store.visibleStatusText)
+            Text(store.visibleMenuBarText)
         }
     }
 }
@@ -337,6 +383,9 @@ struct SettingsView: View {
                     Button(store.copy.openXAction) {
                         openExternalURL("https://x.com/starlightsz0")
                     }
+                    Button(store.copy.openDouyinAction) {
+                        openExternalURL(douyinURL)
+                    }
                     Button(store.copy.copyDouyinIdAction) {
                         copyToClipboard(douyinID)
                     }
@@ -348,6 +397,87 @@ struct SettingsView: View {
         }
         .padding(24)
         .frame(width: 500)
+    }
+}
+
+struct OnboardingView: View {
+    @ObservedObject var store: QuotaStore
+    @State private var showsPrivacyDetails = false
+    let onComplete: () -> Void
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            VStack(alignment: .leading, spacing: 6) {
+                Text(store.copy.onboardingTitle)
+                    .font(.title2.bold())
+                Text(store.copy.onboardingSubtitle)
+                    .foregroundStyle(.secondary)
+            }
+
+            VStack(alignment: .leading, spacing: 10) {
+                GuideRow(symbol: "lock.shield", text: store.copy.onboardingLocalRead)
+                GuideRow(symbol: "eye.slash", text: store.copy.onboardingPrivacy)
+                GuideRow(symbol: "gauge.with.dots.needle.67percent", text: store.copy.onboardingStatus)
+                GuideRow(symbol: "menubar.rectangle", text: store.copy.onboardingInteraction)
+            }
+
+            if showsPrivacyDetails {
+                Text(store.copy.localPrivacyDescription)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .padding(10)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .background(.secondary.opacity(0.08), in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+            }
+
+            if store.snapshot.sourceStatus != .ok {
+                VStack(alignment: .leading, spacing: 5) {
+                    Text(store.copy.onboardingDiagnosticTitle)
+                        .font(.caption.bold())
+                        .foregroundStyle(.secondary)
+                    Text(store.sourceNoteText)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(3)
+                }
+                .padding(10)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .background(.secondary.opacity(0.08), in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+            }
+
+            HStack {
+                Button(store.copy.onboardingPrivacyAction) {
+                    showsPrivacyDetails.toggle()
+                }
+                Spacer()
+                Button(store.copy.refreshNowAction) {
+                    store.refresh()
+                }
+                Button(store.copy.onboardingStartAction) {
+                    onComplete()
+                }
+                .keyboardShortcut(.defaultAction)
+            }
+        }
+        .padding(24)
+        .frame(width: 480)
+    }
+}
+
+struct GuideRow: View {
+    let symbol: String
+    let text: String
+
+    var body: some View {
+        HStack(alignment: .top, spacing: 10) {
+            Image(systemName: symbol)
+                .font(.system(size: 14, weight: .semibold))
+                .foregroundStyle(.secondary)
+                .frame(width: 20)
+            Text(text)
+                .font(.system(size: 13, weight: .medium))
+                .foregroundStyle(.primary)
+        }
     }
 }
 

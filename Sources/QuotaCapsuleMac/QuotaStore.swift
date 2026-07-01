@@ -8,6 +8,7 @@ final class QuotaStore: ObservableObject {
     @Published private(set) var prediction: CapsulePrediction
     @Published private(set) var displayModel: CapsuleDisplayModel
     @Published private(set) var isRefreshing = false
+    @Published private(set) var hasCompletedOnboarding: Bool
     @Published private(set) var lastRefreshText = ""
     @Published private(set) var lastAttemptText = ""
     @Published private(set) var lastErrorText: String?
@@ -15,10 +16,12 @@ final class QuotaStore: ObservableObject {
     private var refreshTask: Task<Void, Never>?
     let copy: QuotaCopy
     private let locale: QuotaLocale
+    private let onboardingKey = "QuotaCapsule.hasCompletedOnboarding.v1"
 
     init() {
         locale = QuotaLocale.current()
         copy = QuotaCopy(locale: locale)
+        hasCompletedOnboarding = UserDefaults.standard.bool(forKey: onboardingKey)
         let now = Date()
         let initial = AgentQuotaSnapshot(
             provider: "codex",
@@ -69,6 +72,36 @@ final class QuotaStore: ObservableObject {
             return copy.unknownValue
         }
         return "\(weeklyWindow.remainingPercent)%"
+    }
+
+    var weeklyProjection: CapsulePrediction? {
+        QuotaPredictor.predictWeekly(snapshot: snapshot, now: snapshot.fetchedAt, locale: locale)
+    }
+
+    var weeklyProjectionText: String {
+        guard let weeklyProjection else {
+            return copy.weeklyProjectionUnavailable
+        }
+
+        if weeklyProjection.canReachReset == false, let estimatedEmptyAt = weeklyProjection.estimatedEmptyAt {
+            return copy.weeklyProjectionWillRunOut(
+                emptyTime: QuotaPredictor.formatTime(estimatedEmptyAt, locale: locale)
+            )
+        }
+
+        if let usedPercent = weeklyProjection.quotaUsedPercent,
+           let projectedRemaining = weeklyProjection.projectedRemainingAtReset {
+            return copy.weeklyProjectionWillLast(
+                usedPercent: usedPercent,
+                projectedRemaining: projectedRemaining
+            )
+        }
+
+        return copy.weeklyProjectionUnavailable
+    }
+
+    var weeklyProjectionTone: CapsuleLevel {
+        weeklyProjection?.level ?? .unknown
     }
 
     var resetText: String {
@@ -127,7 +160,22 @@ final class QuotaStore: ObservableObject {
         if isRefreshing && snapshot.sourceStatus != .ok {
             return copy.loadingCompact
         }
-        return displayModel.defaultText
+        return displayModel.compactDetail
+    }
+
+    var visibleMenuBarText: String {
+        if isRefreshing && snapshot.sourceStatus != .ok {
+            return visibleStatusText
+        }
+        if visibleCompactText.isEmpty {
+            return visibleStatusText
+        }
+        return "\(visibleStatusText) \(visibleCompactText)"
+    }
+
+    func completeOnboarding() {
+        UserDefaults.standard.set(true, forKey: onboardingKey)
+        hasCompletedOnboarding = true
     }
 
     private func applyRefreshResult(_ newSnapshot: AgentQuotaSnapshot, now: Date) {

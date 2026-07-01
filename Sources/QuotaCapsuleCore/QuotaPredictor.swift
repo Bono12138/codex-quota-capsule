@@ -21,6 +21,13 @@ public enum QuotaPredictor {
         return predict(window: window, now: now, locale: locale)
     }
 
+    public static func predictWeekly(snapshot: AgentQuotaSnapshot, now: Date = Date(), locale: QuotaLocale = .zhHans) -> CapsulePrediction? {
+        guard snapshot.sourceStatus == .ok, let weeklyWindow = snapshot.weeklyWindow else {
+            return nil
+        }
+        return predict(window: weeklyWindow, now: now, locale: locale)
+    }
+
     public static func predict(window: QuotaWindow, now: Date = Date(), locale: QuotaLocale = .zhHans) -> CapsulePrediction {
         let copy = QuotaCopy(locale: locale)
         let windowStart = window.resetsAt.addingTimeInterval(TimeInterval(-window.windowMinutes * 60))

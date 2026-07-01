@@ -123,7 +123,9 @@ Quota Capsule 的默认体验必须遵循 less is more。
 - X: `https://x.com/starlightsz0`，作为作者 builder 入口。
 - 抖音：火腿肠（`huotuichang439`），作为后续内容发布、扫码关注和轻量意见入口。
 
-抖音二维码可以出现在设置页、README 和公开发布材料里，但不能替代 GitHub Issues 的执行跟踪。用户通过抖音提出的问题，需要再沉淀成 issue 或开发规划记录。
+抖音二维码可以出现在反馈面板、README 和公开发布材料里，但不能替代 GitHub Issues 的执行跟踪。用户通过抖音提出的问题，需要再沉淀成 issue 或开发规划记录。
+
+抖音在产品内的主操作应该是“打开抖音”，二维码和复制抖音号作为备用。TikTok 暂不进入产品内反馈入口。
 
 ## 可以考虑的运营指标
 

@@ -131,7 +131,7 @@ npm run probe:codex:rate-limits
 - GitHub Issues: <https://github.com/Bono12138/codex-quota-capsule/issues>
 - Email: `mmz1218bono@gmail.com`
 - X: <https://x.com/starlightsz0>
-- 抖音：火腿肠（`huotuichang439`）
+- 抖音：火腿肠（`huotuichang439`），应用内可直接打开抖音短链
 
 扫码关注抖音，也可以把新的意见发给我：
 
