@@ -29,5 +29,5 @@ This repository is for Quota Capsule: a Codex-first, agent-extensible desktop qu
 2. Build core model and prediction tests.
 3. Build desktop mock UI states.
 4. Add real source adapters only after the field source is proven.
-5. Package Windows first; Mac menu-bar support can come later.
-
+5. Mac 本地体验优先：桌面悬浮小胶囊为默认形态，菜单栏作为入口和补充控制。
+6. Chrome 独立版并行推进；Windows native 放到后续用户需求更明确之后。

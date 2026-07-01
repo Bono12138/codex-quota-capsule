@@ -19,19 +19,21 @@ Quota Capsule 要做成一个小而常驻的状态物，直接说人话：
 
 ## 当前状态
 
-项目已经越过纯 bootstrap 阶段：core model、prediction engine、只读 Codex app-server rate-limit adapter、snapshot record 和 Quiet Glass Capsule UI 原型都已建立。
+项目已经有第一版可本地试用的 macOS app：core model、prediction engine、只读 Codex app-server rate-limit adapter、snapshot record、Quiet Glass Capsule UI、菜单栏入口和可分发 zip 包都已建立。
 
 当前最重要的两件事是：
 
 1. 证明 Codex quota 数据可以在本地以只读方式可靠获取。
 2. 证明 UI 体验足够好，值得用户让它常驻桌面。
 
-当前桌面 UI 仍使用 mock 数据，原因是浏览器/Vite 原型不能直接 spawn 本地 `codex app-server`。真实 source adapter 已经在 `packages/source-codex` 中实现，下一步是把它接入 Mac 本地壳层。
+当前 macOS 原生 app 使用真实本地 Codex rate-limit 数据。浏览器/Vite demo 仍保留为视觉原型和 Web/Chrome 版本探索用。
 
 ## 项目结构
 
 ```text
-apps/desktop/              Vite 桌面 UI mock；后续用于 Mac/local 体验探索。
+Sources/QuotaCapsuleMac/   macOS 原生悬浮胶囊 + 菜单栏 app。
+Sources/QuotaCapsuleCore/  Swift 原生 provider-neutral model、预测、Codex app-server source。
+apps/desktop/              Vite 桌面 UI mock；用于 Web/Chrome 视觉探索。
 packages/core/             provider-neutral quota model、预测引擎、状态文案。
 packages/source-codex/     Codex-first 本地数据源 probe 和未来 adapter。
 docs/product/              产品简报、MVP 范围、策略、商业化。
@@ -80,6 +82,26 @@ npm test
 npm run build
 npm run dev
 ```
+
+运行 macOS 原生 app：
+
+```bash
+npm run mac:run
+```
+
+生成可发给同事的 macOS zip：
+
+```bash
+npm run mac:package
+```
+
+输出文件：
+
+```text
+dist/Quota-Capsule-macOS.zip
+```
+
+详细安装、使用、分发说明见 [INSTALL.md](INSTALL.md)。
 
 运行当前 Codex probe：
 
