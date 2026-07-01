@@ -278,6 +278,90 @@ window 级字段：
   - 快照列表。
   - 导出按钮。
 
+## 产品分析与用户使用数据
+
+owner 明确需要远程产品分析，用来判断产品是否真的被常驻使用、用户在哪些地方流失、哪些版本或语言环境问题最多。
+
+### 产品问题
+
+远程分析要回答：
+
+- 有多少真实安装在持续使用。
+- 日活、周活、月活和 D1 / D7 / D30 留存。
+- 用户是否长期保持悬浮胶囊显示。
+- 用户是否经常展开详情面板。
+- 首次引导在哪一步跳过或失败。
+- 读取失败集中在哪些版本、macOS 主版本或 locale。
+- 抖音、Email、GitHub Issues、X 哪个反馈入口更常被点击。
+- 常驻菜单栏和悬浮胶囊的组合是否有价值。
+
+### 远程事件字段
+
+事件公共字段：
+
+- `event_id`
+- `event_name`
+- `event_time`
+- `install_id_hash`
+- `app_version`
+- `schema_version`
+- `locale`
+- `macos_major_version`
+- `arch`
+- `analytics_consent_version`
+
+事件属性：
+
+- `surface`：capsule / menu_bar / onboarding / feedback / settings / diagnostics
+- `provider`：codex
+- `status`：safe / watch / danger / unknown
+- `source_status`：success / stale / failed / missing_cli / auth_required / timeout
+- `error_type`
+- `duration_seconds`
+- `count`
+- `width_bucket`
+- `language`
+- `feedback_target`：email / github / x / douyin_open / douyin_copy
+
+### 首批事件
+
+- `app_launched`
+- `app_quit`
+- `capsule_visible_duration`
+- `capsule_hidden_duration`
+- `capsule_expanded`
+- `capsule_collapsed`
+- `capsule_resized`
+- `menu_bar_enabled`
+- `quota_refresh_started`
+- `quota_refresh_succeeded`
+- `quota_refresh_failed`
+- `onboarding_started`
+- `onboarding_step_viewed`
+- `onboarding_completed`
+- `onboarding_skipped`
+- `diagnostic_step_viewed`
+- `feedback_clicked`
+- `analytics_consent_changed`
+
+### 采集边界
+
+远程产品分析严禁上传：
+
+- prompt、session 正文、代码内容、终端命令。
+- auth token、cookie、API key、原始 Codex session 文件。
+- 文件路径、项目名、窗口标题、联系人、邮箱正文。
+- 具体 quota 原始响应。
+- 可反推用户正在做什么项目的内容。
+
+### 下一版工程形态
+
+- 本地保留事件队列，用于失败重试和调试。
+- 上报 adapter 独立封装，便于后续切换 Cloudflare、Supabase、PostHog 或自建 endpoint。
+- endpoint 未配置时，事件留在本地开发日志和队列，不静默发送。
+- 首次引导和设置里显示三语采集说明。
+- CI 检查 analytics 事件名和 schema 字段，避免随手新增不可追踪字段。
+
 ## 功能优先级
 
 ### P0
@@ -292,10 +376,13 @@ window 级字段：
 
 - 真实 Codex adapter。
 - 本地 snapshot writer。
+- 远程产品分析 consent、事件队列和上报 adapter。
+- 三语 string catalog、首屏语言判断和缺失 key 检查。
+- 分步新手引导和诊断引导。
 - 基础历史页：今日快照、5h 消耗曲线。
 - 通知。
 - 菜单栏。
-- 显示模式设置。
+- 胶囊有限尺寸调整和显示偏好。
 
 ### P2
 
