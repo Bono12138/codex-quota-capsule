@@ -118,7 +118,7 @@
 - config writing。
 - session manager。
 
-这些能力不是 Quota Capsule MVP。即使未来做，也应该作为独立“高级工具箱”或另一个 companion product，不能进入默认胶囊体验。
+这些能力先不进入 Quota Capsule MVP。未来如果要做，也应该作为独立“高级工具箱”或另一个 companion product，不能进入默认胶囊体验。
 
 ### 来自 codex-quota
 
@@ -155,23 +155,52 @@
 
 ### 快照记录什么
 
-每次快照建议记录：
+每次采样记录一个 capture，并为 5 小时窗口和 weekly 窗口分别写入 window record。
+
+capture 级字段：
 
 - `timestamp`
 - `provider`
 - `source`
 - `source_status`
+- `fetched_at`
+- `data_age_seconds`
+- `app_version`
+- `schema_version`
+- `error_type`
+- `error_message_hash`
+
+window 级字段：
+
 - `window_type`：5h / weekly / other
+- `window_minutes`
 - `used_percent`
 - `remaining_percent`
 - `resets_at`
+- `window_start`
 - `time_elapsed_percent`
-- `burn_rate`
+- `minutes_until_reset`
+- `burn_rate_percent_per_min`
+- `burn_rate_vs_even_pace`
 - `estimated_empty_at`
 - `projected_remaining_at_reset`
 - `state`：safe / watch / danger / unknown
-- `data_age_seconds`
-- `app_version`
+- `used_delta_percent`
+- `delta_minutes`
+- `delta_percent_per_min`
+- `reset_detected`
+
+本地事件指标：
+
+- app 启动。
+- 胶囊展开/收起。
+- 胶囊宽度调整。
+- 手动刷新。
+- 读取成功/失败。
+- 引导开始/完成/跳过。
+- 反馈入口点击。
+- 抖音打开、抖音号复制。
+- GitHub Issues / email / X 点击。
 
 不记录：
 
@@ -181,37 +210,41 @@
 - cookie。
 - API key。
 - 原始 Codex session 文件内容。
+- 文件路径、项目名、窗口标题或可反推具体工作内容的数据。
 
 ### 快照频率
 
 建议默认：
 
-- 正常状态：每 5 分钟记录一次。
-- active coding / 前台活跃时：每 1 分钟记录一次。
+- 正常状态：每 1 分钟记录一次。
+- 读取失败：记录 failure snapshot，但同类失败做节流。
 - 数据不变时可以去重。
-- 读取失败也记录 failure snapshot，但不高频刷写。
+- 窗口 reset 前后保留连续记录，方便分析刷新点。
 
 ### 存储方式
 
-MVP 建议：
+下一版直接使用本地 SQLite。
 
-- 本地 SQLite。
-- 或者先用 append-only JSONL 过渡。
-
-长期建议：
-
-- SQLite 作为主存储。
-- 支持导出 CSV / JSON。
+- 支持 schema version 和迁移。
+- 支持按时间范围查询。
 - 支持清空历史数据。
 - 支持 retention 设置。
+- 后续支持导出 CSV / JSON。
 
 ### 保留周期
 
 默认建议：
 
 - 原始快照保留 30 天。
-- 小时聚合保留 180 天。
+- 5 分钟或小时聚合保留 180 天。
 - 天级聚合长期保留，用户可关闭。
+
+空间预估：
+
+- 每分钟采样一次，每次写 5h 和 weekly 两条 window record，每天约 2880 条。
+- 30 天约 86400 条 window record。
+- SQLite 空间通常在几十 MB 级别，即使加索引和聚合也应控制在 100 MB 量级。
+- 需要在设置或诊断页显示当前历史库大小，并提供清空入口。
 
 ### 可以做出的分析
 
@@ -228,6 +261,8 @@ MVP 建议：
 - 长任务启动后的消耗曲线。
 - 多 agent 并行时的消耗变化。
 - 用量异常提醒。
+
+注意：项目 / workspace 维度不能通过读取文件路径或 prompt 内容实现。只有在未来有明确、可解释、用户同意的本地标签机制后再评估。
 
 ### UI 入口
 
@@ -278,4 +313,3 @@ MVP 建议：
 - workspace / project 维度估算。
 - 企业 adapter。
 - 敏感高级工具箱：账号/session/config，默认不启用。
-
