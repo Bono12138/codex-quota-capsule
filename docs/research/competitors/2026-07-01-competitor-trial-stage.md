@@ -2,6 +2,11 @@
 
 Date: 2026-07-01
 
+Follow-up synthesis:
+
+- See `docs/research/competitors/2026-07-01-competitor-visual-and-product-archive.md` for the reusable visual archive, product-shape analysis, and product positioning summary.
+- See `docs/product/strategy-and-commercialization.md` for the current product and commercialization strategy.
+
 ## Objective
 
 Evaluate existing quota display tools before deciding whether Quota Capsule should continue independently, contribute upstream, or pivot.

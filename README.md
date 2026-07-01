@@ -1,6 +1,6 @@
 # Quota Capsule
 
-Quota Capsule is a Codex-first desktop quota gauge. It turns raw usage-window data into the answer users actually need:
+Quota Capsule is a Codex-first quota runway capsule. It turns raw usage-window data into the answer users actually need:
 
 > At the current pace, can I make it to the next reset? If not, when will I run out?
 
@@ -21,16 +21,16 @@ Quota Capsule aims to be a tiny always-visible capsule that says the useful thin
 
 This repository is in project bootstrap state.
 
-The first engineering gate is not UI polish. It is proving whether Codex quota data can be read locally, reliably, and without collecting sensitive account data. Until that is proven, the desktop UI uses mock data.
+The first engineering gates are source proof and product-surface proof: Codex quota data must be read locally and safely, and the UI must be good enough to stay visible during real work. Until source proof is complete, UI surfaces use mock data.
 
 ## Project Shape
 
 ```text
-apps/desktop/              Vite desktop UI mock; future Tauri/Electron shell lives here.
+apps/desktop/              Vite desktop UI mock; future native shell exploration lives here.
 packages/core/             Provider-neutral quota model, prediction engine, and status copy.
 packages/source-codex/     Codex-first local data-source probe and future adapter.
-docs/product/              Product brief, MVP scope, release framing.
-docs/research/             Data-source verification notes and probe plan.
+docs/product/              Product brief, MVP scope, strategy, commercialization.
+docs/research/             Data-source verification, competitor, and visual research notes.
 docs/decisions/            Durable project decisions.
 scripts/                   Local helper scripts.
 ```
@@ -50,8 +50,18 @@ The product is designed for Codex first because that is the immediate pain. The 
 2. Lock the shared quota data model.
 3. Build and test the prediction engine with mock data.
 4. Build the small always-visible capsule UI with mock states.
-5. Add a real Codex source adapter only after the probe is proven.
-6. Package the Windows MVP.
+5. Add the Chrome independent version as a mock-first app.
+6. Add a real Codex source adapter only after the probe is proven.
+7. Prototype Mac floating capsule and menu-bar display modes.
+8. Keep Windows native packaging for a later demand-driven phase.
+
+## Product Research
+
+- [Product brief](docs/product/brief.md)
+- [MVP scope](docs/product/mvp-scope.md)
+- [Product strategy and commercialization](docs/product/strategy-and-commercialization.md)
+- [Competitor visual and product archive](docs/research/competitors/2026-07-01-competitor-visual-and-product-archive.md)
+- [Competitor local trial notes](docs/research/competitors/2026-07-01-competitor-trial-stage.md)
 
 ## Local Development
 
@@ -81,4 +91,3 @@ The probe is intentionally conservative. It records what the local Codex CLI exp
 ## License
 
 MIT
-

@@ -5,22 +5,25 @@
 - Provider-neutral quota model.
 - Prediction engine with safe/watch/danger/unknown states.
 - Mock scenarios for safe, watch, danger, just-reset, stale, and source-error cases.
-- Codex local source probe.
+- Read-only Codex local source probe.
 - Desktop UI mock that renders compact and detailed states.
+- Chrome independent mock-first extension scaffold.
 - Privacy README and adapter contribution rules.
 
 ## P1
 
-- Windows always-on-top capsule shell.
-- Tray icon and menu.
+- Read-only `codex app-server` rate-limit adapter.
+- Mac floating capsule prototype.
+- Mac menu-bar display mode.
+- Chrome extension source feasibility proof.
 - Position persistence.
 - Settings persistence.
-- Codex adapter after source proof.
 
 ## P2
 
+- Windows always-on-top capsule shell.
+- Windows tray icon and menu.
 - Windows installer.
-- Mac menu-bar variant.
 - Theme packs.
 - Copy packs.
 - Historical trend view.
@@ -32,4 +35,3 @@
 - App cannot be exited cleanly.
 - Installer cannot be uninstalled.
 - Privacy boundaries are not documented.
-
