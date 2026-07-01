@@ -19,14 +19,14 @@ Quota Capsule 要做成一个小而常驻的状态物，直接说人话：
 
 ## 当前状态
 
-项目处于 bootstrap 阶段。
+项目已经越过纯 bootstrap 阶段：core model、prediction engine、只读 Codex app-server rate-limit adapter、snapshot record 和 Quiet Glass Capsule UI 原型都已建立。
 
 当前最重要的两件事是：
 
 1. 证明 Codex quota 数据可以在本地以只读方式可靠获取。
 2. 证明 UI 体验足够好，值得用户让它常驻桌面。
 
-在真实 source proof 完成前，UI surface 使用 mock 数据。
+当前桌面 UI 仍使用 mock 数据，原因是浏览器/Vite 原型不能直接 spawn 本地 `codex app-server`。真实 source adapter 已经在 `packages/source-codex` 中实现，下一步是把它接入 Mac 本地壳层。
 
 ## 项目结构
 
@@ -59,7 +59,7 @@ scripts/                   本地 helper scripts。
 4. 做出小而常驻的 capsule UI mock。
 5. 做 Mac 桌面悬浮胶囊原型。
 6. 搭 Chrome 独立版 mock-first scaffold。
-7. source proof 成立后再接真实 Codex adapter。
+7. 把真实 Codex adapter 接入 Mac 本地壳层，替换桌面 UI 的 mock source。
 8. Windows native packaging 放到需求更明确之后。
 
 ## 产品研究
@@ -88,6 +88,14 @@ npm run probe:codex
 ```
 
 当前 probe 是保守的。它只记录本地 Codex CLI 暴露了什么，不抓取 secrets，不记录 auth token，也不把旧数据伪装成新数据。
+
+运行只读 Codex rate-limit probe：
+
+```bash
+npm run probe:codex:rate-limits
+```
+
+这个命令会通过 `codex -s read-only -a untrusted app-server` 调用 `account/rateLimits/read`，输出脱敏后的 quota snapshot、续航 prediction 和本地 snapshot record。它不读取 prompt、session 正文或 auth token。
 
 ## 隐私边界
 

@@ -14,6 +14,7 @@
     "dev": "npm run dev -w apps/desktop",
     "lint": "tsc -p tsconfig.base.json --noEmit",
     "probe:codex": "npm run build -w packages/source-codex && tsx scripts/run-codex-probe.ts",
+    "probe:codex:rate-limits": "npm run build -w packages/core && npm run build -w packages/source-codex && tsx scripts/read-codex-rate-limits.ts",
     "test": "vitest run",
     "test:watch": "vitest"
   },

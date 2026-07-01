@@ -15,7 +15,7 @@
 
 ## P1：进入真实可用
 
-- 真实 Codex adapter：通过只读方式读取 `account/rateLimits/read`。
+- 真实 Codex adapter 接入产品壳层：adapter 已能通过只读方式读取 `account/rateLimits/read`，下一步要把它接到 Mac 本地 UI。
 - Mac 菜单栏显示状态。
 - 悬浮胶囊位置记忆。
 - 显示模式设置：悬浮胶囊 / 菜单栏 / 两者都开。

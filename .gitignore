@@ -2,6 +2,7 @@ node_modules/
 dist/
 .turbo/
 .vite/
+.playwright-cli/
 coverage/
 *.log
 .DS_Store
@@ -10,4 +11,3 @@ coverage/
 !.env.example
 local-state/
 probe-output/
-
