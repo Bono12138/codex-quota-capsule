@@ -130,12 +130,17 @@ func testCodexExecutableResolverFindsUserLocalBin() throws {
     expect(resolved == "/Users/example/.local/bin/codex", "resolver should check ~/.local/bin/codex for GUI app launches")
 }
 
+func testCodexAppServerClientDefaultTimeoutIsProductionTolerant() {
+    expect(CodexAppServerClient.defaultTimeoutSeconds >= 30, "default app-server timeout should tolerate Codex startup sync work")
+}
+
 do {
     try testParsesCodexRateLimitsByDuration()
     testPredictsBurnRateRunway()
     testBuildsCompactDisplayModel()
     try testCodexAppServerClientReadsRateLimits()
     try testCodexExecutableResolverFindsUserLocalBin()
+    testCodexAppServerClientDefaultTimeoutIsProductionTolerant()
     print("QuotaCapsuleCoreSpec passed")
 } catch {
     fputs("Spec failed with error: \(error)\n", stderr)

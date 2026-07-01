@@ -4,15 +4,20 @@ import QuotaCapsuleCore
 struct CapsuleRootView: View {
     @ObservedObject var store: QuotaStore
     let onExpandedChanged: (Bool) -> Void
+    let onDragChanged: (CGSize) -> Void
+    let onDragEnded: () -> Void
     @State private var expanded = false
 
     var body: some View {
         VStack(spacing: 10) {
             Button {
-                withAnimation(.spring(response: 0.28, dampingFraction: 0.86)) {
-                    expanded.toggle()
-                    onExpandedChanged(expanded)
+                let nextExpanded = !expanded
+                var transaction = Transaction()
+                transaction.disablesAnimations = true
+                withTransaction(transaction) {
+                    expanded = nextExpanded
                 }
+                onExpandedChanged(nextExpanded)
             } label: {
                 CompactCapsuleView(store: store)
             }
@@ -20,11 +25,20 @@ struct CapsuleRootView: View {
 
             if expanded {
                 DetailPopoverView(store: store)
-                    .transition(.move(edge: .top).combined(with: .opacity))
             }
         }
         .padding(10)
         .frame(width: 380)
+        .contentShape(Rectangle())
+        .simultaneousGesture(
+            DragGesture(minimumDistance: 3)
+                .onChanged { value in
+                    onDragChanged(value.translation)
+                }
+                .onEnded { _ in
+                    onDragEnded()
+                }
+        )
     }
 }
 
@@ -38,10 +52,10 @@ struct CompactCapsuleView: View {
                 .frame(width: 8, height: 8)
                 .shadow(color: toneColor(store.displayModel.tone).opacity(0.8), radius: 6)
 
-            Text(store.displayModel.statusLabel)
+            Text(store.visibleStatusText)
                 .font(.system(size: 13, weight: .bold))
 
-            Text(store.displayModel.defaultText)
+            Text(store.visibleCompactText)
                 .font(.system(size: 13, weight: .medium))
                 .foregroundStyle(.secondary)
                 .lineLimit(1)
@@ -62,9 +76,9 @@ struct CompactCapsuleView: View {
         .background(.regularMaterial, in: Capsule())
         .overlay(
             Capsule()
-                .stroke(.white.opacity(0.22), lineWidth: 1)
+                .stroke(.white.opacity(0.16), lineWidth: 1)
         )
-        .shadow(color: .black.opacity(0.18), radius: 18, y: 8)
+        .shadow(color: .black.opacity(0.08), radius: 8, y: 3)
     }
 }
 
@@ -83,7 +97,7 @@ struct DetailPopoverView: View {
                         .lineLimit(2)
                 }
                 Spacer()
-                Text(store.displayModel.statusLabel)
+                Text(store.visibleStatusText)
                     .font(.system(size: 12, weight: .bold))
                     .padding(.horizontal, 10)
                     .padding(.vertical, 6)
@@ -104,7 +118,25 @@ struct DetailPopoverView: View {
             HStack(spacing: 10) {
                 MiniStat(title: "周额度余量", value: store.weeklyText)
                 MiniStat(title: "刷新时间", value: store.resetText)
-                MiniStat(title: "更新", value: store.lastRefreshText)
+                MiniStat(title: "成功更新", value: store.lastRefreshText)
+            }
+
+            VStack(alignment: .leading, spacing: 7) {
+                Text("数据来源")
+                    .font(.system(size: 10, weight: .bold))
+                    .foregroundStyle(.secondary)
+                HStack(spacing: 8) {
+                    SourcePill(title: "来源", value: store.sourceNameText)
+                    SourcePill(title: "接口", value: store.sourceEndpointText)
+                    SourcePill(title: "状态", value: store.sourceStatusText)
+                }
+                Text(store.sourceNoteText)
+                    .font(.system(size: 10, weight: .medium))
+                    .foregroundStyle(.secondary)
+                    .lineLimit(2)
+                Text("可从菜单栏手动刷新。")
+                    .font(.system(size: 10, weight: .medium))
+                    .foregroundStyle(.secondary)
             }
         }
         .padding(16)
@@ -114,6 +146,27 @@ struct DetailPopoverView: View {
                 .stroke(.white.opacity(0.14), lineWidth: 1)
         )
         .shadow(color: .black.opacity(0.18), radius: 24, y: 12)
+    }
+}
+
+struct SourcePill: View {
+    let title: String
+    let value: String
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 3) {
+            Text(title)
+                .font(.system(size: 9, weight: .bold))
+                .foregroundStyle(.secondary)
+            Text(value)
+                .font(.system(size: 10, weight: .bold))
+                .lineLimit(1)
+                .minimumScaleFactor(0.75)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.horizontal, 8)
+        .padding(.vertical, 7)
+        .background(.white.opacity(0.08), in: RoundedRectangle(cornerRadius: 10, style: .continuous))
     }
 }
 
@@ -176,6 +229,15 @@ struct MenuBarContent: View {
             Text(store.prediction.detail)
                 .font(.subheadline)
                 .foregroundStyle(.secondary)
+            Text("来源：\(store.sourceText)")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+            Text("上次更新：\(store.lastRefreshText)")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+            Text("最近尝试：\(store.lastAttemptText)")
+                .font(.caption)
+                .foregroundStyle(.secondary)
             Divider()
             Button("立即刷新") {
                 store.refresh()
@@ -195,12 +257,12 @@ struct MenuBarContent: View {
 }
 
 struct MenuBarLabel: View {
-    let model: CapsuleDisplayModel
+    @ObservedObject var store: QuotaStore
 
     var body: some View {
         HStack(spacing: 4) {
             Image(systemName: "gauge.with.dots.needle.33percent")
-            Text(model.statusLabel)
+            Text(store.visibleStatusText)
         }
     }
 }

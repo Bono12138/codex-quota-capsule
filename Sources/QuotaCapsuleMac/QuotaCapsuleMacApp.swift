@@ -10,7 +10,7 @@ struct QuotaCapsuleMacApp: App {
         MenuBarExtra {
             MenuBarContent(store: appDelegate.store)
         } label: {
-            MenuBarLabel(model: appDelegate.store.displayModel)
+            MenuBarLabel(store: appDelegate.store)
         }
         .menuBarExtraStyle(.menu)
 

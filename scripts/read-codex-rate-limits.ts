@@ -2,7 +2,7 @@ import { createSnapshotRecord, predictCapsuleState } from "@quota-capsule/core";
 import { readCodexRateLimits } from "@quota-capsule/source-codex";
 
 const capturedAt = new Date();
-const snapshot = await readCodexRateLimits({ fetchedAt: capturedAt, timeoutMs: 8_000 });
+const snapshot = await readCodexRateLimits({ fetchedAt: capturedAt, timeoutMs: 30_000 });
 const prediction = predictCapsuleState(snapshot, { now: capturedAt });
 const record = createSnapshotRecord(snapshot, prediction, {
   capturedAt,

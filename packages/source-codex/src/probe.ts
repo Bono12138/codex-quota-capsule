@@ -171,7 +171,7 @@ class ProcessCodexAppServerTransport implements CodexAppServerTransport {
   private stderr = "";
   private closed = false;
 
-  constructor(codexPath: string, timeoutMs = 8_000) {
+  constructor(codexPath: string, timeoutMs = 30_000) {
     this.timeoutMs = timeoutMs;
     this.child = spawn(codexPath, ["-s", "read-only", "-a", "untrusted", "app-server"], {
       stdio: ["pipe", "pipe", "pipe"],

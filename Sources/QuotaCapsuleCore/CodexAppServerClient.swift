@@ -24,7 +24,12 @@ public protocol CodexRPCTransport: AnyObject {
 }
 
 public enum CodexAppServerClient {
-    public static func fetchCurrent(codexPath: String? = nil, timeoutSeconds: TimeInterval = 8) -> AgentQuotaSnapshot {
+    public static let defaultTimeoutSeconds: TimeInterval = 30
+
+    public static func fetchCurrent(
+        codexPath: String? = nil,
+        timeoutSeconds: TimeInterval = defaultTimeoutSeconds
+    ) -> AgentQuotaSnapshot {
         let fetchedAt = Date()
 
         do {
@@ -40,7 +45,7 @@ public enum CodexAppServerClient {
     public static func fetchSnapshot(
         transport: CodexRPCTransport,
         fetchedAt: Date,
-        timeoutSeconds: TimeInterval = 8
+        timeoutSeconds: TimeInterval = defaultTimeoutSeconds
     ) -> AgentQuotaSnapshot {
         do {
             try transport.send([
