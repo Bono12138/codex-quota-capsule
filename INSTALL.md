@@ -36,6 +36,30 @@ xattr -dr com.apple.quarantine "/Applications/Quota Capsule.app"
 open "/Applications/Quota Capsule.app"
 ```
 
+## Codex-assisted 安装
+
+早期公开试用优先使用 Codex-assisted 安装，而不是让用户直接下载陌生 zip。
+
+可以把下面这段发给自己的 Codex：
+
+```text
+请帮我在本机安装并运行 Quota Capsule：
+1. 打开 https://github.com/Bono12138/codex-quota-capsule
+2. 先阅读 README、INSTALL.md 和 AGENTS.md。
+3. 不要修改我的 Codex 登录状态，不要退出登录，不要重装 Codex。
+4. 只允许做本地构建和启动，不要上传我的数据。
+5. 检查我本机是否有 Node、npm、Swift、Codex CLI。
+6. 如果缺依赖，先告诉我缺什么，不要擅自安装系统级软件。
+7. clone 仓库到一个合适的本地目录。
+8. 运行 npm install。
+9. 运行 npm run mac:run -- --verify。
+10. 启动成功后，告诉我如何再次打开它。
+```
+
+这条路径适合 Codex 用户、开发者和愿意让本机 Codex 帮忙安装的人。
+
+如果缺少 Node、npm、Swift 或 Codex CLI，Codex 应先说明缺什么，而不是擅自使用 `sudo` 或改动系统级环境。
+
 ## 使用方式
 
 启动后会出现两个入口：

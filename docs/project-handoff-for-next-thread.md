@@ -32,8 +32,11 @@ https://github.com/Bono12138/codex-quota-capsule
 3. /Users/Zhuanz/Documents/codex-quota-capsule/docs/product/acceptance-criteria.md
 4. /Users/Zhuanz/Documents/codex-quota-capsule/docs/product/product-ops-feedback-and-copy.md
 5. /Users/Zhuanz/Documents/codex-quota-capsule/docs/product/feature-roadmap.md
+6. /Users/Zhuanz/Documents/codex-quota-capsule/docs/product/development-plan.md
+7. /Users/Zhuanz/Documents/codex-quota-capsule/docs/product/bug-triage-and-release-blockers.md
+8. /Users/Zhuanz/Documents/codex-quota-capsule/docs/decisions/0004-release-channels-and-repository-split.md
 
-先不要直接写代码。先确认当前工作流是否已接入 Spec Kit，然后和我确认下一轮要开发的功能范围。
+先不要直接写代码。先确认当前分支、GitHub issue 状态和 P0 bug，再继续实现。
 ```
 
 ## 项目一句话
@@ -352,7 +355,7 @@ account/rateLimits/read
 
 ## 分发策略
 
-当前有一个尚未提交的分发策略文档：
+当前已经有一个分发策略文档：
 
 ```text
 docs/distribution/codex-assisted-distribution-strategy.md
@@ -382,6 +385,19 @@ Apple Developer Program 暂时不急：
 - `docs/product/feature-roadmap.md`
 - `docs/product/strategy-and-commercialization.md`
 - `docs/product/visual-design-direction.md`
+- `docs/product/development-plan.md`
+- `docs/product/bug-triage-and-release-blockers.md`
+- `docs/decisions/0004-release-channels-and-repository-split.md`
+- `docs/distribution/public-repo-file-manifest.md`
+- `docs/research/realtime-rate-limit-events.md`
+
+当前执行流：
+
+- GitHub Issues 管 bug、开发任务和公开反馈。
+- 文档记录需求为什么采纳、暂缓或放弃。
+- 不维护重复的 Markdown bug 状态清单。
+- 当前采用 `开发分支 + 内测渠道 + 正式发布`。
+- 当前计划拆分 private 工作仓库和 public 发布仓库。
 
 ### 尚未接入
 
@@ -415,17 +431,18 @@ uvx --from git+https://github.com/github/spec-kit.git specify init --here --forc
 
 推荐下一轮不要直接堆功能，而是按下面顺序：
 
-1. 在分支里接入 Spec Kit 工作流。
-2. 写 Quota Capsule 中文验收宪法。
-3. 为下一轮功能写 spec 和 checklist。
-4. 优先做极端状态测试和朋友电脑读不到 Codex 的诊断。
-5. 再做联系作者 / 反馈入口。
-6. 最后处理刷新图标交互。
+1. 确认当前开发分支和 issues。
+2. 优先做极端状态测试和朋友电脑读不到 Codex 的诊断。
+3. 建立简中、繁中、英文三语文案基础。
+4. 再做联系作者 / 反馈入口。
+5. 准备 public 仓库文件清单和 Codex-assisted 分发文案。
+6. 后续再考虑 Spec Kit 或更完整的验收宪法。
 
 推荐优先级：
 
 ```text
 P0：极端状态测试 + Codex CLI 查找诊断
+P1：三语基础界面
 P1：联系作者 / 反馈入口
 P1：刷新图标语义修正
 P2：半隐藏贴边形态
@@ -433,17 +450,25 @@ P2：幽默文案体系
 P3：语音、遥测、更新提醒
 ```
 
-## 进入新对话后应该先问 owner 的问题
+## 已确认的 owner 决策
 
-1. 是否同意先在分支接入 Spec Kit？
-2. 是否把 `docs/distribution/codex-assisted-distribution-strategy.md` 纳入仓库？
-3. 联系作者入口要放哪些公开信息？
-   - GitHub URL
-   - 作者名字
-   - Gmail
-   - 是否显示 X/Twitter 或其他社交账号
-4. 反馈入口第一版用 GitHub Issues 还是邮箱？
-5. 刷新图标要做成真按钮，还是去掉按钮感？
+- 采用开发分支、内测渠道、正式发布三层，但用户可见版本只区分内测和正式。
+- 当前 private 仓库继续做工作仓库，另建 public 仓库做干净发布仓库。
+- Public 仓库需要遵循 `docs/distribution/codex-assisted-distribution-strategy.md`。
+- 反馈入口第一版邮箱为主，同时放 GitHub Issues。
+- 作者公开信息：
+  - Author: Bono MA
+  - Gmail: `mmz1218bono@gmail.com`
+  - X: `https://x.com/starlightsz0`
+- 第一版上线要支持简中、繁中、英文。
+- 繁中不做机械转换，要适配台湾、香港、新加坡等地区的自然用语。
+- 刷新按钮结论：当前不承诺严格实时更新，继续使用 60 秒轮询 + 菜单栏手动刷新；主胶囊正常状态不显示假刷新按钮，失败态显示状态图标。
+
+## 仍需 owner 确认的问题
+
+1. Public 仓库最终名称和 URL。
+2. GitHub Issues 公开反馈入口的最终 URL。
+3. X bio 和置顶内容是否要由本项目顺手准备。
 
 ## 当前验证命令
 
@@ -474,4 +499,3 @@ codesign --verify --deep --strict --verbose=2 "dist/Quota Capsule.app"
 - 新 UI 和新功能必须先和 owner 确认。
 - 任何涉及用户数据上传的设计必须先写清楚采集项、用途、用户告知和关闭方式。
 - 动效、拖拽、视觉舒适度不能只靠自动化，需要 owner 人工验收。
-

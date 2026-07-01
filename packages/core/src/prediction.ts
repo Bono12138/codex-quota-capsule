@@ -11,6 +11,13 @@ export function predictCapsuleState(
     return unknownPrediction("暂时读不到额度数据", snapshot.errorMessage ?? "Source status is not ok.");
   }
 
+  const exhaustedWindow = [snapshot.shortWindow, snapshot.weeklyWindow].find((window) =>
+    isUsableExhaustedWindow(window, options.now),
+  );
+  if (exhaustedWindow) {
+    return exhaustedPrediction(exhaustedWindow, options.now);
+  }
+
   if (!snapshot.shortWindow) {
     return unknownPrediction("缺少短窗口额度数据", "The source adapter did not provide a short usage window.");
   }
@@ -29,16 +36,7 @@ export function predictWindow(window: QuotaWindow, options: PredictionOptions): 
   }
 
   if (window.remainingPercent <= 0) {
-    return {
-      level: "danger",
-      canReachReset: false,
-      elapsedPercent: clampPercent((elapsedMinutes / window.windowMinutes) * 100),
-      quotaUsedPercent: clampPercent(window.usedPercent),
-      projectedRemainingAtReset: 0,
-      estimatedEmptyAt: now,
-      headline: "额度已经见底",
-      detail: "短窗口剩余额度为 0 或更低。",
-    };
+    return exhaustedPrediction(window, now);
   }
 
   if (elapsedMinutes <= 0) {
@@ -132,4 +130,32 @@ function unknownPrediction(headline: string, detail: string): CapsulePrediction 
     headline,
     detail,
   };
+}
+
+function exhaustedPrediction(window: QuotaWindow, now: Date): CapsulePrediction {
+  const windowStart = new Date(window.resetsAt.getTime() - window.windowMinutes * 60_000);
+  const elapsedMinutes = (now.getTime() - windowStart.getTime()) / 60_000;
+
+  return {
+    level: "danger",
+    canReachReset: false,
+    elapsedPercent: clampPercent((elapsedMinutes / window.windowMinutes) * 100),
+    quotaUsedPercent: clampPercent(window.usedPercent),
+    projectedRemainingAtReset: 0,
+    estimatedEmptyAt: now,
+    headline: "额度已经见底",
+    detail: `${window.label} 窗口剩余额度为 0 或更低。`,
+  };
+}
+
+function isUsableExhaustedWindow(window: Partial<QuotaWindow> | undefined, now: Date): window is QuotaWindow {
+  return (
+    typeof window?.label === "string" &&
+    typeof window.windowMinutes === "number" &&
+    typeof window.usedPercent === "number" &&
+    typeof window.remainingPercent === "number" &&
+    window.resetsAt instanceof Date &&
+    window.remainingPercent <= 0 &&
+    window.resetsAt.getTime() > now.getTime()
+  );
 }

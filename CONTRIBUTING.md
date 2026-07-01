@@ -10,6 +10,13 @@ Quota Capsule welcomes contributions for Codex and other agent products.
 - Windows packaging tests.
 - Documentation and privacy review.
 
+## Planning And Triage
+
+- Track executable bugs and feature work in GitHub Issues.
+- Use `docs/product/bug-triage-and-release-blockers.md` for priority and release-blocker rules.
+- Use `docs/product/development-plan.md` for accepted, deferred, and rejected product direction.
+- Do not duplicate full issue status in Markdown docs.
+
 ## Adapter Rules
 
 Provider adapters must:
@@ -32,5 +39,5 @@ Provider adapters must:
 ```bash
 npm test
 npm run build
+npm run lint
 ```
-

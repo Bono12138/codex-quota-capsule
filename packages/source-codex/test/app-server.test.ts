@@ -72,4 +72,13 @@ describe("readCodexRateLimitsFromTransport", () => {
     expect(snapshot.sourceStatus).toBe("error");
     expect(snapshot.errorMessage).toContain("not signed in");
   });
+
+  it("returns an error snapshot when the app-server transport fails", async () => {
+    const snapshot = await readCodexRateLimitsFromTransport(new FakeTransport([]), {
+      fetchedAt: new Date("2026-07-01T12:00:00+08:00"),
+    });
+
+    expect(snapshot.sourceStatus).toBe("error");
+    expect(snapshot.errorMessage).toContain("no fake response queued");
+  });
 });

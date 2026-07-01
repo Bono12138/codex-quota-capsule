@@ -71,10 +71,17 @@ scripts/                   本地 helper scripts。
 - [产品策略与商业化思考](docs/product/strategy-and-commercialization.md)
 - [功能路线图](docs/product/feature-roadmap.md)
 - [视觉设计方向](docs/product/visual-design-direction.md)
+- [开发规划与需求采纳记录](docs/product/development-plan.md)
+- [Bug triage 与发布阻塞规则](docs/product/bug-triage-and-release-blockers.md)
+- [发布渠道与仓库拆分决策](docs/decisions/0004-release-channels-and-repository-split.md)
+- [Codex-assisted 分发策略](docs/distribution/codex-assisted-distribution-strategy.md)
+- [Public 仓库文件清单](docs/distribution/public-repo-file-manifest.md)
 - [竞品视觉与产品档案](docs/research/competitors/2026-07-01-competitor-visual-and-product-archive.md)
 - [竞品本地试用记录](docs/research/competitors/2026-07-01-competitor-trial-stage.md)
 
 ## 本地开发
+
+Codex-assisted 安装是早期推荐的公开试用方式，详细说明见 [INSTALL.md](INSTALL.md)。
 
 ```bash
 npm install

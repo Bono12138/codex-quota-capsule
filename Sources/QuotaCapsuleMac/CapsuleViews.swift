@@ -65,8 +65,8 @@ struct CompactCapsuleView: View {
                 ProgressView()
                     .controlSize(.small)
                     .frame(width: 18, height: 18)
-            } else {
-                Image(systemName: "arrow.clockwise")
+            } else if store.snapshot.sourceStatus != .ok {
+                Image(systemName: "exclamationmark.triangle")
                     .font(.system(size: 14, weight: .semibold))
                     .foregroundStyle(.secondary)
             }
@@ -89,7 +89,7 @@ struct DetailPopoverView: View {
         VStack(alignment: .leading, spacing: 13) {
             HStack(alignment: .top) {
                 VStack(alignment: .leading, spacing: 5) {
-                    Text("Codex · 5 小时窗口")
+                    Text(store.copy.shortWindowTitle)
                         .font(.system(size: 11, weight: .bold))
                         .foregroundStyle(.secondary)
                     Text(store.prediction.headline)
@@ -116,25 +116,25 @@ struct DetailPopoverView: View {
             }
 
             HStack(spacing: 10) {
-                MiniStat(title: "周额度余量", value: store.weeklyText)
-                MiniStat(title: "刷新时间", value: store.resetText)
-                MiniStat(title: "成功更新", value: store.lastRefreshText)
+                MiniStat(title: store.copy.weeklyRemainingTitle, value: store.weeklyText)
+                MiniStat(title: store.copy.resetTimeTitle, value: store.resetText)
+                MiniStat(title: store.copy.successUpdateTitle, value: store.lastRefreshText)
             }
 
             VStack(alignment: .leading, spacing: 7) {
-                Text("数据来源")
+                Text(store.copy.dataSourceTitle)
                     .font(.system(size: 10, weight: .bold))
                     .foregroundStyle(.secondary)
                 HStack(spacing: 8) {
-                    SourcePill(title: "来源", value: store.sourceNameText)
-                    SourcePill(title: "接口", value: store.sourceEndpointText)
-                    SourcePill(title: "状态", value: store.sourceStatusText)
+                    SourcePill(title: store.copy.sourceTitle, value: store.sourceNameText)
+                    SourcePill(title: store.copy.endpointTitle, value: store.sourceEndpointText)
+                    SourcePill(title: store.copy.statusTitle, value: store.sourceStatusText)
                 }
                 Text(store.sourceNoteText)
                     .font(.system(size: 10, weight: .medium))
                     .foregroundStyle(.secondary)
                     .lineLimit(2)
-                Text("可从菜单栏手动刷新。")
+                Text(store.copy.manualRefreshNote)
                     .font(.system(size: 10, weight: .medium))
                     .foregroundStyle(.secondary)
             }
@@ -230,23 +230,42 @@ struct MenuBarContent: View {
             Text(store.prediction.detail)
                 .font(.subheadline)
                 .foregroundStyle(.secondary)
-            Text("来源：\(store.sourceText)")
+            Text("\(store.copy.menuSourcePrefix): \(store.sourceText)")
                 .font(.caption)
                 .foregroundStyle(.secondary)
-            Text("上次更新：\(store.lastRefreshText)")
+            Text("\(store.copy.lastUpdatePrefix): \(store.lastRefreshText)")
                 .font(.caption)
                 .foregroundStyle(.secondary)
-            Text("最近尝试：\(store.lastAttemptText)")
+            Text("\(store.copy.lastAttemptPrefix): \(store.lastAttemptText)")
                 .font(.caption)
                 .foregroundStyle(.secondary)
             Divider()
-            Button("立即刷新") {
+            Button(store.copy.refreshNowAction) {
                 store.refresh()
             }
-            Button("显示/隐藏悬浮胶囊") {
+            Button(store.copy.toggleCapsuleAction) {
                 onTogglePanel()
             }
-            Button("退出 Quota Capsule") {
+            Divider()
+            Text(store.copy.aboutFeedbackTitle)
+                .font(.caption.bold())
+            Text(store.copy.authorLine)
+                .font(.caption)
+            Text(store.copy.emailLine)
+                .font(.caption)
+            Text(store.copy.xLine)
+                .font(.caption)
+            Button(store.copy.emailFeedbackAction) {
+                openExternalURL("mailto:mmz1218bono@gmail.com")
+            }
+            Button(store.copy.githubIssuesAction) {
+                openExternalURL("https://github.com/Bono12138/codex-quota-capsule/issues")
+            }
+            Button(store.copy.openXAction) {
+                openExternalURL("https://x.com/starlightsz0")
+            }
+            Divider()
+            Button(store.copy.quitAction) {
                 NSApp.terminate(nil)
             }
         }
@@ -272,15 +291,39 @@ struct SettingsView: View {
         VStack(alignment: .leading, spacing: 14) {
             Text("Quota Capsule")
                 .font(.title2.bold())
-            Text("本版本默认本地读取 Codex app-server，只显示脱敏额度窗口，不上传数据。")
+            Text(store.copy.localPrivacyDescription)
                 .foregroundStyle(.secondary)
-            Button("刷新额度") {
+            Text(store.copy.authorLine)
+                .font(.caption)
+                .foregroundStyle(.secondary)
+            Text(store.copy.emailLine)
+                .font(.caption)
+                .foregroundStyle(.secondary)
+            Text(store.copy.xLine)
+                .font(.caption)
+                .foregroundStyle(.secondary)
+            HStack {
+                Button(store.copy.emailFeedbackAction) {
+                    openExternalURL("mailto:mmz1218bono@gmail.com")
+                }
+                Button(store.copy.openXAction) {
+                    openExternalURL("https://x.com/starlightsz0")
+                }
+            }
+            Button(store.copy.refreshQuotaAction) {
                 store.refresh()
             }
         }
         .padding(24)
         .frame(width: 420)
     }
+}
+
+private func openExternalURL(_ value: String) {
+    guard let url = URL(string: value) else {
+        return
+    }
+    NSWorkspace.shared.open(url)
 }
 
 func toneColor(_ level: CapsuleLevel) -> Color {

@@ -12,55 +12,62 @@ public struct CapsuleDisplayModel: Equatable, Sendable {
     public let defaultText: String
     public let metrics: [CapsuleMetric]
 
-    public static func make(prediction: CapsulePrediction) -> CapsuleDisplayModel {
-        CapsuleDisplayModel(
+    public static func make(prediction: CapsulePrediction, locale: QuotaLocale = .zhHans) -> CapsuleDisplayModel {
+        let copy = QuotaCopy(locale: locale)
+        return CapsuleDisplayModel(
             tone: prediction.level,
-            statusLabel: statusLabel(for: prediction.level),
-            defaultText: compactText(for: prediction),
+            statusLabel: copy.statusLabel(for: prediction.level),
+            defaultText: compactText(for: prediction, locale: locale),
             metrics: [
-                CapsuleMetric(label: "时间进度", value: formatPercent(prediction.elapsedPercent), numericValue: prediction.elapsedPercent),
-                CapsuleMetric(label: "额度已用", value: formatPercent(prediction.quotaUsedPercent), numericValue: prediction.quotaUsedPercent),
-                CapsuleMetric(label: "当前速度", value: formatBurnRate(prediction), numericValue: nil),
-                CapsuleMetric(label: "刷新余量", value: formatPercent(prediction.projectedRemainingAtReset), numericValue: prediction.projectedRemainingAtReset)
+                CapsuleMetric(label: copy.metricElapsed, value: formatPercent(prediction.elapsedPercent, copy: copy), numericValue: prediction.elapsedPercent),
+                CapsuleMetric(label: copy.metricUsed, value: formatPercent(prediction.quotaUsedPercent, copy: copy), numericValue: prediction.quotaUsedPercent),
+                CapsuleMetric(label: copy.metricPace, value: formatBurnRate(prediction, copy: copy), numericValue: nil),
+                CapsuleMetric(label: copy.metricResetBuffer, value: formatPercent(prediction.projectedRemainingAtReset, copy: copy), numericValue: prediction.projectedRemainingAtReset)
             ]
         )
     }
 
-    private static func statusLabel(for level: CapsuleLevel) -> String {
-        switch level {
-        case .safe: "安全"
-        case .watch: "注意"
-        case .danger: "危险"
-        case .unknown: "未知"
-        }
-    }
-
-    private static func compactText(for prediction: CapsulePrediction) -> String {
+    private static func compactText(for prediction: CapsulePrediction, locale: QuotaLocale) -> String {
         if prediction.level == .unknown {
-            return "暂时读不到额度"
+            switch locale {
+            case .zhHans: return "暂时读不到额度"
+            case .zhHant: return "暫時讀不到額度"
+            case .en: return "Quota unavailable"
+            }
         }
         if prediction.level == .danger, let estimatedEmptyAt = prediction.estimatedEmptyAt {
-            return "预计 \(QuotaPredictor.formatTime(estimatedEmptyAt)) 见底"
+            let time = QuotaPredictor.formatTime(estimatedEmptyAt, locale: locale)
+            switch locale {
+            case .zhHans: return "预计 \(time) 见底"
+            case .zhHant: return "預計 \(time) 見底"
+            case .en: return "Runs out around \(time)"
+            }
         }
-        if prediction.headline.contains("够用到") {
+        if locale == .zhHans, prediction.headline.contains("够用到") {
             return prediction.headline.replacingOccurrences(of: "按当前速度，", with: "")
         }
-        if prediction.headline.contains("能撑到") {
+        if locale == .zhHans, prediction.headline.contains("能撑到") {
             return prediction.headline.replacingOccurrences(of: "，但余量不多", with: "")
+        }
+        if locale == .zhHant, prediction.headline.contains("可用到") {
+            return prediction.headline.replacingOccurrences(of: "依目前速度，", with: "")
+        }
+        if locale == .zhHant, prediction.headline.contains("可撐到") {
+            return prediction.headline.replacingOccurrences(of: "，但餘量不多", with: "")
         }
         return prediction.headline
     }
 
-    private static func formatPercent(_ value: Int?) -> String {
-        guard let value else { return "未知" }
+    private static func formatPercent(_ value: Int?, copy: QuotaCopy) -> String {
+        guard let value else { return copy.unknownValue }
         return "\(value)%"
     }
 
-    private static func formatBurnRate(_ prediction: CapsulePrediction) -> String {
+    private static func formatBurnRate(_ prediction: CapsulePrediction, copy: QuotaCopy) -> String {
         guard let elapsed = prediction.elapsedPercent,
               let used = prediction.quotaUsedPercent,
               elapsed > 0 else {
-            return "未知"
+            return copy.unknownValue
         }
         return String(format: "%.2fx", Double(used) / Double(elapsed))
     }

@@ -44,4 +44,26 @@ describe("parseCodexRateLimits", () => {
     expect(parsed.shortWindow).toBeUndefined();
     expect(parsed.errorMessage).toContain("rateLimits");
   });
+
+  it("parses a weekly-only response but leaves the short window missing", () => {
+    const parsed = parseCodexRateLimits(
+      {
+        rateLimits: {
+          primary: {
+            usedPercent: 41,
+            windowDurationMins: 10080,
+            resetsAt: 1_788_299_735,
+          },
+        },
+      },
+      {
+        fetchedAt: new Date("2026-07-01T12:00:00+08:00"),
+      },
+    );
+
+    expect(parsed.sourceStatus).toBe("ok");
+    expect(parsed.shortWindow).toBeUndefined();
+    expect(parsed.weeklyWindow?.label).toBe("weekly");
+    expect(parsed.weeklyWindow?.usedPercent).toBe(41);
+  });
 });

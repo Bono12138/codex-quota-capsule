@@ -1,5 +1,8 @@
 import { execFile } from "node:child_process";
 import { spawn, type ChildProcessWithoutNullStreams } from "node:child_process";
+import { constants } from "node:fs";
+import { access } from "node:fs/promises";
+import { homedir } from "node:os";
 import { createInterface, type Interface } from "node:readline";
 import { promisify } from "node:util";
 import type { AgentQuotaSnapshot, QuotaWindow } from "@quota-capsule/core";
@@ -8,6 +11,7 @@ const execFileAsync = promisify(execFile);
 
 export type CodexProbeResult = {
   codexPath: string | null;
+  checkedPaths: string[];
   version: string | null;
   topLevelCommands: string[];
   debugCommands: string[];
@@ -32,16 +36,18 @@ export type CodexAppServerReadOptions = {
 };
 
 export async function probeCodexCli(): Promise<CodexProbeResult> {
-  const codexPath = await findCodexPath();
+  const resolution = await findCodexPath();
+  const codexPath = resolution.codexPath;
 
   if (!codexPath) {
     return {
       codexPath: null,
+      checkedPaths: resolution.checkedPaths,
       version: null,
       topLevelCommands: [],
       debugCommands: [],
       likelyUsageCommand: false,
-      notes: ["codex binary was not found on PATH."],
+      notes: [`codex binary was not found. Checked paths: ${resolution.checkedPaths.join(", ")}`],
     };
   }
 
@@ -65,6 +71,7 @@ export async function probeCodexCli(): Promise<CodexProbeResult> {
 
   return {
     codexPath,
+    checkedPaths: resolution.checkedPaths,
     version: version.stdout.trim() || null,
     topLevelCommands,
     debugCommands,
@@ -75,10 +82,13 @@ export async function probeCodexCli(): Promise<CodexProbeResult> {
 
 export async function readCodexRateLimits(options: CodexAppServerReadOptions = {}): Promise<AgentQuotaSnapshot> {
   const fetchedAt = options.fetchedAt ?? new Date();
-  const codexPath = options.codexPath ?? (await findCodexPath());
+  const resolution = options.codexPath
+    ? { codexPath: options.codexPath, checkedPaths: [options.codexPath] }
+    : await findCodexPath();
+  const codexPath = resolution.codexPath;
 
   if (!codexPath) {
-    return errorSnapshot(fetchedAt, "codex binary was not found on PATH.");
+    return errorSnapshot(fetchedAt, `codex binary was not found. Checked paths: ${resolution.checkedPaths.join(", ")}`);
   }
 
   const transport = new ProcessCodexAppServerTransport(codexPath, options.timeoutMs);
@@ -261,13 +271,35 @@ function errorSnapshot(fetchedAt: Date, errorMessage: string): AgentQuotaSnapsho
   };
 }
 
-async function findCodexPath(): Promise<string | null> {
-  try {
-    const result = await execFileAsync("which", ["codex"]);
-    return result.stdout.trim() || null;
-  } catch {
-    return null;
+export function codexPathCandidates(environmentPath = process.env.PATH ?? "", homeDirectory = homedir()): string[] {
+  const explicitCandidates = [
+    `${homeDirectory}/.local/bin/codex`,
+    `${homeDirectory}/.codex/packages/standalone/current/bin/codex`,
+    "/opt/homebrew/bin/codex",
+    "/usr/local/bin/codex",
+    "/usr/bin/codex",
+  ];
+  const pathCandidates = environmentPath
+    .split(":")
+    .filter(Boolean)
+    .map((entry) => `${entry}/codex`);
+
+  return [...new Set([...explicitCandidates, ...pathCandidates])];
+}
+
+async function findCodexPath(): Promise<{ codexPath: string | null; checkedPaths: string[] }> {
+  const checkedPaths = codexPathCandidates();
+
+  for (const candidate of checkedPaths) {
+    try {
+      await access(candidate, constants.X_OK);
+      return { codexPath: candidate, checkedPaths };
+    } catch {
+      // Keep checking the remaining candidates.
+    }
   }
+
+  return { codexPath: null, checkedPaths };
 }
 
 async function runCodex(codexPath: string, args: string[]): Promise<{ stdout: string; stderr: string }> {
