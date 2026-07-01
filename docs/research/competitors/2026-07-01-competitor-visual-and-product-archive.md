@@ -26,6 +26,12 @@
 
 ## 截图档案
 
+如果要在一份报告里顺着看截图，打开本地截图报告：
+
+```text
+/Users/Zhuanz/Documents/codex-quota-capsule/local-state/competitor-visual-archive/competitor-screenshot-report.md
+```
+
 公开仓库边界：
 
 - 仓库里只提交我们自己的 Quota Capsule demo 截图。
@@ -308,4 +314,3 @@ Quota Capsule 不应该做成“又一个 quota dashboard”。
 - weekly quota 在默认胶囊里出现到什么程度才不打扰？
 - Mac local 第一版是只做悬浮胶囊，还是悬浮胶囊 + 菜单栏一起做？
 - 中英文状态文案怎么写最准确、不吓人、不含糊？
-

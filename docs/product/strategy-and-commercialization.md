@@ -114,6 +114,14 @@ Windows native 放后面。
 6. MVP 不做账号切换，不做 session manager。
 7. UI 必须好看到用户愿意让它常驻桌面。
 
+更详细的视觉方案见：
+
+- `docs/product/visual-design-direction.md`
+
+更详细的功能路线见：
+
+- `docs/product/feature-roadmap.md`
+
 ## 从竞品学到什么
 
 ### QuotaGem
@@ -243,7 +251,8 @@ Windows native 放后面。
 2. `packages/core` 里的续航判断引擎。
 3. Mac 桌面悬浮胶囊真实原型。
 4. Chrome 独立版 mock-first scaffold。
-5. 上线前做一次产品级视觉打磨。
+5. 本地 snapshot 数据模型与基础历史页。
+6. 上线前做一次产品级视觉打磨。
 
 成功标准：
 
@@ -252,4 +261,3 @@ Windows native 放后面。
 - 点开后能解释判断依据。
 - UI 好看到可以常驻桌面。
 - repo 清楚区分公开源码、本地状态、隐私数据。
-

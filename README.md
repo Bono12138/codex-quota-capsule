@@ -67,6 +67,8 @@ scripts/                   本地 helper scripts。
 - [产品简报](docs/product/brief.md)
 - [MVP 范围](docs/product/mvp-scope.md)
 - [产品策略与商业化思考](docs/product/strategy-and-commercialization.md)
+- [功能路线图](docs/product/feature-roadmap.md)
+- [视觉设计方向](docs/product/visual-design-direction.md)
 - [竞品视觉与产品档案](docs/research/competitors/2026-07-01-competitor-visual-and-product-archive.md)
 - [竞品本地试用记录](docs/research/competitors/2026-07-01-competitor-trial-stage.md)
 
@@ -98,4 +100,3 @@ npm run probe:codex
 ## License
 
 MIT
-
