@@ -1,0 +1,28 @@
+{
+  "name": "codex-quota-capsule",
+  "private": true,
+  "version": "0.0.0",
+  "description": "Codex-first quota capsule, designed as an extensible desktop quota gauge for agent products.",
+  "license": "MIT",
+  "type": "module",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "build": "npm run build -w packages/core && npm run build -w packages/source-codex && npm run build -w apps/desktop",
+    "dev": "npm run dev -w apps/desktop",
+    "lint": "tsc -p tsconfig.base.json --noEmit",
+    "probe:codex": "npm run build -w packages/source-codex && tsx scripts/run-codex-probe.ts",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "devDependencies": {
+    "@types/node": "^20.19.2",
+    "@vitejs/plugin-react": "^4.7.0",
+    "tsx": "^4.20.3",
+    "typescript": "^5.8.3",
+    "vite": "^7.3.6",
+    "vitest": "^3.2.6"
+  }
+}
