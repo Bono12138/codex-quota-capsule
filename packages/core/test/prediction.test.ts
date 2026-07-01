@@ -9,6 +9,7 @@ describe("predictCapsuleState", () => {
 
     expect(prediction.level).toBe("safe");
     expect(prediction.canReachReset).toBe(true);
+    expect(prediction.quotaUsedPercent).toBe(20);
     expect(prediction.projectedRemainingAtReset).toBeGreaterThan(10);
   });
 
@@ -34,4 +35,3 @@ describe("predictCapsuleState", () => {
     expect(prediction.canReachReset).toBeNull();
   });
 });
-

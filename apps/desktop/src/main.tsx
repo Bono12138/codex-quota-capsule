@@ -33,7 +33,7 @@ function App() {
                 <small>{pickCapsuleCopy(prediction.level, index)}</small>
                 <div className="meter-stack" aria-label="Quota details">
                   <Meter label="时间进度" value={prediction.elapsedPercent ?? 0} />
-                  <Meter label="刷新余量" value={prediction.projectedRemainingAtReset ?? 0} />
+                  <Meter label="额度已用" value={prediction.quotaUsedPercent ?? 0} />
                 </div>
               </article>
             );
@@ -70,4 +70,3 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
     <App />
   </React.StrictMode>,
 );
-

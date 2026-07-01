@@ -24,6 +24,7 @@ export type CapsulePrediction = {
   level: CapsuleLevel;
   canReachReset: boolean | null;
   elapsedPercent: number | null;
+  quotaUsedPercent: number | null;
   projectedRemainingAtReset: number | null;
   estimatedEmptyAt: Date | null;
   headline: string;
@@ -35,4 +36,3 @@ export type PredictionOptions = {
   watchRemainingThreshold?: number;
   justResetMinutes?: number;
 };
-

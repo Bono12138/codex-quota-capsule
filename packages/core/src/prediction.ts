@@ -33,6 +33,7 @@ export function predictWindow(window: QuotaWindow, options: PredictionOptions): 
       level: "danger",
       canReachReset: false,
       elapsedPercent: clampPercent((elapsedMinutes / window.windowMinutes) * 100),
+      quotaUsedPercent: clampPercent(window.usedPercent),
       projectedRemainingAtReset: 0,
       estimatedEmptyAt: now,
       headline: "额度已经见底",
@@ -49,6 +50,7 @@ export function predictWindow(window: QuotaWindow, options: PredictionOptions): 
       level: "unknown",
       canReachReset: null,
       elapsedPercent: clampPercent((elapsedMinutes / window.windowMinutes) * 100),
+      quotaUsedPercent: clampPercent(window.usedPercent),
       projectedRemainingAtReset: null,
       estimatedEmptyAt: null,
       headline: "刚刷新，先观察一会儿",
@@ -61,6 +63,7 @@ export function predictWindow(window: QuotaWindow, options: PredictionOptions): 
       level: "safe",
       canReachReset: true,
       elapsedPercent: clampPercent((elapsedMinutes / window.windowMinutes) * 100),
+      quotaUsedPercent: 0,
       projectedRemainingAtReset: 100,
       estimatedEmptyAt: null,
       headline: `还没开始消耗，能撑到 ${formatTime(window.resetsAt)} 刷新`,
@@ -79,6 +82,7 @@ export function predictWindow(window: QuotaWindow, options: PredictionOptions): 
       level: "danger",
       canReachReset: false,
       elapsedPercent: clampPercent((elapsedMinutes / window.windowMinutes) * 100),
+      quotaUsedPercent: clampPercent(window.usedPercent),
       projectedRemainingAtReset: clampPercent(projectedRemainingAtReset),
       estimatedEmptyAt,
       headline: `按当前速度，预计 ${formatTime(estimatedEmptyAt)} 用完`,
@@ -93,6 +97,7 @@ export function predictWindow(window: QuotaWindow, options: PredictionOptions): 
     level,
     canReachReset: true,
     elapsedPercent: clampPercent((elapsedMinutes / window.windowMinutes) * 100),
+    quotaUsedPercent: clampPercent(window.usedPercent),
     projectedRemainingAtReset: clampPercent(projectedRemainingAtReset),
     estimatedEmptyAt: null,
     headline:
@@ -121,10 +126,10 @@ function unknownPrediction(headline: string, detail: string): CapsulePrediction 
     level: "unknown",
     canReachReset: null,
     elapsedPercent: null,
+    quotaUsedPercent: null,
     projectedRemainingAtReset: null,
     estimatedEmptyAt: null,
     headline,
     detail,
   };
 }
-
