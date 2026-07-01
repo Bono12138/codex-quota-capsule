@@ -1,44 +1,44 @@
-# Data Source Probe Plan
+# 数据源 Probe 计划
 
-## Current Assumption
+## 当前假设
 
-Codex is the first provider, but a stable local quota source is not yet proven.
+Codex 是第一个 provider，但稳定的本地 quota source 还没有完全证明。
 
-The project must not assume that a CLI command or local file exposes quota data. The first milestone is a read-only probe that records what is available and what is missing.
+项目不能默认假设某个 CLI 命令或本地文件一定暴露 quota 数据。第一阶段目标是做只读 probe，记录本地到底能读到什么、缺什么。
 
-## Required Fields
+## 需要的字段
 
-The ideal source adapter returns:
+理想 source adapter 返回：
 
 - provider
-- source status: `ok`, `stale`, or `error`
+- source status：`ok`、`stale` 或 `error`
 - fetched time
-- short-window used percent
-- short-window remaining percent
-- short-window reset time
-- weekly used percent, if available
-- weekly remaining percent, if available
-- weekly reset time, if available
-- reset count, if available
+- 短窗口 used percent
+- 短窗口 remaining percent
+- 短窗口 reset time
+- weekly used percent，如果可用
+- weekly remaining percent，如果可用
+- weekly reset time，如果可用
+- reset count，如果可用
 
-## Probe Rules
+## Probe 规则
 
-- Read-only only.
-- Do not log secrets.
-- Do not copy auth files.
-- Do not call `codex logout`.
-- Do not reinstall or replace Codex.
-- Treat missing fields as missing, not zero.
-- Treat stale fields as stale.
+- 只读。
+- 不记录 secrets。
+- 不复制 auth files。
+- 不调用 `codex logout`。
+- 不重装、降级、替换 Codex。
+- 缺失字段就是 missing，不能当作 0。
+- 过期字段就是 stale，不能当作 fresh。
 
-## First Probe
+## 第一阶段 Probe
 
-The first local probe records:
+第一版本地 probe 记录：
 
 - `codex --version`
-- available top-level CLI commands from `codex --help`
-- available debug commands from `codex debug --help`
-- whether a usage/quota command appears to exist
+- `codex --help` 暴露的顶层 CLI commands
+- `codex debug --help` 暴露的 debug commands
+- 是否存在 usage/quota 相关命令
 
-This is intentionally modest. It establishes whether the public local CLI surface exposes a structured usage path before deeper investigation.
+这个 probe 故意很保守。它先确认公开本地 CLI surface 是否提供结构化 usage 路径，再决定是否进入更深的数据源调查。
 

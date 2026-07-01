@@ -1,69 +1,76 @@
 # Quota Capsule
 
-Quota Capsule is a Codex-first quota runway capsule. It turns raw usage-window data into the answer users actually need:
+Quota Capsule 是一个 Codex-first 的额度续航小胶囊。它把原始 quota window 数据翻译成用户真正想知道的问题：
 
-> At the current pace, can I make it to the next reset? If not, when will I run out?
+> 按现在这个速度，我能不能撑到下一次刷新？如果撑不到，预计几点见底？
 
-The first target is Codex. The project is intentionally agent-extensible: other agent products can add their own local source adapters and reuse the same quota model, prediction engine, UI states, and desktop shell.
+第一适配对象是 Codex，但项目会保持 agent-extensible：其他 Agent 产品可以添加自己的本地 source adapter，复用同一套 quota model、预测引擎、UI 状态和产品形态。
 
-## Why This Exists
+## 为什么做
 
-Heavy agent users often keep several coding tasks running and repeatedly check usage pages because simple percentages are not enough. A remaining quota number does not say whether the current pace is safe.
+重度 agent 用户经常同时跑多个 coding task，也会反复查看 usage 页面。单纯的百分比不够用，因为“还剩 40%”并不能告诉用户现在这个速度是否安全。
 
-Quota Capsule aims to be a tiny always-visible capsule that says the useful thing directly:
+Quota Capsule 要做成一个小而常驻的状态物，直接说人话：
 
-- Safe: likely enough until reset.
-- Watch: enough for now, but not much buffer.
-- Danger: likely runs out before reset.
-- Unknown: data source is missing, stale, or unreadable.
+- Safe / 安全：大概率够用到刷新。
+- Watch / 注意：暂时够用，但余量不多。
+- Danger / 危险：大概率会在刷新前见底。
+- Unknown / 未知：数据源缺失、过期或无法读取。
 
-## Current Status
+## 当前状态
 
-This repository is in project bootstrap state.
+项目处于 bootstrap 阶段。
 
-The first engineering gates are source proof and product-surface proof: Codex quota data must be read locally and safely, and the UI must be good enough to stay visible during real work. Until source proof is complete, UI surfaces use mock data.
+当前最重要的两件事是：
 
-## Project Shape
+1. 证明 Codex quota 数据可以在本地以只读方式可靠获取。
+2. 证明 UI 体验足够好，值得用户让它常驻桌面。
+
+在真实 source proof 完成前，UI surface 使用 mock 数据。
+
+## 项目结构
 
 ```text
-apps/desktop/              Vite desktop UI mock; future native shell exploration lives here.
-packages/core/             Provider-neutral quota model, prediction engine, and status copy.
-packages/source-codex/     Codex-first local data-source probe and future adapter.
-docs/product/              Product brief, MVP scope, strategy, commercialization.
-docs/research/             Data-source verification, competitor, and visual research notes.
-docs/decisions/            Durable project decisions.
-scripts/                   Local helper scripts.
+apps/desktop/              Vite 桌面 UI mock；后续用于 Mac/local 体验探索。
+packages/core/             provider-neutral quota model、预测引擎、状态文案。
+packages/source-codex/     Codex-first 本地数据源 probe 和未来 adapter。
+docs/product/              产品简报、MVP 范围、策略、商业化。
+docs/research/             数据源验证、竞品、视觉研究。
+docs/decisions/            项目决策记录。
+scripts/                   本地 helper scripts。
 ```
 
-## Codex-First, Agent-Extensible
+## Codex-first，但不是 Codex-only
 
-The product is designed for Codex first because that is the immediate pain. The public framing should stay broader:
+产品先服务 Codex，因为这是当前最明确的痛点。
 
-- Codex is the first supported provider.
-- Source adapters are provider-specific.
-- Core prediction logic is provider-neutral.
-- Other agent communities are welcome to adapt the product for their own usage windows and quota semantics.
+但对外表达不要把它限制成只能用于 Codex：
 
-## First Development Gates
+- Codex 是第一个支持的 provider。
+- source adapter 是 provider-specific。
+- core prediction logic 是 provider-neutral。
+- 欢迎其他 agent 社区适配自己的 quota window 和 quota semantics。
 
-1. Confirm readable local Codex usage fields, or record that the source is unavailable.
-2. Lock the shared quota data model.
-3. Build and test the prediction engine with mock data.
-4. Build the small always-visible capsule UI with mock states.
-5. Add the Chrome independent version as a mock-first app.
-6. Add a real Codex source adapter only after the probe is proven.
-7. Prototype Mac floating capsule and menu-bar display modes.
-8. Keep Windows native packaging for a later demand-driven phase.
+## 第一阶段开发门槛
 
-## Product Research
+1. 确认本地能读到 Codex quota 字段；如果不能，也要明确记录不可用原因。
+2. 固定共享 quota data model。
+3. 用 mock 数据测试 prediction engine。
+4. 做出小而常驻的 capsule UI mock。
+5. 做 Mac 桌面悬浮胶囊原型。
+6. 搭 Chrome 独立版 mock-first scaffold。
+7. source proof 成立后再接真实 Codex adapter。
+8. Windows native packaging 放到需求更明确之后。
 
-- [Product brief](docs/product/brief.md)
-- [MVP scope](docs/product/mvp-scope.md)
-- [Product strategy and commercialization](docs/product/strategy-and-commercialization.md)
-- [Competitor visual and product archive](docs/research/competitors/2026-07-01-competitor-visual-and-product-archive.md)
-- [Competitor local trial notes](docs/research/competitors/2026-07-01-competitor-trial-stage.md)
+## 产品研究
 
-## Local Development
+- [产品简报](docs/product/brief.md)
+- [MVP 范围](docs/product/mvp-scope.md)
+- [产品策略与商业化思考](docs/product/strategy-and-commercialization.md)
+- [竞品视觉与产品档案](docs/research/competitors/2026-07-01-competitor-visual-and-product-archive.md)
+- [竞品本地试用记录](docs/research/competitors/2026-07-01-competitor-trial-stage.md)
+
+## 本地开发
 
 ```bash
 npm install
@@ -72,22 +79,23 @@ npm run build
 npm run dev
 ```
 
-Run the current Codex probe:
+运行当前 Codex probe：
 
 ```bash
 npm run probe:codex
 ```
 
-The probe is intentionally conservative. It records what the local Codex CLI exposes and must not scrape secrets, log auth tokens, or pretend old data is fresh.
+当前 probe 是保守的。它只记录本地 Codex CLI 暴露了什么，不抓取 secrets，不记录 auth token，也不把旧数据伪装成新数据。
 
-## Privacy Posture
+## 隐私边界
 
-- Read and calculate locally by default.
-- Do not upload usage data.
-- Do not collect account content.
-- Do not log auth tokens, cookies, private keys, or session files.
-- Treat missing or stale data as `unknown`, not as safe.
+- 默认本地读取、本地计算。
+- 不上传 usage data。
+- 不收集 account content。
+- 不记录 auth token、cookie、private key 或 session 文件内容。
+- 缺失或过期数据显示为 `unknown`，不能显示为 safe。
 
 ## License
 
 MIT
+

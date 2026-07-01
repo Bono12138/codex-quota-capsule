@@ -1,261 +1,255 @@
-# Product Strategy And Commercialization
+# 产品策略与商业化思考
 
-Date: 2026-07-01
+日期：2026-07-01
 
-## Product Thesis
+## 产品判断
 
-Quota Capsule is not primarily a quota viewer.
+Quota Capsule 不是一个普通的“额度显示器”。
 
-It is a quota runway assistant for AI coding work:
+它应该是一个 **AI coding 工作的额度续航判断器**：
 
-> It tells the user whether the current usage pace can survive until the next reset.
+> 它告诉用户：按照现在这个使用速度，能不能撑到下一次刷新。
 
-The product should make quota feel like battery/range, not like an accounting number.
+产品要把 quota 做成类似“电量 / 续航里程”的感觉，而不是一串需要用户自己心算的账户数字。
 
-## Target User
+## 目标用户
 
-Initial user:
+第一批用户：
 
-- Heavy Codex user.
-- Runs long coding sessions or multiple agent tasks.
-- Does not want to open dashboards.
-- Wants to know whether to keep working, slow down, or stop launching large tasks.
+- Codex 重度用户。
+- 经常跑长任务、多开 agent、长时间开发。
+- 不愿意频繁点开 dashboard 查看额度。
+- 需要快速判断：继续冲、放慢、还是暂停大任务。
 
-Secondary future user:
+第二批用户：
 
-- Users of other agent products with rate windows.
-- Developers who want a small adapter-friendly quota surface for their own tool.
-- Teams that want shared internal conventions for AI usage pacing, but not surveillance.
+- 使用其他带 quota window 的 agent 产品的人。
+- 想给自己工具做 quota adapter 的开发者。
+- 希望团队有 AI 使用节奏管理，但不想走向监控/审计的人。
 
-## Product Shape
+## 产品路线
 
-### Route 1: Chrome Independent Version
+### 路线 1：Mac 本地体验主线
 
-This should be built first as an independent version.
+这是当前最重要的产品主线。
 
-Why:
+原因：
 
-- It can be developed on Mac while reaching Windows and Linux users through Chrome.
-- It tests whether browser-based distribution is enough before investing in native Windows.
-- It gives the project a lightweight public artifact quickly.
+- 创始人自己可以每天用。
+- 能最快发现“常驻桌面到底烦不烦、好不好看、有没有用”。
+- 后续拍视频、社交媒体传播，需要一个真实好用的本地体验，而不是网页 demo。
 
-Constraints:
+默认形态：
 
-- Browser extensions cannot automatically access arbitrary local Codex state without permission, page parsing, a native helper, or a safe bridge.
-- The first Chrome version should be mock/source-abstracted until data-source feasibility is proven.
-- It should not pretend to be a full Codex desktop integration until that path is technically verified.
+- 桌面悬浮小胶囊。
 
-Likely Chrome surfaces:
+可选形态：
 
-- Toolbar popup: quick status and settings.
-- Optional page overlay or pinned mini badge: the "always visible" version.
-- Extension options page: source setup, privacy explanation, display mode.
+- 菜单栏。
 
-### Route 2: Mac Local Version
+### 路线 2：Chrome 独立版
 
-This is important because the founder/user wants to use it daily and make social content from the real experience.
+Chrome 版本也要做，但它不是替代 Mac 主线。
 
-Default display mode:
+它的定位是：
 
-- Floating desktop capsule.
+- 独立 Chrome 插件。
+- 跨平台分发验证。
+- 让 Windows 用户在没有 native app 前也能试用部分体验。
 
-Optional display mode:
+第一阶段做法：
 
-- Menu bar item.
+- mock-first。
+- 先做 toolbar popup、页面 overlay、固定小 badge 的结构。
+- 不急着承诺一定能直接读取本地 Codex quota。
 
-Why both:
+关键风险：
 
-- The floating capsule solves the "I am too lazy to click" problem.
-- The menu bar is socially accepted on macOS and gives users a less intrusive fallback.
+- Chrome 插件不能天然读取本机 `~/.codex` 或 `codex app-server`。
+- 如果要读真实数据，可能需要 native helper、本地桥接、页面解析，或其他数据源。
+- 所以 Chrome 版本应该并行探索，不能拖慢 Mac 本地体验。
 
-### Route 3: Windows Native Version
+### 路线 3：Windows native
 
-This should stay later.
+Windows native 放后面。
 
-Why:
+原因：
 
-- QuotaGem already covers the Windows tray direction strongly.
-- Building a polished native Windows product has packaging, notification, autostart, and trust costs.
-- The better sequence is Chrome first, Mac local for founder-led content, then Windows native if demand is proven.
+- Windows 打包、自启动、托盘、通知、置顶、卸载、信任提示都需要额外投入。
+- QuotaGem 已经在 Windows 托盘方向做得比较完整。
+- 先用 Chrome 覆盖一部分 Windows 用户，等需求更明确后再做 native。
 
-## Experience Model
+## 默认体验
 
-Default capsule should answer one question:
+默认胶囊只回答一个问题：
 
-> Can I keep going at this pace?
+> 现在这个速度，还能继续干活吗？
 
-Primary states:
+状态模型：
 
-| State | Meaning | Example Copy |
+| 状态 | 含义 | 示例文案 |
 | --- | --- | --- |
-| Safe | Current pace can survive reset with meaningful margin. | `Safe · enough until 14:00` |
-| Watch | Can survive reset, but margin is thin or weekly pressure is rising. | `Watch · enough, but little margin` |
-| Danger | Current pace will run out before reset. | `Danger · empty around 13:00` |
-| Unknown | Data is missing, stale, or unreliable. | `Unknown · quota data unavailable` |
+| Safe | 当前速度能撑到刷新，并且有明显余量。 | `安全 · 够用到 14:00` |
+| Watch | 能撑到刷新，但余量很薄，或者周额度开始有压力。 | `注意 · 能撑到，但余量不多` |
+| Danger | 当前速度会在刷新前见底。 | `危险 · 预计 13:00 见底` |
+| Unknown | 数据缺失、过期或读取失败。 | `未知 · 暂时读不到额度` |
 
-Expanded detail should explain:
+点开后再解释：
 
-- Time progress.
-- Quota used.
-- Current burn rate.
-- Reset time.
-- Estimated empty time if unsafe.
-- Projected remaining at reset if safe.
-- Weekly pressure only when relevant.
+- 时间进度。
+- 额度已用。
+- 当前 burn rate。
+- 刷新时间。
+- 如果危险，预计几点见底。
+- 如果安全，刷新时预计剩多少。
+- 周额度只在必要时显示，不要抢 5 小时窗口的注意力。
 
-## Design Principles
+## 设计原则
 
-1. Default to ambient, not dashboard.
-2. Prefer one human judgment over four numbers.
-3. Use color sparingly and consistently.
-4. Show unknown honestly.
-5. Do not hide why the verdict was made.
-6. Avoid account/session management in MVP.
-7. Make the product good-looking enough that users are willing to leave it visible all day.
+1. 默认是 ambient，不是 dashboard。
+2. 先给人话判断，再给数字解释。
+3. 颜色只做状态提示，不做大面积装饰。
+4. Unknown 必须诚实显示，不能伪装成安全。
+5. 用户点开时，要能看懂为什么得出这个判断。
+6. MVP 不做账号切换，不做 session manager。
+7. UI 必须好看到用户愿意让它常驻桌面。
 
-## Competitor Lessons
+## 从竞品学到什么
 
-### From QuotaGem
+### QuotaGem
 
-Useful:
+值得学：
 
-- Windows tray distribution makes sense.
-- Compact and expanded modes are a good interaction pattern.
-- Circular usage rings are glanceable.
-- Theme, scale, threshold, and notification settings matter.
-- `codex app-server` plus JSON-RPC is a practical source path.
+- Windows 托盘是合理形态。
+- compact / expanded 两层结构合理。
+- 环形用量图很直观。
+- 主题、缩放、阈值、通知设置都很实际。
+- `codex app-server` + JSON-RPC 是重要数据源参考。
 
-Do not copy:
+不要照搬：
 
-- Multi-provider dashboard density as the default state.
-- Threshold-first warning as the primary product idea.
-- Windows-native scope before demand is clearer.
+- 默认多 provider dashboard 信息密度。
+- 只靠 warning/danger threshold 的判断方式。
+- 在需求还没证明前过早投入 Windows native。
 
-### From ClaudeBar
+### ClaudeBar
 
-Useful:
+值得学：
 
-- Quota apps can look like polished consumer tools.
-- Menu-bar presence is acceptable for daily monitoring.
-- Pace-aware logic is a real differentiator.
-- Themes can become a retention and delight feature.
+- quota 工具也可以做得漂亮。
+- 菜单栏是用户能接受的常驻入口。
+- pace-aware 判断是有价值的方向。
+- 主题和视觉风格可以增强用户愿意长期打开的意愿。
 
-Do not copy:
+不要照搬：
 
-- Heavy gradient dashboard as the default product state.
-- Broad provider monitor positioning before Codex-first quality is excellent.
+- 大渐变、大卡片 dashboard 作为默认体验。
+- 过早把产品做成泛 AI provider 监控器。
 
-### From Codex Quota Viewer
+### Codex Quota Viewer
 
-Useful:
+值得学：
 
-- Native Codex integration has user value.
-- Stale/read-failure states are important.
-- A Mac app can bundle useful local tooling.
+- native Codex 小工具是有需求的。
+- stale / read failure 状态必须认真处理。
+- `account/rateLimits/read` 是可信的数据源线索。
 
-Do not copy:
+不要照搬：
 
-- Account vault.
-- Auth switching.
-- Session manager.
-- Config mutation as a first product promise.
+- account vault。
+- auth switching。
+- session manager。
+- 以“改 Codex 配置”为第一产品承诺。
 
-### From codex-quota
+### codex-quota
 
-Useful:
+值得学：
 
-- Terminal-first users value fast keyboard workflows.
-- Mock/demo modes make trial safer.
+- 终端用户喜欢快速键盘工作流。
+- mock/demo 模式方便安全试用。
 
-Do not copy:
+不要照搬：
 
-- TUI as a mainstream visual direction.
-- Account switching as core scope.
+- TUI 作为大众产品视觉方向。
+- 把账号切换做成核心。
 
-### From opencode-quota
+### opencode-quota
 
-Useful:
+值得学：
 
-- Quota works best when it appears where work happens.
-- Multiple surfaces can share the same data layer: sidebar, toast, status line, command.
-- CLI output and JSON output are useful for integrations.
+- quota 最好出现在工作发生的地方。
+- 同一个数据层可以支持多种 surface：sidebar、toast、status line、command。
+- CLI 输出和 JSON 输出对集成很有用。
 
-Do not copy:
+不要照搬：
 
-- Tool-ecosystem lock-in as the whole product.
-- Config-heavy onboarding for non-technical users.
+- 完全绑定某个工具生态。
+- 对普通用户过重的配置式安装。
 
-## Commercialization Lessons
+## 商业化想法
 
-The reviewed projects mostly teach distribution and trust more than direct monetization.
+我的判断：**不要一开始就急着商业化收费。**
 
-Observed distribution patterns:
+这个产品早期最重要的是信任和传播，不是立刻收钱。
 
-- QuotaGem: Windows portable release.
-- ClaudeBar: DMG, ZIP, Homebrew cask, signed/notarized release.
-- Codex Quota Viewer: packaged macOS app.
-- codex-quota: Homebrew and Go install.
-- opencode-quota: `npx` installer and npm package.
+原因：
 
-Implications for Quota Capsule:
+- 它读取的是本地 AI 工具状态，用户天然会担心隐私。
+- 如果一上来就收费，反而降低试用意愿。
+- 开源能帮助我们证明“不偷数据、不改配置、不做账号管理”。
+- 这个产品的传播点更像一个好用的小工具，适合先靠开源和视频扩散。
 
-- Open source is the right starting posture.
-- Installation friction matters as much as feature count.
-- Trust is central because the product touches local AI-tool state.
-- The project should explain exactly what it reads and what it never writes.
-- A clean uninstall story is part of product quality.
+推荐路径：
 
-Recommended commercialization path:
+1. 核心开源：core、source adapter、基础 app 都公开。
+2. 用透明隐私边界建立信任。
+3. 用真实 Mac 体验拍视频传播。
+4. 有真实留存后，再考虑高级功能或团队版。
 
-1. Open-source core and basic apps.
-2. Build reputation through transparency, source adapters, and visible product polish.
-3. Grow through founder-led content showing real use during Codex work.
-4. Add optional paid surfaces only after retention is proven.
+未来可能收费的方向：
 
-Possible future paid surfaces:
+- 团队策略包：共享默认阈值、提示文案、使用节奏建议。
+- 偏好同步：同步显示模式、位置、主题，不默认同步原始用量。
+- 高级历史分析：个人工作节奏复盘、趋势导出。
+- 打包发行服务：签名版、自动更新、稳定渠道。
+- 企业/团队定制 adapter：适配内部 agent 工具。
 
-- Team policy pack: shared defaults, thresholds, and documentation for teams.
-- Cross-device sync of display preferences, not raw usage unless explicitly opted in.
-- Advanced history and export for personal workflow analysis.
-- Priority packaged builds and auto-update channel.
-- Custom adapter support for companies using internal agent tools.
+不要早期收费的方向：
 
-Avoid early monetization around:
+- 不要把最基本的“还能不能撑到刷新”锁进付费墙。
+- 不要默认上传用户用量。
+- 不要把账号管理/session 管理包装成核心卖点。
+- 不要把团队功能做成监控/监督工具。
 
-- Locking the basic quota verdict behind payment.
-- Uploading private usage data by default.
-- Selling account/session management before the product has earned trust.
-- Presenting team features in a surveillance-like way.
+## 对外定位
 
-## Positioning
-
-Public English:
-
-> A tiny quota runway capsule for Codex. It tells you whether your current burn rate can survive until reset.
-
-Public Chinese:
+中文：
 
 > 一个 Codex 额度续航小胶囊：不用心算，直接告诉你现在能不能继续干活。
 
-Developer/open-source:
+英文：
+
+> A tiny quota runway capsule for Codex. It tells you whether your current burn rate can survive until reset.
+
+开源开发者版本：
 
 > Codex-first, adapter-friendly quota pacing UI for AI agents.
 
-## MVP Recommendation
+## 下一步建议
 
-Build the next MVP around these workstreams:
+下一阶段围绕五件事做：
 
-1. Read-only Codex app-server source.
-2. Shared runway engine in `packages/core`.
-3. Chrome independent mock-first extension.
-4. Mac floating capsule mock/prototype.
-5. Product-quality visual pass before public launch.
+1. 只读 `codex app-server` source adapter。
+2. `packages/core` 里的续航判断引擎。
+3. Mac 桌面悬浮胶囊真实原型。
+4. Chrome 独立版 mock-first scaffold。
+5. 上线前做一次产品级视觉打磨。
 
-Success criteria:
+成功标准：
 
-- A user can understand status in under one second.
-- Unknown source state never looks safe.
-- The product can explain its verdict when clicked.
-- The UI looks good enough to keep visible during real work.
-- The repo clearly separates public source from local private state.
+- 用户 1 秒内能看懂状态。
+- 读取失败不会显示成安全。
+- 点开后能解释判断依据。
+- UI 好看到可以常驻桌面。
+- repo 清楚区分公开源码、本地状态、隐私数据。
 

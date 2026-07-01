@@ -1,17 +1,19 @@
-# Decision 0001: Standalone Repository
+# Decision 0001: 独立仓库
 
-Date: 2026-07-01
+日期：2026-07-01
 
-## Decision
+## 决策
 
-Quota Capsule lives in its own local folder and GitHub repository:
+Quota Capsule 放在独立本地文件夹和独立 GitHub 仓库：
 
-- Local: `/Users/Zhuanz/Documents/codex-quota-capsule`
-- Repo: `codex-quota-capsule`
+- 本地路径：`/Users/Zhuanz/Documents/codex-quota-capsule`
+- GitHub repo：`codex-quota-capsule`
 
-## Reason
+## 原因
 
-The nearby `project_done` repository is dedicated to DONE / 完事, a restroom queue product. Quota Capsule has a different audience, technology path, privacy statement, release process, and open-source contributor model.
+旁边的 `project_done` 仓库是 DONE / 完事 厕所排队产品。
 
-Keeping this project standalone prevents README, issue, release, and product-scope confusion.
+Quota Capsule 的用户、技术路线、隐私说明、发布流程、开源贡献方式都不同。
+
+单独建仓库可以避免 README、issue、release、产品范围混在一起。
 

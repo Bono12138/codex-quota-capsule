@@ -1,62 +1,62 @@
-# Competitor, Visual, And Product Archive
+# 竞品、视觉与产品档案
 
-Date: 2026-07-01
+日期：2026-07-01
 
-## Purpose
+## 目的
 
-This document captures the competitor research, local trial setup, visual review, and product conclusions behind Quota Capsule.
+这份文档记录 Quota Capsule 目前已经做过的竞品调研、本地试用、视觉观察和产品判断。
 
-It is meant to avoid repeating the same discovery work later. When revisiting product shape, visual design, or market positioning, start here and then open the linked local trial workspace only if fresh verification is needed.
+以后如果继续讨论产品形态、视觉方向、商业化或定位，先看这份文档，避免重复调研。
 
-## Scope
+## 调研范围
 
-Reviewed projects:
+已看过的项目：
 
-- QuotaGem: `https://github.com/gyozalab/QuotaGem`
-- ClaudeBar: `https://github.com/tddworks/ClaudeBar`
-- Codex Quota Viewer: `https://github.com/Half-Melon/Codex-Quota-Viewer`
-- codex-quota / CQ: `https://github.com/deLiseLINO/codex-quota`
-- opencode-quota: `https://github.com/slkiser/opencode-quota`
+- QuotaGem：`https://github.com/gyozalab/QuotaGem`
+- ClaudeBar：`https://github.com/tddworks/ClaudeBar`
+- Codex Quota Viewer：`https://github.com/Half-Melon/Codex-Quota-Viewer`
+- codex-quota / CQ：`https://github.com/deLiseLINO/codex-quota`
+- opencode-quota：`https://github.com/slkiser/opencode-quota`
 
-Local trial workspace:
+本地竞品实验目录：
 
 ```text
 /Users/Zhuanz/Documents/quota-competitor-lab
 ```
 
-## Screenshot Archive
+## 截图档案
 
-Public repository boundary:
+公开仓库边界：
 
-- Only Quota Capsule's own screenshot is stored in this repository.
-- Third-party screenshots are kept in ignored local state because several reviewed repositories do not currently expose a clear root `LICENSE` file in the local clone.
-- Do not publish copied third-party screenshots from `local-state/` without checking license and attribution first.
+- 仓库里只提交我们自己的 Quota Capsule demo 截图。
+- 第三方竞品截图放在 ignored 的本地目录里，因为部分竞品仓库当前本地 clone 根目录没有明确 `LICENSE` 文件。
+- 未重新确认授权前，不要把 `local-state/` 里的第三方截图发布到公开 GitHub。
 
-Quota Capsule current demo:
+我们当前 demo：
 
-![Quota Capsule current demo](assets/quota-capsule-current-demo.png)
+![Quota Capsule 当前 demo](assets/quota-capsule-current-demo.png)
 
-Local third-party visual archive:
+本地第三方截图档案：
 
 ```text
 /Users/Zhuanz/Documents/codex-quota-capsule/local-state/competitor-visual-archive/
 ```
 
-Representative files in that local archive:
+代表性截图：
 
-| Project | Local Screenshot | What It Shows |
+| 项目 | 本地截图 | 内容 |
 | --- | --- | --- |
-| QuotaGem | `local-state/competitor-visual-archive/quotagem-compact-panel.png` | Compact Windows-style panel with circular usage rings for multiple providers. |
-| QuotaGem | `local-state/competitor-visual-archive/quotagem-expanded-panel.png` | Expanded multi-provider panel with 5h and weekly rows. |
-| QuotaGem | `local-state/competitor-visual-archive/quotagem-settings-panel.png` | Settings panel for language, display mode, thresholds, and notifications. |
-| ClaudeBar | `local-state/competitor-visual-archive/claudebar-dashboard-dark.png` | Polished macOS menu-bar dashboard with tabs, cards, and strong gradient styling. |
-| ClaudeBar | `local-state/competitor-visual-archive/claudebar-dashboard-light.png` | Light variant of the same dashboard. |
-| Codex Quota Viewer | `local-state/competitor-visual-archive/codex-quota-viewer-menu.png` | Native macOS menu-bar quota/account surface. |
-| Codex Quota Viewer | `local-state/competitor-visual-archive/codex-quota-viewer-session-manager.png` | Bundled local session manager, showing the product's broader scope. |
-| codex-quota | `local-state/competitor-visual-archive/codex-quota-tui-demo.png` | Terminal TUI quota/account view. |
-| codex-quota | `local-state/competitor-visual-archive/codex-quota-tui-demo.gif` | TUI interaction demo. |
+| QuotaGem | `local-state/competitor-visual-archive/quotagem-compact-panel.png` | compact 面板，用环形图显示多个 provider 的用量。 |
+| QuotaGem | `local-state/competitor-visual-archive/quotagem-expanded-panel.png` | expanded 面板，同时展示 5h 和 weekly。 |
+| QuotaGem | `local-state/competitor-visual-archive/quotagem-settings-panel.png` | 设置页，包括语言、显示模式、阈值、通知。 |
+| ClaudeBar | `local-state/competitor-visual-archive/claudebar-dashboard-dark.png` | macOS 菜单栏 dashboard，视觉完成度较高。 |
+| ClaudeBar | `local-state/competitor-visual-archive/claudebar-dashboard-light.png` | ClaudeBar light 版本。 |
+| Codex Quota Viewer | `local-state/competitor-visual-archive/codex-quota-viewer-menu.png` | macOS 菜单栏 quota/account 界面。 |
+| Codex Quota Viewer | `local-state/competitor-visual-archive/codex-quota-viewer-session-manager.png` | 内置 session manager，说明产品范围很重。 |
+| codex-quota | `local-state/competitor-visual-archive/codex-quota-tui-demo.png` | 终端 TUI quota/account 视图。 |
+| codex-quota | `local-state/competitor-visual-archive/codex-quota-tui-demo.gif` | TUI 交互动图。 |
 
-Source screenshot paths remain available in the competitor lab:
+竞品源截图路径仍保留在实验目录：
 
 ```text
 /Users/Zhuanz/Documents/quota-competitor-lab/QuotaGem/docs/images/
@@ -65,140 +65,139 @@ Source screenshot paths remain available in the competitor lab:
 /Users/Zhuanz/Documents/quota-competitor-lab/codex-quota/
 ```
 
-## Product Shapes
+## 各项目产品形态
 
 ### QuotaGem
 
-Actual product shape:
+真实产品形态：
 
-- Windows tray application.
-- Tray icon opens compact or expanded panels.
-- Not a Chrome extension.
-- Local dev server at `http://127.0.0.1:5174/` is only a frontend preview, not the real production surface.
+- Windows 托盘应用。
+- 点击托盘后打开 compact 或 expanded 面板。
+- 不是 Chrome 插件。
+- 本地 `http://127.0.0.1:5174/` 只是前端预览，不是它真实生产形态。
 
-What it proves:
+它证明了什么：
 
-- The Windows tray route already has a serious competitor.
-- Users can understand provider quota through compact rings.
-- 5h and weekly windows can coexist in one interface.
-- `codex app-server` is a practical Codex quota source.
+- Windows tray 路线已经有认真竞品。
+- 环形图适合快速理解 quota。
+- 5h 和 weekly 可以同时存在于一个界面。
+- `codex app-server` 是重要的 Codex quota 数据源。
 
-Where it differs from Quota Capsule:
+和 Quota Capsule 的差异：
 
-- Multi-provider monitor first.
-- Dashboard/panel interaction first.
-- Uses threshold-style warning/danger logic rather than making quota pacing the central user-facing idea.
-- It does not default to a tiny always-visible "can I keep working?" capsule.
+- QuotaGem 是多 provider monitor。
+- 默认交互是打开一个 panel 看 dashboard。
+- 警告逻辑更偏百分比阈值，而不是把“节奏判断”作为核心。
+- 它不是一个默认常驻桌面、回答“现在还能不能继续干活”的小胶囊。
 
-Visual notes:
+视觉观察：
 
-- The compact ring design is attractive and glanceable.
-- The expanded panel looks richer than a raw settings tool, but it is still an opened panel.
-- The forest/glass visual treatment is distinctive, but it may not match Quota Capsule's quieter work-surface goal.
+- compact ring 很值得参考。
+- expanded panel 比普通工具页更有质感。
+- 森林背景 + glass 风格有记忆点，但不一定适合我们更安静的工作区常驻体验。
 
 ### ClaudeBar
 
-Actual product shape:
+真实产品形态：
 
-- Native macOS menu-bar application.
-- Click menu bar icon to view a polished quota dashboard.
-- Supports many AI coding assistants and themes.
+- macOS 菜单栏应用。
+- 点击菜单栏后打开漂亮的 quota dashboard。
+- 支持多个 AI coding assistant 和多主题。
 
-What it proves:
+它证明了什么：
 
-- Quota tooling can be visually polished enough for daily use.
-- Pace-aware quota logic is already a serious design area.
-- Themes and menu-bar presence can be adoption features for power users.
+- quota 工具可以做得像正经消费级产品，不一定只能像脚本。
+- pace-aware 逻辑有价值。
+- 主题和菜单栏常驻对 power user 有吸引力。
 
-Where it differs from Quota Capsule:
+和 Quota Capsule 的差异：
 
-- Broad macOS AI usage monitor.
-- Dashboard-heavy.
-- More visually expressive than an ambient working indicator.
-- Not optimized around a single Codex-first floating capsule.
+- ClaudeBar 是泛 AI usage monitor。
+- 它更 dashboard-heavy。
+- 默认不是桌面悬浮胶囊。
+- 它不是围绕 Codex 单一高频痛点做极简判断。
 
-Visual notes:
+视觉观察：
 
-- Best visual polish among reviewed competitors.
-- Strong gradients and cards make it feel like a real product, not a script.
-- Too much dashboard energy for Quota Capsule's default state.
+- 目前看到的竞品里，它的视觉完成度最高。
+- 渐变、卡片、tab、badge 都比较成熟。
+- 但它对我们默认界面来说太重；我们要学“完成度”，不要学“大 dashboard”。
 
 ### Codex Quota Viewer
 
-Actual product shape:
+真实产品形态：
 
-- Native macOS menu-bar app.
-- Includes quota view, account vault, safe account switching, config writing, and bundled session manager.
+- macOS 菜单栏应用。
+- 包含 quota、账户库、安全账号切换、配置写入、session manager。
 
-What it proves:
+它证明了什么：
 
-- A native Codex-specific Mac app is viable.
-- `account/rateLimits/read` through `codex app-server` is a credible data source.
-- Staleness and read-failure states matter.
+- Codex-specific native app 是有需求的。
+- `account/rateLimits/read` 通过 `codex app-server` 读取 quota 是可信路径。
+- stale / read failure 状态很重要。
 
-Where it differs from Quota Capsule:
+和 Quota Capsule 的差异：
 
-- It is a Codex local management center, not a quota pacing assistant.
-- It mutates local Codex configuration and manages accounts/sessions.
-- The interaction burden and trust burden are much higher.
+- 它是 Codex 本地管理中心，不是 quota pacing assistant。
+- 它会处理账号、配置、session，信任成本更高。
+- 我们 MVP 应明确不做这些重功能。
 
-Visual notes:
+视觉观察：
 
-- Practical and system-like.
-- Good reference for local-management density, not for the default Quota Capsule UI.
-- Session manager screenshots show why Quota Capsule should explicitly avoid becoming a session/account manager.
+- 实用、系统感强。
+- 适合作为“不要变重”的反例。
+- session manager 截图提醒我们：一旦做账号/session 管理，产品会迅速变成另一类工具。
 
 ### codex-quota / CQ
 
-Actual product shape:
+真实产品形态：
 
-- Terminal TUI.
-- Built for account switching and quota monitoring.
+- 终端 TUI。
+- 主要服务账号切换和 quota monitoring。
 
-What it proves:
+它证明了什么：
 
-- Developer users tolerate keyboard-first quota/account tools.
-- A compact terminal quota display can be readable.
-- Mock/demo mode is useful for safe trial.
+- 开发者接受键盘优先的 quota/account 工具。
+- mock/demo 模式适合安全试用。
 
-Where it differs from Quota Capsule:
+和 Quota Capsule 的差异：
 
-- Not consumer-facing.
-- Not always visible unless the terminal remains open.
-- TUI style should not drive the main product visual direction.
+- 不是大众用户体验。
+- 不常驻桌面，除非一直开着终端。
+- 不适合作为我们的视觉方向。
 
-Visual notes:
+视觉观察：
 
-- Clear for terminal users.
-- Not a design reference for a beautiful floating capsule.
+- 对 terminal user 清楚。
+- 对“漂亮常驻小胶囊”帮助有限。
 
 ### opencode-quota
 
-Actual product shape:
+真实产品形态：
 
-- OpenCode plugin plus CLI.
-- Provides sidebar panel, toasts, compact status line, slash commands, and terminal `show`.
+- OpenCode 插件 + CLI。
+- 支持 sidebar panel、toast、compact status line、slash command、terminal show。
 
-What it proves:
+它证明了什么：
 
-- Embedding quota into the work surface is valuable.
-- Users may want to choose between sidebar, toast, compact status, or command-only surfaces.
-- Distribution through `npx` and config installation is practical inside a tool ecosystem.
+- quota 最好出现在工作发生的地方。
+- 同一套数据层可以支持多种显示 surface。
+- CLI / JSON 输出对生态集成有价值。
 
-Where it differs from Quota Capsule:
+和 Quota Capsule 的差异：
 
-- It is not a standalone desktop or browser surface.
-- It follows OpenCode's UI constraints.
-- It is more of an integration layer than an independent ambient product.
+- 它绑定 OpenCode 生态。
+- 不是独立桌面产品，也不是独立 Chrome 视觉产品。
+- 它更像集成层，不是 ambient consumer-facing capsule。
 
-Visual notes:
+视觉观察：
 
-- Good product-surface lesson: quota should live where work happens.
-- Less useful as a visual reference for a standalone desktop capsule.
+- 产品形态上值得学：让 quota 嵌入工作流。
+- 视觉上不是我们的主要参考。
 
-## Data Source Lessons
+## 数据源经验
 
-Most important confirmed source path:
+最重要的数据源路径：
 
 ```text
 codex app-server
@@ -206,7 +205,7 @@ JSON-RPC initialize
 account/rateLimits/read
 ```
 
-Useful fields observed in competitor code:
+竞品代码里看到的关键字段：
 
 - `usedPercent`
 - `windowDurationMins`
@@ -214,99 +213,99 @@ Useful fields observed in competitor code:
 - `primary`
 - `secondary`
 
-Practical implication:
+对我们的意义：
 
-- Quota Capsule should upgrade `packages/source-codex` from CLI-help probing to a read-only app-server quota probe.
-- The adapter should classify 5h vs weekly by `windowDurationMins`, not by assuming primary/secondary order.
-- Source failure must produce an unknown/gray state, never a false-safe state.
+- `packages/source-codex` 应从 CLI help probe 升级为只读 app-server quota probe。
+- 5h / weekly 不应假设 primary/secondary 顺序，而应按 `windowDurationMins` 判断。
+- 读取失败必须显示 unknown/gray，不能显示 safe/green。
 
-## Product Overlap
+## 产品重叠
 
-Quota Capsule overlaps with competitors on:
+我们和竞品重叠的地方：
 
-- Showing quota status.
-- Showing 5h and weekly windows.
-- Showing reset time.
-- Using green/yellow/red or similar status colors.
-- Supporting local provider adapters.
+- 都显示 quota。
+- 都关心 5h 和 weekly。
+- 都显示 reset time。
+- 都有绿色/黄色/红色状态。
+- 都可能支持 provider adapter。
 
-The overlap is real and should be acknowledged in public positioning.
+所以不能假装这是空白赛道。
 
-## Defensible Difference
+## 我们真正的差异
 
-Quota Capsule should not compete as "another quota dashboard."
+Quota Capsule 不应该做成“又一个 quota dashboard”。
 
-The defensible difference is:
+真正差异是：
 
-- Default always-visible floating capsule.
-- Codex-first user problem.
-- Pacing judgment as the primary value.
-- Time progress vs quota-used comparison as the core explanation.
-- One-line human answer before numeric detail.
-- No account switching in MVP.
-- No session manager in MVP.
-- No default complex dashboard.
+- 默认常驻桌面的小胶囊。
+- Codex-first 的高频痛点。
+- 把 pacing judgment 放在第一层。
+- 用“时间进度 vs 额度已用”解释判断。
+- 先给一句人话，再给数字。
+- MVP 不做账号切换。
+- MVP 不做 session manager。
+- 默认不做复杂 dashboard。
 
-The core product promise:
+核心承诺：
 
-> Quota Capsule turns quota from a static number into a runway judgment: can the current burn rate survive until reset?
+> 把 quota 从静态数字变成续航判断：现在这个使用速度，能不能撑到刷新？
 
-## Visual Direction
+## 视觉方向
 
-Do:
+应该做：
 
-- Make the first state tiny, calm, and glanceable.
-- Use status color as a thin accent, not a full-screen theme.
-- Prefer one strong sentence over many metrics.
-- Use a detailed popover only when the user asks why.
-- Keep 5h as primary; show weekly only as secondary pressure or in expanded view.
-- Design around working beside Codex, IDEs, browser tabs, and terminals.
+- 第一状态要小、安静、可扫视。
+- 状态颜色只做细节强调，不要铺满整个 UI。
+- 一句话判断优先于一堆指标。
+- 只在用户点开后显示详细解释。
+- 5h 是主状态，weekly 是辅助压力。
+- 设计时要考虑它长期和 Codex、IDE、浏览器、终端一起出现。
 
-Avoid:
+不要做：
 
-- A generic admin dashboard.
-- A large landing-page style hero.
-- Heavy decorative gradients as the product surface.
-- Multi-card density in the default state.
-- Account/session management in the core product.
-- Copying competitor visual assets or layout too closely.
+- 普通后台 dashboard。
+- landing page 式 hero。
+- 大面积装饰性渐变。
+- 默认多卡片密集布局。
+- MVP 做账号/session 管理。
+- 直接复制竞品视觉资产或布局。
 
-## Current Quota Capsule UI Assessment
+## 当前 Quota Capsule demo 评价
 
-The current demo is directionally correct because it shows:
+当前 demo 方向是对的：
 
-- Safe/watch/danger/unknown.
-- Human-language verdicts.
-- Time progress and quota used as separate bars.
+- 有 safe/watch/danger/unknown。
+- 有人话判断。
+- 有时间进度和额度已用两条对比。
 
-But it is still a demo screen, not the final product surface:
+但它还不是最终产品：
 
-- It displays four states side by side, which is useful for testing but not a real user workflow.
-- The cards look more like product spec examples than a polished floating capsule.
-- The default production state should be one compact capsule with a click/hover detail layer.
+- 四个状态并排适合测试，不是真实用户 workflow。
+- 卡片仍然像 spec demo，不像精致常驻小组件。
+- 生产版默认应该是一个小胶囊，点击或 hover 后展开详情。
 
-## Product Decision
+## 产品决策
 
-Continue building Quota Capsule independently.
+继续独立做 Quota Capsule。
 
-Reasoning:
+原因：
 
-- Competitors validate demand but do not own the exact ambient capsule experience.
-- The data-source technique can be learned without inheriting their product scope.
-- Forking or basing on heavier products would pull Quota Capsule into account/session/dashboard territory.
-- The public open-source story is cleaner if Quota Capsule owns its design thesis and invites adapters.
+- 竞品验证了需求，但没有覆盖“ambient quota runway capsule”这个体验。
+- 数据源思路可以借鉴，不需要继承它们的产品范围。
+- fork 重型项目会把我们拖进 account/session/dashboard。
+- 独立开源项目更适合讲清楚自己的设计主张，并邀请 adapter 贡献。
 
-Upstream contribution remains useful, but only as a side path:
+可以给上游贡献小 patch，但这不是主线：
 
-- Contribute small source-adapter fixes.
-- Share read-only Codex app-server findings.
-- Avoid turning Quota Capsule into a feature PR inside another dashboard.
+- 贡献 source adapter 修复。
+- 分享只读 Codex app-server 经验。
+- 不要把 Quota Capsule 变成别人 dashboard 里的一个 feature。
 
-## Open Questions
+## 还要继续讨论的问题
 
-- Can a Chrome extension safely and reliably read or receive quota data without a local helper?
-- Should the Chrome version be only an in-page/browser toolbar indicator, or also support a small overlay?
-- How much weekly quota should be visible in the default capsule before it becomes noise?
-- Should Mac local MVP use floating capsule first, menu bar first, or both from the start?
-- What exact copy best expresses safe/watch/danger in English and Chinese?
+- Chrome 插件到底能否安全、稳定地拿到真实 quota 数据？
+- Chrome 版本应该是 toolbar popup、页面 overlay、还是固定小 badge？
+- weekly quota 在默认胶囊里出现到什么程度才不打扰？
+- Mac local 第一版是只做悬浮胶囊，还是悬浮胶囊 + 菜单栏一起做？
+- 中英文状态文案怎么写最准确、不吓人、不含糊？
 
