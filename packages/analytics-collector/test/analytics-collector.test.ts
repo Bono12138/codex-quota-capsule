@@ -91,6 +91,31 @@ describe("analytics collector validation", () => {
     ).toBe(true);
   });
 
+  it("accepts feedback nudge events", () => {
+    expect(
+      validateAnalyticsEvent({
+        ...baseEvent,
+        event_name: "feedback_nudge_shown",
+        surface: "feedback",
+        properties: {
+          collection_tier: "product_improvement",
+          trigger: "expanded_count",
+        },
+      }).ok,
+    ).toBe(true);
+    expect(
+      validateAnalyticsEvent({
+        ...baseEvent,
+        event_name: "feedback_nudge_decision",
+        surface: "feedback",
+        properties: {
+          collection_tier: "product_improvement",
+          decision: "copy_codex_prompt",
+        },
+      }).ok,
+    ).toBe(true);
+  });
+
   it("rejects unknown event names", () => {
     expect(
       validateAnalyticsEvent({

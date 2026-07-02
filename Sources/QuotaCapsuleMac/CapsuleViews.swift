@@ -2,9 +2,9 @@ import SwiftUI
 import AppKit
 import QuotaCapsuleCore
 
-private let douyinID = "huotuichang439"
-private let douyinURL = "https://v.douyin.com/Alo9NohbnoY/"
-private let projectHomeURL = "https://github.com/Bono12138/codex-quota-capsule"
+private let douyinID = FeedbackDestinations.douyinID
+private let douyinURL = FeedbackDestinations.douyinURL.absoluteString
+private let authorXURL = FeedbackDestinations.authorXURL.absoluteString
 
 enum CapsuleViewMetrics {
     static let shadowPadding: CGFloat = 16
@@ -287,6 +287,8 @@ struct CompactStatusNote: View {
 
 struct DetailPopoverView: View {
     @ObservedObject var store: QuotaStore
+    @State private var didCopyCodexPrompt = false
+
     private var visibleMetrics: [CapsuleMetric] {
         store.displayModel.metrics.filter {
             $0.label != store.copy.metricResetBuffer && $0.label != store.copy.metricPace
@@ -391,19 +393,92 @@ struct DetailPopoverView: View {
                     .font(.system(size: 10, weight: .medium))
                     .foregroundStyle(.secondary)
                     .lineLimit(2)
-                HStack(spacing: 8) {
-                    Text(store.copy.manualRefreshNote)
-                        .font(.system(size: 10, weight: .medium))
-                        .foregroundStyle(.secondary)
-                    Spacer(minLength: 0)
-                    Button(store.copy.projectHomeAction) {
-                        openExternalURL(projectHomeURL)
-                    }
-                    .buttonStyle(.borderless)
-                    .font(.system(size: 10, weight: .bold))
-                }
+                PanelQuickActionsView(store: store, didCopyCodexPrompt: $didCopyCodexPrompt)
             }
         }
+    }
+}
+
+struct PanelQuickActionsView: View {
+    @ObservedObject var store: QuotaStore
+    @Binding var didCopyCodexPrompt: Bool
+
+    private var columns: [GridItem] {
+        [GridItem(.adaptive(minimum: 134), spacing: 8)]
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack(spacing: 6) {
+                Image(systemName: "slider.horizontal.3")
+                    .font(.system(size: 10, weight: .bold))
+                    .foregroundStyle(toneColor(store.displayModel.tone))
+                Text(store.copy.panelQuickActionsTitle)
+                    .font(.system(size: 10, weight: .bold))
+                    .foregroundStyle(.secondary)
+                Spacer(minLength: 0)
+            }
+
+            LazyVGrid(columns: columns, alignment: .leading, spacing: 8) {
+                quickActionButton(title: store.copy.refreshNowAction, symbol: "arrow.clockwise") {
+                    store.refresh()
+                }
+
+                if let githubIssuesURL = store.githubIssuesURL {
+                    quickActionButton(title: store.copy.githubIssuesAction, symbol: "exclamationmark.bubble") {
+                        store.recordFeedbackClick("github")
+                        openExternalURL(githubIssuesURL)
+                    }
+                } else {
+                    quickActionButton(title: store.copy.emailFeedbackAction, symbol: "envelope") {
+                        store.recordFeedbackClick("email")
+                        openExternalURL("mailto:\(FeedbackDestinations.authorEmail)")
+                    }
+                }
+
+                quickActionButton(
+                    title: didCopyCodexPrompt ? store.copy.codexFeedbackCopiedAction : store.copy.codexFeedbackAction,
+                    symbol: didCopyCodexPrompt ? "checkmark.circle.fill" : "sparkles"
+                ) {
+                    copyCodexFeedbackPromptToClipboard(store: store)
+                    didCopyCodexPrompt = true
+                }
+
+                quickActionButton(title: store.copy.authorProfileAction, symbol: "person.crop.circle") {
+                    store.recordFeedbackClick("x")
+                    openExternalURL(authorXURL)
+                }
+
+                quickActionButton(title: store.copy.advancedDataSettingsTitle, symbol: "lock.shield") {
+                    NotificationCenter.default.post(name: .quotaCapsuleShowAdvancedDataSettings, object: nil)
+                }
+
+                quickActionButton(title: store.copy.aboutFeedbackTitle, symbol: "info.circle") {
+                    NotificationCenter.default.post(name: .quotaCapsuleShowAboutFeedback, object: nil)
+                }
+            }
+
+            Text(store.copy.codexFeedbackHint)
+                .font(.system(size: 10, weight: .medium))
+                .foregroundStyle(.secondary)
+                .lineLimit(2)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .padding(10)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(.white.opacity(0.07), in: RoundedRectangle(cornerRadius: 13, style: .continuous))
+    }
+
+    private func quickActionButton(title: String, symbol: String, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            Label(title, systemImage: symbol)
+                .font(.system(size: 10, weight: .bold))
+                .lineLimit(1)
+                .minimumScaleFactor(0.72)
+                .frame(maxWidth: .infinity, alignment: .leading)
+        }
+        .buttonStyle(.bordered)
+        .controlSize(.small)
     }
 }
 
@@ -649,11 +724,11 @@ struct MenuBarContent: View {
                 Divider()
                 Button(store.copy.emailFeedbackAction) {
                     store.recordFeedbackClick("email")
-                    openExternalURL("mailto:mmz1218bono@gmail.com")
+                    openExternalURL("mailto:\(FeedbackDestinations.authorEmail)")
                 }
                 Button(store.copy.openXAction) {
                     store.recordFeedbackClick("x")
-                    openExternalURL("https://x.com/starlightsz0")
+                    openExternalURL(authorXURL)
                 }
                 Button(store.copy.openDouyinAction) {
                     store.recordFeedbackClick("douyin_open")
@@ -684,6 +759,9 @@ struct MenuBarContent: View {
                     store.recordFeedbackClick("github")
                     openExternalURL(githubIssuesURL)
                 }
+            }
+            Button(store.copy.codexFeedbackAction) {
+                copyCodexFeedbackPromptToClipboard(store: store)
             }
             Divider()
             Button(store.copy.quitAction) {
@@ -882,6 +960,7 @@ struct DouyinIDCopyCard: View {
 
 struct AboutFeedbackView: View {
     @ObservedObject var store: QuotaStore
+    @State private var didCopyCodexPrompt = false
 
     var body: some View {
         ScrollView {
@@ -919,14 +998,16 @@ struct AboutFeedbackView: View {
                         .font(.system(size: 13, weight: .medium))
                         .foregroundStyle(.secondary)
                         .fixedSize(horizontal: false, vertical: true)
-                    if let githubIssuesURL = store.githubIssuesURL {
-                        Button(store.copy.githubIssuesAction) {
-                            store.recordFeedbackClick("github")
-                            openExternalURL(githubIssuesURL)
+                    ViewThatFits(in: .horizontal) {
+                        HStack(spacing: 8) {
+                            feedbackButtons
                         }
-                        .buttonStyle(.borderedProminent)
-                        .padding(.top, 2)
+                        VStack(alignment: .leading, spacing: 8) {
+                            feedbackButtons
+                        }
                     }
+                    .buttonStyle(.borderedProminent)
+                    .padding(.top, 2)
                 }
 
                 Divider()
@@ -943,7 +1024,27 @@ struct AboutFeedbackView: View {
         .frame(minHeight: 560)
         .background(.thickMaterial)
         .onAppear {
+            didCopyCodexPrompt = false
             store.recordSettingsOpened(surface: "about_feedback")
+        }
+    }
+
+    private var feedbackButtons: some View {
+        Group {
+            if let githubIssuesURL = store.githubIssuesURL {
+                Button(store.copy.githubIssuesAction) {
+                    store.recordFeedbackClick("github")
+                    openExternalURL(githubIssuesURL)
+                }
+            }
+            Button(store.copy.emailFeedbackAction) {
+                store.recordFeedbackClick("email")
+                openExternalURL("mailto:\(FeedbackDestinations.authorEmail)")
+            }
+            Button(didCopyCodexPrompt ? store.copy.codexFeedbackCopiedAction : store.copy.codexFeedbackAction) {
+                copyCodexFeedbackPromptToClipboard(store: store)
+                didCopyCodexPrompt = true
+            }
         }
     }
 }
@@ -1046,6 +1147,7 @@ struct ContactAuthorView: View {
     @ObservedObject var store: QuotaStore
     let context: String
     @State private var didCopyDouyin = false
+    @State private var didCopyCodexPrompt = false
 
     init(store: QuotaStore, context: String = "settings") {
         self.store = store
@@ -1088,7 +1190,7 @@ struct ContactAuthorView: View {
                         LazyVGrid(columns: [GridItem(.adaptive(minimum: 132), spacing: 8)], alignment: .leading, spacing: 8) {
                             Button(store.copy.emailFeedbackAction) {
                                 store.recordFeedbackClick("email")
-                                openExternalURL("mailto:mmz1218bono@gmail.com")
+                                openExternalURL("mailto:\(FeedbackDestinations.authorEmail)")
                             }
                             if let githubIssuesURL = store.githubIssuesURL {
                                 Button(store.copy.githubIssuesAction) {
@@ -1098,11 +1200,15 @@ struct ContactAuthorView: View {
                             }
                             Button(store.copy.openXAction) {
                                 store.recordFeedbackClick("x")
-                                openExternalURL("https://x.com/starlightsz0")
+                                openExternalURL(authorXURL)
                             }
                             Button(store.copy.openDouyinAction) {
                                 store.recordFeedbackClick("douyin_open")
                                 openExternalURL(douyinURL)
+                            }
+                            Button(didCopyCodexPrompt ? store.copy.codexFeedbackCopiedAction : store.copy.codexFeedbackAction) {
+                                copyCodexFeedbackPromptToClipboard(store: store)
+                                didCopyCodexPrompt = true
                             }
                             Button(store.copy.refreshQuotaAction) {
                                 store.refresh()
@@ -1136,6 +1242,7 @@ struct ContactAuthorView: View {
         .background(.thickMaterial)
         .onAppear {
             didCopyDouyin = false
+            didCopyCodexPrompt = false
             store.recordSettingsOpened(surface: context)
         }
     }
@@ -1327,7 +1434,7 @@ struct OnboardingView: View {
         HStack(spacing: 8) {
             Button(store.copy.emailFeedbackAction) {
                 store.recordFeedbackClick("email")
-                openExternalURL("mailto:mmz1218bono@gmail.com")
+                openExternalURL("mailto:\(FeedbackDestinations.authorEmail)")
             }
             Button(store.copy.githubIssuesAction) {
                 store.recordFeedbackClick("github")
@@ -1342,7 +1449,7 @@ struct OnboardingView: View {
         HStack(spacing: 8) {
             Button(store.copy.openXAction) {
                 store.recordFeedbackClick("x")
-                openExternalURL("https://x.com/starlightsz0")
+                openExternalURL(authorXURL)
             }
             Button(store.copy.openDouyinAction) {
                 store.recordFeedbackClick("douyin_open")

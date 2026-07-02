@@ -582,33 +582,37 @@ private final class TransparentHostingView<Content: View>: NSHostingView<Content
 
         if isPanelDragging {
             onPanelDragEnded?()
-        } else {
+        } else if pendingResizeEdge == nil {
             onPrimaryClick?()
+        } else {
+            window?.invalidateCursorRects(for: self)
         }
     }
 
     override func hitTest(_ point: NSPoint) -> NSView? {
-        bounds.contains(point) ? self : nil
+        guard bounds.contains(point) else {
+            return nil
+        }
+
+        if shouldHandlePanelInteraction(at: point) {
+            return self
+        }
+
+        return super.hitTest(point)
     }
 
     private var resizeCursorRects: [NSRect] {
         guard bounds.width > CapsuleViewMetrics.dockedWidth + 30 else {
             return []
         }
-        let topBandHeight = min(bounds.height, CapsuleViewMetrics.collapsedHeight + 18)
-        let y = bounds.maxY - topBandHeight
         return [
-            NSRect(x: bounds.minX, y: y, width: resizeHitWidth, height: topBandHeight),
-            NSRect(x: bounds.maxX - resizeHitWidth, y: y, width: resizeHitWidth, height: topBandHeight)
+            NSRect(x: bounds.minX, y: bounds.minY, width: resizeHitWidth, height: bounds.height),
+            NSRect(x: bounds.maxX - resizeHitWidth, y: bounds.minY, width: resizeHitWidth, height: bounds.height)
         ]
     }
 
     private func resizeEdge(at point: NSPoint) -> CapsuleResizeEdge? {
         guard bounds.width > CapsuleViewMetrics.dockedWidth + 30 else {
-            return nil
-        }
-        let topBandHeight = min(bounds.height, CapsuleViewMetrics.collapsedHeight + 18)
-        guard point.y >= bounds.maxY - topBandHeight else {
             return nil
         }
         if point.x <= bounds.minX + resizeHitWidth {
@@ -618,6 +622,22 @@ private final class TransparentHostingView<Content: View>: NSHostingView<Content
             return .trailing
         }
         return nil
+    }
+
+    private func shouldHandlePanelInteraction(at point: NSPoint) -> Bool {
+        if bounds.width <= CapsuleViewMetrics.dockedWidth + 30 {
+            return true
+        }
+
+        if point.x <= bounds.minX + resizeHitWidth || point.x >= bounds.maxX - resizeHitWidth {
+            return true
+        }
+
+        let topBandHeight = min(
+            bounds.height,
+            CapsuleViewMetrics.shadowPadding + CapsuleViewMetrics.collapsedContentHeight + 8
+        )
+        return point.y >= bounds.maxY - topBandHeight
     }
 }
 

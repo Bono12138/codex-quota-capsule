@@ -57,6 +57,8 @@ const allowedEventNames = new Set([
   "capsule_edge_revealed",
   "feedback_window_opened",
   "feedback_clicked",
+  "feedback_nudge_shown",
+  "feedback_nudge_decision",
   "onboarding_started",
   "onboarding_step_viewed",
   "onboarding_completed",

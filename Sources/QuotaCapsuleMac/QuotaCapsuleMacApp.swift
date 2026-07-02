@@ -42,9 +42,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var contactAuthorWindow: NSWindow?
     private var advancedDataSettingsWindow: NSWindow?
     private var onboardingWindow: NSWindow?
+    private var notificationObservers: [NSObjectProtocol] = []
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         NSApp.setActivationPolicy(.accessory)
+        observePanelActions()
         attach(store: store)
         if !store.hasCompletedOnboarding {
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) {
@@ -198,6 +200,70 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private func present(window: NSWindow) {
         window.makeKeyAndOrderFront(nil)
         NSApp.activate(ignoringOtherApps: true)
+    }
+
+    private func observePanelActions() {
+        let center = NotificationCenter.default
+        notificationObservers.append(
+            center.addObserver(forName: .quotaCapsuleShowAboutFeedback, object: nil, queue: .main) { [weak self] _ in
+                Task { @MainActor in
+                    self?.showAboutFeedback()
+                }
+            }
+        )
+        notificationObservers.append(
+            center.addObserver(forName: .quotaCapsuleShowContactAuthor, object: nil, queue: .main) { [weak self] _ in
+                Task { @MainActor in
+                    self?.showContactAuthor()
+                }
+            }
+        )
+        notificationObservers.append(
+            center.addObserver(forName: .quotaCapsuleShowAdvancedDataSettings, object: nil, queue: .main) { [weak self] _ in
+                Task { @MainActor in
+                    self?.showAdvancedDataSettings()
+                }
+            }
+        )
+        notificationObservers.append(
+            center.addObserver(forName: .quotaCapsuleRequestFeedbackNudge, object: nil, queue: .main) { [weak self] _ in
+                Task { @MainActor in
+                    self?.showFeedbackNudge()
+                }
+            }
+        )
+    }
+
+    private func showFeedbackNudge() {
+        let alert = NSAlert()
+        alert.messageText = store.copy.feedbackNudgeTitle
+        alert.informativeText = store.copy.feedbackNudgeMessage
+        alert.alertStyle = .informational
+        alert.addButton(withTitle: store.copy.feedbackNudgeOpenAction)
+        alert.addButton(withTitle: store.copy.feedbackNudgeCodexAction)
+        alert.addButton(withTitle: store.copy.feedbackNudgeLaterAction)
+        NSApp.activate(ignoringOtherApps: true)
+
+        switch alert.runModal() {
+        case .alertFirstButtonReturn:
+            store.recordFeedbackNudgeDecision("open_feedback")
+            showAboutFeedback()
+        case .alertSecondButtonReturn:
+            store.recordFeedbackNudgeDecision("copy_codex_prompt")
+            copyCodexFeedbackPromptToClipboard(store: store)
+            showCopiedFeedbackPromptAlert()
+        default:
+            store.recordFeedbackNudgeDecision("later")
+        }
+    }
+
+    private func showCopiedFeedbackPromptAlert() {
+        let alert = NSAlert()
+        alert.messageText = store.copy.feedbackNudgeCodexAction
+        alert.informativeText = store.copy.feedbackNudgeCopiedMessage
+        alert.alertStyle = .informational
+        alert.addButton(withTitle: store.copy.doneAction)
+        alert.runModal()
     }
 
     private func confirmDestructiveAction(

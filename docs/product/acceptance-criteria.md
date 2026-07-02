@@ -78,7 +78,7 @@
 - `npm run mac:package:internal-test`
 - `codesign --verify --deep --strict --verbose=2 "dist/internal-test/Quota Capsule Beta.app"`
 - `PORT=8787 QUOTA_CAPSULE_ANALYTICS_FILE=local-state/analytics/events.ndjson npm run analytics:start` 后，用一条合法事件和一条含敏感字段的事件验证 collector 接收/拒收逻辑。
-- app 端配置 `QUOTA_CAPSULE_PUBLIC_ANALYTICS_ENDPOINT` 后，至少验证内测版的 `app_launched`、`quota_refresh_succeeded`、`quota_state_sampled`、`settings_opened` 能进入 collector 输出文件；产品改进事件在用户未允许时不能进入远程队列。开发版用 `QUOTA_CAPSULE_DEV_ANALYTICS_ENDPOINT` 验证内部通道。
+- app 端配置 `QUOTA_CAPSULE_PUBLIC_ANALYTICS_ENDPOINT` 后，至少验证内测版的 `app_launched`、`quota_refresh_succeeded`、`quota_state_sampled`、`settings_opened`、`feedback_nudge_shown` 能进入 collector 输出文件；产品改进事件在用户未允许时不能进入远程队列。开发版用 `QUOTA_CAPSULE_DEV_ANALYTICS_ENDPOINT` 验证内部通道。
 
 每次 UI 修改后还必须完成：
 
@@ -92,6 +92,7 @@
 - 语言切换入口必须包含 `Language`，语言选择按钮必须有图标或短码辅助识别。
 - 新用户首次打开必须先看到语言选择，再进入分步新手引导。
 - 状态栏菜单必须有一级“联系作者”入口，点击一次即可看到作者、邮箱、X、抖音号和常用操作。
+- 展开面板必须提供浅层入口：刷新、GitHub Issues 或邮件、Codex 辅助反馈提示词、作者 X 主页、关于与反馈、高级数据设置。状态栏不可见或被系统折叠时，用户仍能找到反馈和设置。
 - “关于与反馈”必须展示产品介绍、当前版本已实现功能、后续预计加入功能、内测感谢和反馈说明。
 - 每次发布前必须更新“关于与反馈”里的当前功能和未来计划，不能把过期路线图带进新版本。
 - 反馈窗口的抖音号复制区域必须有复制视觉引导，重新打开窗口后不能继续显示已复制态。
@@ -100,6 +101,8 @@
 - 验证菜单栏状态和浮窗状态一致。
 - 拖动胶囊至少 3 秒，确认没有抽搐。
 - 在简中、繁中、英文下分别点击展开/收起至少 3 次，确认没有误触发拖动、缩放或贴边迷你形态。
+- 在简中、繁中、英文下分别点击展开面板的每个浅层入口，确认按钮动作触发且面板不会被误收起。
+- 收起态和展开态都必须能通过左右边缘调整宽度；拖拽边缘时不应触发展开/收起。
 - 在胶囊靠近屏幕边缘时点击展开/收起，确认轻微鼠标位移不会被误判为贴边隐藏。
 - 录屏或人工观察展开/收起动画，确认没有横条、方框残影和过度弹跳。
 

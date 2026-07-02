@@ -240,11 +240,11 @@ public struct QuotaCopy: Equatable, Sendable {
         }
     }
 
-    public var projectHomeAction: String {
+    public var authorProfileAction: String {
         switch locale {
-        case .zhHans: "项目主页"
-        case .zhHant: "專案主頁"
-        case .en: "Project home"
+        case .zhHans: "作者 X 主页"
+        case .zhHant: "作者 X 個人頁"
+        case .en: "Author X profile"
         }
     }
 
@@ -464,7 +464,7 @@ public struct QuotaCopy: Equatable, Sendable {
                 "桌面悬浮胶囊、菜单栏状态和展开详情面板。",
                 "自动刷新、手动刷新和读取失败时保留上次成功数据。",
                 "靠边停靠迷你形态、胶囊宽度调整和三语界面。",
-                "反馈入口、抖音二维码、X、Email、GitHub Issues。",
+                "展开面板、菜单栏、抖音二维码、X、Email、GitHub Issues 和 Codex 辅助反馈入口。",
                 "本地历史记录、基础诊断和可选产品改进数据。"
             ]
         case .zhHant:
@@ -473,7 +473,7 @@ public struct QuotaCopy: Equatable, Sendable {
                 "桌面懸浮膠囊、選單列狀態和展開詳細面板。",
                 "自動重新整理、手動重新整理，讀取失敗時保留上次成功資料。",
                 "靠邊停靠迷你形態、膠囊寬度調整和三語介面。",
-                "回饋入口、抖音 QR Code、X、Email、GitHub Issues。",
+                "展開面板、選單列、抖音 QR Code、X、Email、GitHub Issues 和 Codex 輔助回饋入口。",
                 "本機歷史記錄、基礎診斷和可選產品改善資料。"
             ]
         case .en:
@@ -482,7 +482,7 @@ public struct QuotaCopy: Equatable, Sendable {
                 "Desktop floating capsule, menu bar status, and detail panel.",
                 "Auto refresh, manual refresh, and last-success fallback after read failures.",
                 "Edge-docked mini state, adjustable capsule width, and three interface languages.",
-                "Feedback paths for Douyin QR, X, Email, and GitHub Issues.",
+                "Feedback paths in the detail panel, menu bar, Douyin QR, X, Email, GitHub Issues, and a Codex-assisted prompt.",
                 "Local history, basic diagnostics, and optional product improvement analytics."
             ]
         }
@@ -645,6 +645,14 @@ public struct QuotaCopy: Equatable, Sendable {
         }
     }
 
+    public var panelQuickActionsTitle: String {
+        switch locale {
+        case .zhHans: "常用操作"
+        case .zhHant: "常用操作"
+        case .en: "Quick actions"
+        }
+    }
+
     public var githubIssuesAction: String {
         switch locale {
         case .zhHans: "打开 GitHub Issues"
@@ -658,6 +666,78 @@ public struct QuotaCopy: Equatable, Sendable {
         case .zhHans: "打开 X 主页"
         case .zhHant: "開啟 X 個人頁"
         case .en: "Open X profile"
+        }
+    }
+
+    public var codexFeedbackAction: String {
+        switch locale {
+        case .zhHans: "让 Codex 帮我反馈"
+        case .zhHant: "讓 Codex 幫我回饋"
+        case .en: "Ask Codex to draft"
+        }
+    }
+
+    public var codexFeedbackCopiedAction: String {
+        switch locale {
+        case .zhHans: "已复制 Codex 提示词"
+        case .zhHant: "已複製 Codex 提示詞"
+        case .en: "Codex prompt copied"
+        }
+    }
+
+    public var codexFeedbackHint: String {
+        switch locale {
+        case .zhHans: "会复制一段安全提示词，让你的 Codex 帮你整理 Issue 或邮件。"
+        case .zhHant: "會複製一段安全提示詞，讓你的 Codex 幫你整理 Issue 或 Email。"
+        case .en: "Copies a safe prompt so your Codex can prepare an Issue or email."
+        }
+    }
+
+    public var feedbackNudgeTitle: String {
+        switch locale {
+        case .zhHans: "使用还顺手吗？"
+        case .zhHant: "用起來還順手嗎？"
+        case .en: "How is it working?"
+        }
+    }
+
+    public var feedbackNudgeMessage: String {
+        switch locale {
+        case .zhHans: "如果遇到报错、看不懂的提示，或者有改进建议，可以直接发给我。"
+        case .zhHant: "如果遇到錯誤、看不懂的提示，或者有改善建議，可以直接傳給我。"
+        case .en: "If you saw an error, confusing message, or improvement idea, you can send it to me."
+        }
+    }
+
+    public var feedbackNudgeLaterAction: String {
+        switch locale {
+        case .zhHans: "稍后"
+        case .zhHant: "稍後"
+        case .en: "Later"
+        }
+    }
+
+    public var feedbackNudgeOpenAction: String {
+        switch locale {
+        case .zhHans: "打开反馈入口"
+        case .zhHant: "開啟回饋入口"
+        case .en: "Open feedback"
+        }
+    }
+
+    public var feedbackNudgeCodexAction: String {
+        switch locale {
+        case .zhHans: "复制 Codex 提示词"
+        case .zhHant: "複製 Codex 提示詞"
+        case .en: "Copy Codex prompt"
+        }
+    }
+
+    public var feedbackNudgeCopiedMessage: String {
+        switch locale {
+        case .zhHans: "提示词已复制。把它交给你的 Codex，它会帮你整理反馈内容。"
+        case .zhHant: "提示詞已複製。把它交給你的 Codex，它會幫你整理回饋內容。"
+        case .en: "Prompt copied. Give it to your Codex and it will help prepare the feedback."
         }
     }
 
@@ -917,6 +997,14 @@ public struct QuotaCopy: Equatable, Sendable {
         }
     }
 
+    public var doneAction: String {
+        switch locale {
+        case .zhHans: "知道了"
+        case .zhHant: "知道了"
+        case .en: "Got it"
+        }
+    }
+
     public var keepParticipatingAction: String {
         switch locale {
         case .zhHans: "继续参与"
@@ -1079,9 +1167,9 @@ public struct QuotaCopy: Equatable, Sendable {
 
     public var onboardingMenuStepBody: String {
         switch locale {
-        case .zhHans: "菜单栏只放状态和已用比例。刷新、语言、联系作者、关于反馈、高级数据设置和退出都从菜单里操作。"
-        case .zhHant: "選單列只放狀態和已用比例。重新整理、語言、聯絡作者、關於回饋、進階資料設定和退出都從選單操作。"
-        case .en: "The menu bar shows status and usage. Refresh, language, contact, about, data, and quit stay in the menu."
+        case .zhHans: "菜单栏只放状态和已用比例。刷新、语言、联系作者、关于反馈和高级数据设置在菜单里；展开面板也放常用反馈和设置入口。"
+        case .zhHant: "選單列只放狀態和已用比例。重新整理、語言、聯絡作者、關於回饋和進階資料設定在選單裡；展開面板也放常用回饋和設定入口。"
+        case .en: "The menu bar shows status and usage. Refresh, language, contact, about, and data settings stay in the menu; the detail panel also has common feedback and settings entries."
         }
     }
 
@@ -1095,9 +1183,9 @@ public struct QuotaCopy: Equatable, Sendable {
 
     public var onboardingFeedbackStepBody: String {
         switch locale {
-        case .zhHans: "最后一步提供 Email、GitHub Issues、X、抖音和抖音号复制入口。"
-        case .zhHant: "最後一步提供 Email、GitHub Issues、X、抖音和抖音號複製入口。"
-        case .en: "Use Email, GitHub Issues, X, Douyin, or copied Douyin ID for feedback."
+        case .zhHans: "最后一步提供 Email、GitHub Issues、X、抖音、抖音号复制和 Codex 辅助反馈入口。"
+        case .zhHant: "最後一步提供 Email、GitHub Issues、X、抖音、抖音號複製和 Codex 輔助回饋入口。"
+        case .en: "Use Email, GitHub Issues, X, Douyin, copied Douyin ID, or the Codex-assisted prompt for feedback."
         }
     }
 

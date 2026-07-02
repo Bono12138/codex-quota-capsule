@@ -230,6 +230,17 @@ func testRuntimeLocaleCopyCoversMenuOnboardingAndConsent() {
         expect(copy.futureVersionFeatures.count >= 3, "future feature list should stay populated")
         expect(!copy.releaseUpdateReminder.isEmpty, "release update reminder should be localized")
         expect(!copy.contactAuthorTitle.isEmpty, "contact author title should be localized")
+        expect(!copy.authorProfileAction.isEmpty, "author profile action should be localized")
+        expect(!copy.panelQuickActionsTitle.isEmpty, "panel quick actions title should be localized")
+        expect(!copy.codexFeedbackAction.isEmpty, "Codex-assisted feedback action should be localized")
+        expect(!copy.codexFeedbackCopiedAction.isEmpty, "Codex-assisted feedback copied action should be localized")
+        expect(!copy.codexFeedbackHint.isEmpty, "Codex-assisted feedback hint should be localized")
+        expect(!copy.feedbackNudgeTitle.isEmpty, "feedback nudge title should be localized")
+        expect(!copy.feedbackNudgeMessage.isEmpty, "feedback nudge message should be localized")
+        expect(!copy.feedbackNudgeOpenAction.isEmpty, "feedback nudge open action should be localized")
+        expect(!copy.feedbackNudgeCodexAction.isEmpty, "feedback nudge Codex action should be localized")
+        expect(!copy.feedbackNudgeCopiedMessage.isEmpty, "feedback nudge copied message should be localized")
+        expect(!copy.doneAction.isEmpty, "done action should be localized")
         expect(!copy.resizeCapsuleHelp.isEmpty, "resize help should be localized")
         expect(!copy.compactUsageTrackLabel.isEmpty, "compact usage track label should be localized")
         expect(!copy.analyticsBasicSummaryText.isEmpty, "basic analytics summary should be localized")
@@ -245,6 +256,8 @@ func testRuntimeLocaleCopyCoversMenuOnboardingAndConsent() {
         expect(!copy.analyticsSensitiveBoundary.lowercased().contains("does not"), "English analytics boundary should use affirmative copy")
     }
     expect(QuotaCopy(locale: .zhHans).analyticsRevokeAction == "不参与产品改进计划", "Simplified revoke action should use user-approved wording")
+    expect(QuotaCopy(locale: .zhHans).authorProfileAction == "作者 X 主页", "X profile action should not be labelled as project home")
+    expect(QuotaCopy(locale: .en).codexFeedbackHint.contains("Codex"), "English Codex feedback hint should name Codex")
 }
 
 func testLocalizedUnknownAndParserDiagnostics() {

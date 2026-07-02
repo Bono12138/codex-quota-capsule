@@ -43,8 +43,11 @@ final class QuotaStore: ObservableObject {
     private let analyticsConsentKey: String
     private let capsuleWidthKey: String
     private let lastSessionDurationKey: String
+    private let expandedCountKey: String
+    private let feedbackNudgeShownKey: String
     private let minCapsuleWidth: CGFloat = 340
     private let maxCapsuleWidth: CGFloat = 560
+    private let feedbackNudgeExpansionThreshold = 6
 
     init(configuration: AppConfiguration = .current(), userDefaults: UserDefaults = .standard) {
         self.configuration = configuration
@@ -55,6 +58,8 @@ final class QuotaStore: ObservableObject {
         analyticsConsentKey = configuration.userDefaultsKey("analyticsConsent")
         capsuleWidthKey = configuration.userDefaultsKey("capsuleWidth")
         lastSessionDurationKey = configuration.userDefaultsKey("lastSessionDuration.seconds")
+        expandedCountKey = configuration.userDefaultsKey("panelExpanded.count")
+        feedbackNudgeShownKey = configuration.userDefaultsKey("feedbackNudge.shown")
 
         let storedLocale = userDefaults.string(forKey: localeKey).flatMap(QuotaLocale.init(rawValue:))
         let systemLocale = QuotaLocale.supported()
@@ -331,6 +336,7 @@ final class QuotaStore: ObservableObject {
         if expanded {
             expandedStartedAt = Date()
             recordEvent(name: "capsule_expanded", surface: surface)
+            evaluateFeedbackNudge()
         } else {
             let duration = expandedStartedAt.map { Date().timeIntervalSince($0) }
             expandedStartedAt = nil
@@ -366,6 +372,15 @@ final class QuotaStore: ObservableObject {
 
     func recordFeedbackWindowOpened() {
         recordEvent(name: "feedback_window_opened", surface: "feedback", requiresConsent: true)
+    }
+
+    func recordFeedbackNudgeDecision(_ decision: String) {
+        recordEvent(
+            name: "feedback_nudge_decision",
+            surface: "feedback",
+            requiresConsent: true,
+            properties: ["decision": decision]
+        )
     }
 
     func recordCapsuleVisibility(visible: Bool, durationSeconds: Double? = nil) {
@@ -462,6 +477,29 @@ final class QuotaStore: ObservableObject {
                 "width_bucket": widthBucket(capsuleWidth)
             ]
         )
+    }
+
+    private func evaluateFeedbackNudge() {
+        guard hasCompletedOnboarding,
+              !userDefaults.bool(forKey: feedbackNudgeShownKey) else {
+            return
+        }
+
+        let expandedCount = userDefaults.integer(forKey: expandedCountKey) + 1
+        userDefaults.set(expandedCount, forKey: expandedCountKey)
+
+        guard expandedCount >= feedbackNudgeExpansionThreshold else {
+            return
+        }
+
+        userDefaults.set(true, forKey: feedbackNudgeShownKey)
+        recordEvent(
+            name: "feedback_nudge_shown",
+            surface: "feedback",
+            requiresConsent: true,
+            properties: ["trigger": "expanded_count"]
+        )
+        NotificationCenter.default.post(name: .quotaCapsuleRequestFeedbackNudge, object: nil)
     }
 
     private func recordQuotaStateSample() {
