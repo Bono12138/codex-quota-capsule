@@ -56,6 +56,7 @@ chmod +x "$APP_BINARY"
 if [[ -d "$APP_RESOURCE_SOURCE" ]]; then
   cp -R "$APP_RESOURCE_SOURCE/." "$APP_RESOURCES/"
 fi
+"$ROOT_DIR/script/make_app_icon.sh" "$APP_RESOURCE_SOURCE/app-icon.svg" "$APP_RESOURCES/QuotaCapsuleAppIcon.icns" >/dev/null
 
 cat >"$INFO_PLIST" <<PLIST
 <?xml version="1.0" encoding="UTF-8"?>
@@ -70,6 +71,8 @@ cat >"$INFO_PLIST" <<PLIST
   <string>$BUNDLE_NAME</string>
   <key>CFBundleDisplayName</key>
   <string>$BUNDLE_NAME</string>
+  <key>CFBundleIconFile</key>
+  <string>QuotaCapsuleAppIcon</string>
   <key>CFBundlePackageType</key>
   <string>APPL</string>
   <key>CFBundleShortVersionString</key>

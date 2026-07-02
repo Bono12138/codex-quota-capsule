@@ -21,7 +21,7 @@ struct CapsuleRootView: View {
 
     var body: some View {
         VStack(spacing: 8) {
-            ZStack(alignment: .trailing) {
+            ZStack {
                 if store.isCapsuleDocked {
                     DockedCapsuleView(store: store)
                 } else {
@@ -29,8 +29,7 @@ struct CapsuleRootView: View {
                 }
 
                 if !store.isCapsuleDocked {
-                    CapsuleResizeHandle(helpText: store.copy.resizeCapsuleHelp)
-                        .padding(.trailing, 6)
+                    CapsuleResizeHandles(helpText: store.copy.resizeCapsuleHelp)
                 }
             }
 
@@ -152,7 +151,7 @@ struct CompactCapsuleView: View {
                     .layoutPriority(2)
             }
         }
-        .padding(.leading, 16)
+        .padding(.leading, 38)
         .padding(.trailing, 36)
         .padding(.vertical, 9)
         .frame(height: CapsuleViewMetrics.collapsedContentHeight)
@@ -184,6 +183,20 @@ struct CompactCapsuleView: View {
     }
 }
 
+struct CapsuleResizeHandles: View {
+    let helpText: String
+
+    var body: some View {
+        HStack {
+            CapsuleResizeHandle(helpText: helpText)
+            Spacer(minLength: 0)
+            CapsuleResizeHandle(helpText: helpText)
+        }
+        .padding(.horizontal, 5)
+        .frame(maxWidth: .infinity, maxHeight: CapsuleViewMetrics.collapsedContentHeight)
+    }
+}
+
 struct CapsuleResizeHandle: View {
     let helpText: String
 
@@ -197,6 +210,7 @@ struct CapsuleResizeHandle: View {
         }
         .frame(width: 28, height: 42)
         .contentShape(Rectangle())
+        .opacity(0.9)
         .help(helpText)
     }
 }
@@ -393,17 +407,11 @@ struct OverviewStatsGrid: View {
 
     var body: some View {
         LazyVGrid(columns: columns, alignment: .leading, spacing: 10) {
-            OverviewStatTile(title: paceTitle, value: paceValue, tone: tone, emphasized: true)
-            OverviewStatTile(title: weeklyTitle, value: weeklyValue, tone: tone, emphasized: false)
-            OverviewStatTile(title: resetTitle, value: resetValue, tone: tone, emphasized: false)
-            OverviewStatTile(title: updatedTitle, value: updatedValue, tone: tone, emphasized: false)
+            OverviewStatTile(title: paceTitle, value: paceValue, tone: tone, systemImage: "gauge.with.dots.needle.33percent")
+            OverviewStatTile(title: weeklyTitle, value: weeklyValue, tone: tone, systemImage: "calendar")
+            OverviewStatTile(title: resetTitle, value: resetValue, tone: tone, systemImage: "clock.arrow.circlepath")
+            OverviewStatTile(title: updatedTitle, value: updatedValue, tone: tone, systemImage: "checkmark.seal")
         }
-        .padding(10)
-        .background(.white.opacity(0.06), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
-        .overlay(
-            RoundedRectangle(cornerRadius: 16, style: .continuous)
-                .stroke(.white.opacity(0.12), lineWidth: 1)
-        )
     }
 }
 
@@ -411,28 +419,45 @@ struct OverviewStatTile: View {
     let title: String
     let value: String
     let tone: CapsuleLevel
-    let emphasized: Bool
+    let systemImage: String
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 5) {
-            Text(title)
-                .font(.system(size: 10, weight: .bold))
-                .foregroundStyle(.secondary)
-                .lineLimit(1)
-                .minimumScaleFactor(0.78)
+        VStack(alignment: .leading, spacing: 8) {
+            HStack(spacing: 6) {
+                Image(systemName: systemImage)
+                    .font(.system(size: 10, weight: .bold))
+                    .foregroundStyle(toneColor(tone))
+                    .frame(width: 18, height: 18)
+                    .background(toneColor(tone).opacity(0.15), in: RoundedRectangle(cornerRadius: 6, style: .continuous))
+                Text(title)
+                    .font(.system(size: 10, weight: .bold))
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.76)
+            }
             Text(value)
-                .font(.system(size: emphasized ? 18 : 17, weight: .bold))
+                .font(.system(size: 17, weight: .bold))
                 .monospacedDigit()
-                .foregroundStyle(emphasized ? Color.primary : Color.primary.opacity(0.92))
+                .foregroundStyle(.primary)
                 .lineLimit(1)
                 .minimumScaleFactor(0.72)
         }
-        .frame(maxWidth: .infinity, minHeight: 54, alignment: .leading)
+        .frame(maxWidth: .infinity, minHeight: 64, alignment: .leading)
         .padding(.horizontal, 11)
         .padding(.vertical, 9)
         .background(
-            (emphasized ? toneColor(tone).opacity(0.16) : Color.white.opacity(0.07)),
+            Color.white.opacity(0.08),
             in: RoundedRectangle(cornerRadius: 12, style: .continuous)
+        )
+        .overlay(alignment: .top) {
+            RoundedRectangle(cornerRadius: 2, style: .continuous)
+                .fill(toneColor(tone).opacity(0.72))
+                .frame(height: 3)
+                .padding(.horizontal, 11)
+        }
+        .overlay(
+            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                .stroke(.white.opacity(0.14), lineWidth: 1)
         )
     }
 }

@@ -15,6 +15,11 @@ private enum EdgeHiddenState {
     }
 }
 
+private enum CapsuleResizeEdge {
+    case leading
+    case trailing
+}
+
 @MainActor
 final class CapsulePanelController {
     private let panel: NSPanel
@@ -23,6 +28,8 @@ final class CapsulePanelController {
     private var dragStartMouseLocation: NSPoint?
     private var hiddenEdge: EdgeHiddenState?
     private var isResizeInProgress = false
+    private var resizeEdge: CapsuleResizeEdge?
+    private var resizeStartFrame: NSRect?
     private var visibleStartedAt: Date?
     private var cancellables: Set<AnyCancellable> = []
     private let collapsedHeight: CGFloat = CapsuleViewMetrics.collapsedHeight
@@ -52,8 +59,8 @@ final class CapsulePanelController {
         hostingView.onPanelDragEnded = { [weak self] in
             self?.finishMovingPanel()
         }
-        hostingView.onResizeStarted = { [weak self] in
-            self?.handleResizeStarted()
+        hostingView.onResizeStarted = { [weak self] edge in
+            self?.handleResizeStarted(edge)
         }
         hostingView.onResizeChanged = { [weak self] targetWidth in
             self?.handleResizeChanged(targetWidth)
@@ -185,18 +192,33 @@ final class CapsulePanelController {
         resizeForCurrentState()
     }
 
-    private func handleResizeStarted() {
+    private func handleResizeStarted(_ edge: CapsuleResizeEdge) {
         isResizeInProgress = true
+        resizeEdge = edge
+        resizeStartFrame = panel.frame
         dragStartOrigin = nil
         dragStartMouseLocation = nil
     }
 
     private func handleResizeChanged(_ targetWidth: CGFloat) {
         store.setCapsuleWidth(targetWidth)
+        guard resizeEdge == .leading,
+              let resizeStartFrame else {
+            return
+        }
+        let frame = panel.frame
+        panel.setFrameOrigin(
+            NSPoint(
+                x: resizeStartFrame.maxX - frame.width,
+                y: frame.origin.y
+            )
+        )
     }
 
     private func handleResizeEnded() {
         isResizeInProgress = false
+        resizeEdge = nil
+        resizeStartFrame = nil
         store.setCapsuleWidth(store.capsuleWidth, commit: true)
         clampPanelToVisibleArea()
     }
@@ -352,13 +374,14 @@ private final class TransparentHostingView<Content: View>: NSHostingView<Content
     var onPrimaryClick: (() -> Void)?
     var onPanelDragged: ((NSPoint) -> Void)?
     var onPanelDragEnded: (() -> Void)?
-    var onResizeStarted: (() -> Void)?
+    var onResizeStarted: ((CapsuleResizeEdge) -> Void)?
     var onResizeChanged: ((CGFloat) -> Void)?
     var onResizeEnded: (() -> Void)?
     private var hoverTrackingArea: NSTrackingArea?
     private var mouseDownLocation: NSPoint?
     private var isPanelDragging = false
     private var activeMouseMode: MouseMode?
+    private var activeResizeEdge: CapsuleResizeEdge?
     private var resizeStartMouseX: CGFloat?
     private var resizeStartWidth: CGFloat?
 
@@ -410,20 +433,28 @@ private final class TransparentHostingView<Content: View>: NSHostingView<Content
         super.updateTrackingAreas()
     }
 
+    override func resetCursorRects() {
+        super.resetCursorRects()
+        for rect in resizeCursorRects {
+            addCursorRect(rect, cursor: .resizeLeftRight)
+        }
+    }
+
     override func mouseEntered(with event: NSEvent) {
         onMouseEntered?()
     }
 
     override func mouseDown(with event: NSEvent) {
         let point = convert(event.locationInWindow, from: nil)
-        if shouldStartResize(at: point) {
+        if let edge = resizeEdge(at: point) {
             activeMouseMode = .resize
+            activeResizeEdge = edge
             resizeStartMouseX = NSEvent.mouseLocation.x
             resizeStartWidth = max(
                 0,
                 bounds.width - CapsuleViewMetrics.shadowPadding * 2
             )
-            onResizeStarted?()
+            onResizeStarted?(edge)
             return
         }
 
@@ -435,11 +466,19 @@ private final class TransparentHostingView<Content: View>: NSHostingView<Content
     override func mouseDragged(with event: NSEvent) {
         if activeMouseMode == .resize {
             guard let resizeStartMouseX,
-                  let resizeStartWidth else {
+                  let resizeStartWidth,
+                  let activeResizeEdge else {
                 return
             }
             let deltaX = NSEvent.mouseLocation.x - resizeStartMouseX
-            let steppedWidth = ((resizeStartWidth + deltaX) / 2).rounded() * 2
+            let rawWidth: CGFloat
+            switch activeResizeEdge {
+            case .leading:
+                rawWidth = resizeStartWidth - deltaX
+            case .trailing:
+                rawWidth = resizeStartWidth + deltaX
+            }
+            let steppedWidth = (rawWidth / 2).rounded() * 2
             onResizeChanged?(steppedWidth)
             return
         }
@@ -465,6 +504,7 @@ private final class TransparentHostingView<Content: View>: NSHostingView<Content
     override func mouseUp(with event: NSEvent) {
         if activeMouseMode == .resize {
             activeMouseMode = nil
+            activeResizeEdge = nil
             resizeStartMouseX = nil
             resizeStartWidth = nil
             onResizeEnded?()
@@ -488,11 +528,33 @@ private final class TransparentHostingView<Content: View>: NSHostingView<Content
         bounds.contains(point) ? self : nil
     }
 
-    private func shouldStartResize(at point: NSPoint) -> Bool {
+    private var resizeCursorRects: [NSRect] {
         guard bounds.width > CapsuleViewMetrics.dockedWidth + 30 else {
-            return false
+            return []
         }
-        return point.x >= bounds.maxX - 42 && point.y >= bounds.maxY - 72
+        let topBandHeight = min(bounds.height, CapsuleViewMetrics.collapsedHeight + 18)
+        let y = bounds.maxY - topBandHeight
+        return [
+            NSRect(x: bounds.minX, y: y, width: 58, height: topBandHeight),
+            NSRect(x: bounds.maxX - 58, y: y, width: 58, height: topBandHeight)
+        ]
+    }
+
+    private func resizeEdge(at point: NSPoint) -> CapsuleResizeEdge? {
+        guard bounds.width > CapsuleViewMetrics.dockedWidth + 30 else {
+            return nil
+        }
+        let topBandHeight = min(bounds.height, CapsuleViewMetrics.collapsedHeight + 18)
+        guard point.y >= bounds.maxY - topBandHeight else {
+            return nil
+        }
+        if point.x <= bounds.minX + 58 {
+            return .leading
+        }
+        if point.x >= bounds.maxX - 58 {
+            return .trailing
+        }
+        return nil
     }
 }
 

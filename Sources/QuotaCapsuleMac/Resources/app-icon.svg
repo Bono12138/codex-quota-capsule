@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+  <defs>
+    <linearGradient id="bg" x1="160" y1="96" x2="864" y2="928" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#30383a"/>
+      <stop offset="0.52" stop-color="#1f2627"/>
+      <stop offset="1" stop-color="#111719"/>
+    </linearGradient>
+    <linearGradient id="capsule" x1="248" y1="260" x2="776" y2="764" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#f7fffc"/>
+      <stop offset="1" stop-color="#d6e4df"/>
+    </linearGradient>
+    <linearGradient id="mint" x1="272" y1="272" x2="752" y2="752" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#72f0c6"/>
+      <stop offset="1" stop-color="#2fd49f"/>
+    </linearGradient>
+    <filter id="softShadow" x="-30%" y="-30%" width="160%" height="160%">
+      <feDropShadow dx="0" dy="28" stdDeviation="34" flood-color="#000000" flood-opacity="0.32"/>
+    </filter>
+  </defs>
+
+  <rect x="80" y="80" width="864" height="864" rx="208" fill="url(#bg)"/>
+  <path d="M232 516c0-108 88-196 196-196h168c108 0 196 88 196 196s-88 196-196 196H428c-108 0-196-88-196-196Z" fill="url(#capsule)" filter="url(#softShadow)"/>
+  <path d="M310 524c0-74 60-134 134-134h136c74 0 134 60 134 134" fill="none" stroke="url(#mint)" stroke-width="54" stroke-linecap="round"/>
+  <path d="M512 520l120-92" fill="none" stroke="#17201f" stroke-width="38" stroke-linecap="round"/>
+  <circle cx="512" cy="520" r="54" fill="#17201f"/>
+  <circle cx="512" cy="520" r="24" fill="#72f0c6"/>
+  <rect x="336" y="610" width="176" height="34" rx="17" fill="#2fd49f"/>
+  <rect x="542" y="610" width="146" height="34" rx="17" fill="#17201f" opacity="0.18"/>
+  <circle cx="322" cy="610" r="18" fill="#2fd49f"/>
+</svg>
