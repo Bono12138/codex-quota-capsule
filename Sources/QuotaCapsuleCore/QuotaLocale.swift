@@ -701,6 +701,22 @@ public struct QuotaCopy: Equatable, Sendable {
         }
     }
 
+    public var onboardingAuthorActionTitle: String {
+        switch locale {
+        case .zhHans: "关注作者和继续反馈"
+        case .zhHant: "追蹤作者並持續回饋"
+        case .en: "Follow and send feedback"
+        }
+    }
+
+    public var onboardingAuthorActionBody: String {
+        switch locale {
+        case .zhHans: "内测阶段会持续更新。关注 X 或抖音可以看到后续进展，也可以直接把问题发到 GitHub Issues 或邮箱。"
+        case .zhHant: "內測階段會持續更新。追蹤 X 或抖音可以看到後續進展，也可以直接把問題傳到 GitHub Issues 或信箱。"
+        case .en: "This beta will keep changing. Follow X or Douyin for updates, or send issues through GitHub Issues and email."
+        }
+    }
+
     public var onboardingLocalRead: String {
         switch locale {
         case .zhHans: "只读本机 Codex app-server 的额度窗口。"
@@ -1090,6 +1106,14 @@ public struct QuotaCopy: Equatable, Sendable {
         case .zhHans: "已复制，打开抖音搜索即可"
         case .zhHant: "已複製，開啟抖音搜尋即可"
         case .en: "Copied. Open Douyin and search for it."
+        }
+    }
+
+    public var douyinCopiedShortAction: String {
+        switch locale {
+        case .zhHans: "已复制"
+        case .zhHant: "已複製"
+        case .en: "Copied"
         }
     }
 

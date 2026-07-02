@@ -291,12 +291,14 @@ final class QuotaStore: ObservableObject {
     func completeOnboarding() {
         userDefaults.set(true, forKey: onboardingKey)
         hasCompletedOnboarding = true
+        onboardingFocus = nil
         recordEvent(name: "onboarding_completed", surface: "onboarding")
     }
 
     func skipOnboarding() {
         userDefaults.set(true, forKey: onboardingKey)
         hasCompletedOnboarding = true
+        onboardingFocus = nil
         recordEvent(name: "onboarding_skipped", surface: "onboarding")
     }
 

@@ -103,6 +103,22 @@ owner 本机保留两个可并存版本：
 - 两个版本使用不同进程名：内测版 `QuotaCapsuleBeta`，开发版 `QuotaCapsuleDevLocal`，允许同时打开做对比。
 - 产品事件上报和用户主动提交 issue 是两条通道：analytics endpoint 只收结构化产品事件，GitHub Issues 用于用户主动反馈、bug 和公开需求。
 
+## 修复与发布流转规则
+
+所有代码改动先落在 private 工作仓库源码里。不要只改 public sync 工作树，也不要只改某一个已构建 `.app`。
+
+问题分类：
+
+- P0 / P1 bug：先修复 private 工作仓库，先跑自动化验证，再重建 `Quota Capsule Dev Local.app` 让 owner 本机确认；确认后重建 `Quota Capsule Beta.app`，最后通过 public staging 同步到 public 仓库。
+- UI 和功能改动：同样先在 private 工作仓库做，优先用 Dev Local 验证交互和视觉；如果改动进入当前内测范围，再同步 Beta 和 public 仓库。
+- 只影响公开文档、README、INSTALL 或 issue 模板的问题：可以直接走 public staging，但仍必须从 private 工作仓库生成 staging，不能在 public 仓库手工漂移。
+
+构建产物管理：
+
+- 根目录 `dist/development/Quota Capsule Dev Local.app` 是 owner 开发版。
+- 根目录 `dist/internal-test/Quota Capsule Beta.app` 是当前内测版。
+- `artifacts/public-repo-sync/dist/` 只是公开仓库验证时的临时构建产物，验证后应清理，避免 Spotlight 搜到重复的 Beta。
+
 ## 仓库拆分
 
 ### Private 工作仓库

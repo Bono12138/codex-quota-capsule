@@ -1124,6 +1124,7 @@ struct ContactAuthorView: View {
 struct OnboardingView: View {
     @ObservedObject var store: QuotaStore
     @State private var stepIndex = 0
+    @State private var didCopyDouyin = false
     let onComplete: () -> Void
 
     private var steps: [OnboardingStep] {
@@ -1155,6 +1156,10 @@ struct OnboardingView: View {
             updateFocus()
         }
         .onChange(of: stepIndex) { _, _ in
+            didCopyDouyin = false
+            updateFocus()
+        }
+        .onChange(of: store.needsLanguageSelection) { _, _ in
             updateFocus()
         }
         .onDisappear {
@@ -1225,7 +1230,11 @@ struct OnboardingView: View {
                 diagnosticPanel
             }
 
-            GuideRow(symbol: "person.crop.circle", text: store.copy.onboardingAuthorIntro)
+            if step.id == "feedback" {
+                onboardingAuthorActions
+            } else {
+                GuideRow(symbol: "person.crop.circle", text: store.copy.onboardingAuthorIntro)
+            }
 
             HStack(spacing: 8) {
                 ForEach(0..<steps.count, id: \.self) { index in
@@ -1236,7 +1245,6 @@ struct OnboardingView: View {
                 Spacer()
                 Button(store.copy.onboardingSkipAction) {
                     store.skipOnboarding()
-                    store.setOnboardingFocus(nil)
                     onComplete()
                 }
                 if stepIndex > 0 {
@@ -1250,13 +1258,80 @@ struct OnboardingView: View {
                 Button(stepIndex == steps.count - 1 ? store.copy.onboardingStartAction : store.copy.onboardingNextAction) {
                     if stepIndex == steps.count - 1 {
                         store.completeOnboarding()
-                        store.setOnboardingFocus(nil)
                         onComplete()
                     } else {
                         stepIndex += 1
                     }
                 }
                 .keyboardShortcut(.defaultAction)
+            }
+        }
+    }
+
+    private var onboardingAuthorActions: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack(spacing: 8) {
+                Image(systemName: "person.crop.circle")
+                    .font(.system(size: 15, weight: .semibold))
+                    .foregroundStyle(toneColor(store.displayModel.tone))
+                Text(store.copy.onboardingAuthorActionTitle)
+                    .font(.system(size: 13, weight: .bold))
+            }
+            Text(store.copy.onboardingAuthorActionBody)
+                .font(.system(size: 12, weight: .medium))
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+            ViewThatFits(in: .horizontal) {
+                HStack(spacing: 8) {
+                    authorButtonsPrimary
+                    authorButtonsSocial
+                }
+                VStack(alignment: .leading, spacing: 8) {
+                    authorButtonsPrimary
+                    authorButtonsSocial
+                }
+            }
+            .buttonStyle(.bordered)
+            .controlSize(.small)
+        }
+        .padding(12)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(.secondary.opacity(0.08), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                .stroke(toneColor(store.displayModel.tone).opacity(0.24), lineWidth: 1)
+        )
+    }
+
+    private var authorButtonsPrimary: some View {
+        HStack(spacing: 8) {
+            Button(store.copy.emailFeedbackAction) {
+                store.recordFeedbackClick("email")
+                openExternalURL("mailto:mmz1218bono@gmail.com")
+            }
+            Button(store.copy.githubIssuesAction) {
+                store.recordFeedbackClick("github")
+                if let url = store.githubIssuesURL {
+                    openExternalURL(url)
+                }
+            }
+        }
+    }
+
+    private var authorButtonsSocial: some View {
+        HStack(spacing: 8) {
+            Button(store.copy.openXAction) {
+                store.recordFeedbackClick("x")
+                openExternalURL("https://x.com/starlightsz0")
+            }
+            Button(store.copy.openDouyinAction) {
+                store.recordFeedbackClick("douyin_open")
+                openExternalURL(douyinURL)
+            }
+            Button(didCopyDouyin ? store.copy.douyinCopiedShortAction : store.copy.copyDouyinIdAction) {
+                copyToClipboard(douyinID)
+                didCopyDouyin = true
+                store.recordFeedbackClick("douyin_copy")
             }
         }
     }
