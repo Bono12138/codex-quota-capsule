@@ -13,6 +13,8 @@ const publicPaths = [
   "LICENSE",
   "Package.swift",
   "README.md",
+  "README.en.md",
+  "README.zh-CN.md",
   ".editorconfig",
   ".gitignore",
   "package.json",

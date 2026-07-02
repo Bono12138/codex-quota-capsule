@@ -25,6 +25,8 @@ INSTALL.md
 LICENSE
 Package.swift
 README.md
+README.en.md
+README.zh-CN.md
 .editorconfig
 .gitignore
 package.json
@@ -99,6 +101,14 @@ docs/research/competitors/**
 - 路线图中涉及遥测、历史数据、通知、自动更新的部分。
 
 ## Public README 要点
+
+GitHub 仓库首页默认展示 `README.md`。Public repo 采用：
+
+- `README.md`：双语入口和短介绍。
+- `README.zh-CN.md`：完整简体中文说明。
+- `README.en.md`：完整英文说明。
+
+发布前需要同步更新三份 README，避免不同语言的信息不一致。
 
 Public README 应优先回答：
 
