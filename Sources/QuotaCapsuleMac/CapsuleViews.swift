@@ -287,7 +287,7 @@ struct CompactStatusNote: View {
 
 struct DetailPopoverView: View {
     @ObservedObject var store: QuotaStore
-    @State private var didCopyCodexPrompt = false
+    @State private var assistedFeedbackMessage = ""
 
     private var visibleMetrics: [CapsuleMetric] {
         store.displayModel.metrics.filter {
@@ -360,6 +360,8 @@ struct DetailPopoverView: View {
                 .font(.system(size: 13, weight: .medium))
                 .foregroundStyle(.secondary)
 
+            PanelQuickActionsView(store: store, assistedFeedbackMessage: $assistedFeedbackMessage)
+
             VStack(spacing: 10) {
                 ForEach(visibleMetrics, id: \.label) { metric in
                     MetricRow(metric: metric, tone: store.displayModel.tone)
@@ -393,7 +395,6 @@ struct DetailPopoverView: View {
                     .font(.system(size: 10, weight: .medium))
                     .foregroundStyle(.secondary)
                     .lineLimit(2)
-                PanelQuickActionsView(store: store, didCopyCodexPrompt: $didCopyCodexPrompt)
             }
         }
     }
@@ -401,7 +402,7 @@ struct DetailPopoverView: View {
 
 struct PanelQuickActionsView: View {
     @ObservedObject var store: QuotaStore
-    @Binding var didCopyCodexPrompt: Bool
+    @Binding var assistedFeedbackMessage: String
 
     private var columns: [GridItem] {
         [GridItem(.adaptive(minimum: 134), spacing: 8)]
@@ -437,11 +438,11 @@ struct PanelQuickActionsView: View {
                 }
 
                 quickActionButton(
-                    title: didCopyCodexPrompt ? store.copy.codexFeedbackCopiedAction : store.copy.codexFeedbackAction,
-                    symbol: didCopyCodexPrompt ? "checkmark.circle.fill" : "sparkles"
+                    title: assistedFeedbackMessage.isEmpty ? store.copy.codexFeedbackAction : store.copy.codexFeedbackCopiedAction,
+                    symbol: assistedFeedbackMessage.isEmpty ? "sparkles" : "checkmark.circle.fill"
                 ) {
-                    copyCodexFeedbackPromptToClipboard(store: store)
-                    didCopyCodexPrompt = true
+                    let destination = startAssistedFeedback(store: store)
+                    assistedFeedbackMessage = destination == .github ? store.copy.assistedFeedbackStartedMessage : store.copy.assistedFeedbackEmailMessage
                 }
 
                 quickActionButton(title: store.copy.authorProfileAction, symbol: "person.crop.circle") {
@@ -463,6 +464,12 @@ struct PanelQuickActionsView: View {
                 .foregroundStyle(.secondary)
                 .lineLimit(2)
                 .fixedSize(horizontal: false, vertical: true)
+            if !assistedFeedbackMessage.isEmpty {
+                Label(assistedFeedbackMessage, systemImage: "checkmark.circle.fill")
+                    .font(.system(size: 10, weight: .bold))
+                    .foregroundStyle(toneColor(store.displayModel.tone))
+                    .fixedSize(horizontal: false, vertical: true)
+            }
         }
         .padding(10)
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -960,11 +967,11 @@ struct DouyinIDCopyCard: View {
 
 struct AboutFeedbackView: View {
     @ObservedObject var store: QuotaStore
-    @State private var didCopyCodexPrompt = false
+    @State private var assistedFeedbackMessage = ""
 
     var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 18) {
+            VStack(alignment: .leading, spacing: 16) {
                 VStack(alignment: .leading, spacing: 6) {
                     Text("Quota Capsule")
                         .font(.title2.bold())
@@ -976,20 +983,6 @@ struct AboutFeedbackView: View {
                         .foregroundStyle(.secondary)
                         .fixedSize(horizontal: false, vertical: true)
                 }
-
-                ProductInfoBlock(
-                    symbol: "checkmark.seal.fill",
-                    title: store.copy.currentVersionFeaturesTitle,
-                    rows: store.copy.currentVersionFeatures,
-                    tone: toneColor(store.displayModel.tone)
-                )
-
-                ProductInfoBlock(
-                    symbol: "sparkles",
-                    title: store.copy.futureVersionFeaturesTitle,
-                    rows: store.copy.futureVersionFeatures,
-                    tone: .accentColor
-                )
 
                 VStack(alignment: .leading, spacing: 7) {
                     Label(store.copy.betaThanksTitle, systemImage: "hand.wave.fill")
@@ -1008,14 +1001,36 @@ struct AboutFeedbackView: View {
                     }
                     .buttonStyle(.borderedProminent)
                     .padding(.top, 2)
+                    Text(store.copy.codexFeedbackHint)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                    if !assistedFeedbackMessage.isEmpty {
+                        Label(assistedFeedbackMessage, systemImage: "checkmark.circle.fill")
+                            .font(.caption.bold())
+                            .foregroundStyle(toneColor(store.displayModel.tone))
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
                 }
+                .padding(14)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .background(.secondary.opacity(0.08), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
 
-                Divider()
+                AboutAuthorBlock(store: store)
 
-                Label(store.copy.releaseUpdateReminder, systemImage: "exclamationmark.arrow.triangle.2.circlepath")
-                    .font(.caption.bold())
-                    .foregroundStyle(.secondary)
-                    .fixedSize(horizontal: false, vertical: true)
+                ProductInfoBlock(
+                    symbol: "checkmark.seal.fill",
+                    title: store.copy.currentVersionFeaturesTitle,
+                    rows: store.copy.currentVersionFeatures,
+                    tone: toneColor(store.displayModel.tone)
+                )
+
+                ProductInfoBlock(
+                    symbol: "sparkles",
+                    title: store.copy.futureVersionFeaturesTitle,
+                    rows: store.copy.futureVersionFeatures,
+                    tone: .accentColor
+                )
             }
             .padding(24)
             .frame(maxWidth: .infinity, alignment: .leading)
@@ -1024,7 +1039,7 @@ struct AboutFeedbackView: View {
         .frame(minHeight: 560)
         .background(.thickMaterial)
         .onAppear {
-            didCopyCodexPrompt = false
+            assistedFeedbackMessage = ""
             store.recordSettingsOpened(surface: "about_feedback")
         }
     }
@@ -1041,11 +1056,45 @@ struct AboutFeedbackView: View {
                 store.recordFeedbackClick("email")
                 openExternalURL("mailto:\(FeedbackDestinations.authorEmail)")
             }
-            Button(didCopyCodexPrompt ? store.copy.codexFeedbackCopiedAction : store.copy.codexFeedbackAction) {
-                copyCodexFeedbackPromptToClipboard(store: store)
-                didCopyCodexPrompt = true
+            Button(assistedFeedbackMessage.isEmpty ? store.copy.codexFeedbackAction : store.copy.codexFeedbackCopiedAction) {
+                let destination = startAssistedFeedback(store: store)
+                assistedFeedbackMessage = destination == .github ? store.copy.assistedFeedbackStartedMessage : store.copy.assistedFeedbackEmailMessage
             }
         }
+    }
+}
+
+struct AboutAuthorBlock: View {
+    @ObservedObject var store: QuotaStore
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Label(store.copy.aboutAuthorTitle, systemImage: "person.crop.circle")
+                .font(.headline)
+                .foregroundStyle(toneColor(store.displayModel.tone))
+            Text(store.copy.aboutAuthorBody)
+                .font(.system(size: 13, weight: .medium))
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+            HStack(spacing: 8) {
+                Button(store.copy.openXAction) {
+                    store.recordFeedbackClick("x")
+                    openExternalURL(authorXURL)
+                }
+                Button(store.copy.openDouyinAction) {
+                    store.recordFeedbackClick("douyin_open")
+                    openExternalURL(douyinURL)
+                }
+                Button(store.copy.contactAuthorTitle) {
+                    NotificationCenter.default.post(name: .quotaCapsuleShowContactAuthor, object: nil)
+                }
+            }
+            .buttonStyle(.bordered)
+            .controlSize(.small)
+        }
+        .padding(14)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(.white.opacity(0.07), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
     }
 }
 
@@ -1147,7 +1196,7 @@ struct ContactAuthorView: View {
     @ObservedObject var store: QuotaStore
     let context: String
     @State private var didCopyDouyin = false
-    @State private var didCopyCodexPrompt = false
+    @State private var assistedFeedbackMessage = ""
 
     init(store: QuotaStore, context: String = "settings") {
         self.store = store
@@ -1180,8 +1229,8 @@ struct ContactAuthorView: View {
                                     didCopyDouyin = true
                                     store.recordFeedbackClick("douyin_copy")
                                 }
-	                            )
-	                            .padding(.top, 2)
+                            )
+                            .padding(.top, 2)
                         }
                         .font(.caption)
                         .foregroundStyle(.secondary)
@@ -1206,9 +1255,9 @@ struct ContactAuthorView: View {
                                 store.recordFeedbackClick("douyin_open")
                                 openExternalURL(douyinURL)
                             }
-                            Button(didCopyCodexPrompt ? store.copy.codexFeedbackCopiedAction : store.copy.codexFeedbackAction) {
-                                copyCodexFeedbackPromptToClipboard(store: store)
-                                didCopyCodexPrompt = true
+                            Button(assistedFeedbackMessage.isEmpty ? store.copy.codexFeedbackAction : store.copy.codexFeedbackCopiedAction) {
+                                let destination = startAssistedFeedback(store: store)
+                                assistedFeedbackMessage = destination == .github ? store.copy.assistedFeedbackStartedMessage : store.copy.assistedFeedbackEmailMessage
                             }
                             Button(store.copy.refreshQuotaAction) {
                                 store.refresh()
@@ -1216,6 +1265,12 @@ struct ContactAuthorView: View {
                         }
                         .buttonStyle(.bordered)
                         .controlSize(.regular)
+                        if !assistedFeedbackMessage.isEmpty {
+                            Label(assistedFeedbackMessage, systemImage: "checkmark.circle.fill")
+                                .font(.caption.bold())
+                                .foregroundStyle(toneColor(store.displayModel.tone))
+                                .fixedSize(horizontal: false, vertical: true)
+                        }
                     }
                     .padding(14)
                     .frame(maxWidth: .infinity, minHeight: 250, alignment: .topLeading)
@@ -1242,7 +1297,7 @@ struct ContactAuthorView: View {
         .background(.thickMaterial)
         .onAppear {
             didCopyDouyin = false
-            didCopyCodexPrompt = false
+            assistedFeedbackMessage = ""
             store.recordSettingsOpened(surface: context)
         }
     }

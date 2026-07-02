@@ -91,10 +91,13 @@
 - 菜单栏必须提供简体中文、繁體中文、English 三种界面语言切换入口。
 - 语言切换入口必须包含 `Language`，语言选择按钮必须有图标或短码辅助识别。
 - 新用户首次打开必须先看到语言选择，再进入分步新手引导。
+- 状态栏必须由 AppKit `NSStatusItem` 持有，常驻显示短状态：状态 + 5 小时已用百分比，避免长文案被 macOS 挤出菜单栏。
 - 状态栏菜单必须有一级“联系作者”入口，点击一次即可看到作者、邮箱、X、抖音号和常用操作。
-- 展开面板必须提供浅层入口：刷新、GitHub Issues 或邮件、Codex 辅助反馈提示词、作者 X 主页、关于与反馈、高级数据设置。状态栏不可见或被系统折叠时，用户仍能找到反馈和设置。
-- “关于与反馈”必须展示产品介绍、当前版本已实现功能、后续预计加入功能、内测感谢和反馈说明。
+- 展开面板必须在详情顶部提供浅层入口：刷新、GitHub Issues 或邮件、AI 辅助反馈、作者 X 主页、关于与反馈、高级数据设置。状态栏不可见或被系统折叠时，用户仍能找到反馈和设置。
+- “AI 辅助反馈”必须一键打开 GitHub Issue 或邮件草稿，并复制可交给 Codex 的安全提示词；点击后必须显示明确成功反馈。
+- “关于与反馈”必须展示产品介绍、作者信息、当前可用能力、后续计划、内测感谢和反馈说明。
 - 每次发布前必须更新“关于与反馈”里的当前功能和未来计划，不能把过期路线图带进新版本。
+- 面向用户的“关于与反馈”界面不能显示“发布前必须更新本页”这类开发者提醒；提醒只放在发布清单和产品文档。
 - 反馈窗口的抖音号复制区域必须有复制视觉引导，重新打开窗口后不能继续显示已复制态。
 - 产品改进数据授权必须可以撤销，路径为：菜单栏 -> 高级数据设置 -> 本地数据与隐私授权 -> 不参与产品改进计划。
 - 撤销产品改进授权和清空本地历史都必须二次确认；确认弹窗需要清楚说明影响，并提供明确的保留选项。
@@ -108,7 +111,7 @@
 
 ## 调研得到的验收启发
 
-- Apple `MenuBarExtra` 文档把它定义为系统菜单栏里的常驻控制，所以它的标签必须跟随真实状态更新，不能只在启动时传入一次静态文案。来源：https://developer.apple.com/documentation/SwiftUI/MenuBarExtra
+- Apple `NSStatusItem` 是 AppKit 的传统菜单栏常驻项。当前版本用 AppDelegate 持有 `NSStatusItem`，状态栏标签必须跟随真实状态更新，并保持短文案。来源：https://developer.apple.com/documentation/appkit/nsstatusitem
 - Apple `isMovableByWindowBackground` 文档说明了窗口背景可拖动的系统能力，但无边框 SwiftUI 浮窗里仍要验证真实拖动手感，因为内容手势和窗口移动会互相影响。来源：https://developer.apple.com/documentation/appkit/nswindow/ismovablebywindowbackground
 - Apple `scheduledTimer` 文档说明它会被加入当前 run loop 的默认模式。对常驻刷新任务，后台 `Task.sleep` 循环比依赖默认 run loop timer 更适合当前场景。来源：https://developer.apple.com/documentation/foundation/timer/scheduledtimer%28timeinterval%3Ainvocation%3Arepeats%3A%29
 - Swift Snapshot Testing 这类工具可以补足静态视觉回归，但动效、拖拽和常驻浮窗手感仍需要录屏或人工验收。来源：https://github.com/pointfreeco/swift-snapshot-testing

@@ -7,22 +7,6 @@ struct QuotaCapsuleMacApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
 
     var body: some Scene {
-        MenuBarExtra {
-            MenuBarContent(
-                store: appDelegate.store,
-                onTogglePanel: appDelegate.togglePanel,
-                onShowAboutFeedback: appDelegate.showAboutFeedback,
-                onShowContactAuthor: appDelegate.showContactAuthor,
-                onShowAdvancedDataSettings: appDelegate.showAdvancedDataSettings,
-                onShowOnboarding: appDelegate.showOnboarding,
-                onConfirmRevokeAnalytics: appDelegate.confirmRevokeAnalytics,
-                onConfirmClearLocalHistory: appDelegate.confirmClearLocalHistory
-            )
-        } label: {
-            MenuBarLabel(store: appDelegate.store)
-        }
-        .menuBarExtraStyle(.menu)
-
         Settings {
             AdvancedDataSettingsView(
                 store: appDelegate.store,
@@ -42,10 +26,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var contactAuthorWindow: NSWindow?
     private var advancedDataSettingsWindow: NSWindow?
     private var onboardingWindow: NSWindow?
+    private var statusBarController: StatusBarController?
     private var notificationObservers: [NSObjectProtocol] = []
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         NSApp.setActivationPolicy(.accessory)
+        configureStatusBar()
         observePanelActions()
         attach(store: store)
         if !store.hasCompletedOnboarding {
@@ -202,6 +188,32 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         NSApp.activate(ignoringOtherApps: true)
     }
 
+    private func configureStatusBar() {
+        let controller = StatusBarController(store: store)
+        controller.onTogglePanel = { [weak self] in
+            self?.togglePanel()
+        }
+        controller.onShowAboutFeedback = { [weak self] in
+            self?.showAboutFeedback()
+        }
+        controller.onShowContactAuthor = { [weak self] in
+            self?.showContactAuthor()
+        }
+        controller.onShowAdvancedDataSettings = { [weak self] in
+            self?.showAdvancedDataSettings()
+        }
+        controller.onShowOnboarding = { [weak self] in
+            self?.showOnboarding()
+        }
+        controller.onConfirmRevokeAnalytics = { [weak self] in
+            self?.confirmRevokeAnalytics()
+        }
+        controller.onConfirmClearLocalHistory = { [weak self] in
+            self?.confirmClearLocalHistory()
+        }
+        statusBarController = controller
+    }
+
     private func observePanelActions() {
         let center = NotificationCenter.default
         notificationObservers.append(
@@ -249,18 +261,18 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             store.recordFeedbackNudgeDecision("open_feedback")
             showAboutFeedback()
         case .alertSecondButtonReturn:
-            store.recordFeedbackNudgeDecision("copy_codex_prompt")
-            copyCodexFeedbackPromptToClipboard(store: store)
-            showCopiedFeedbackPromptAlert()
+            store.recordFeedbackNudgeDecision("assisted_feedback")
+            let destination = startAssistedFeedback(store: store)
+            showAssistedFeedbackStartedAlert(destination: destination)
         default:
             store.recordFeedbackNudgeDecision("later")
         }
     }
 
-    private func showCopiedFeedbackPromptAlert() {
+    private func showAssistedFeedbackStartedAlert(destination: AssistedFeedbackDestination) {
         let alert = NSAlert()
-        alert.messageText = store.copy.feedbackNudgeCodexAction
-        alert.informativeText = store.copy.feedbackNudgeCopiedMessage
+        alert.messageText = store.copy.codexFeedbackCopiedAction
+        alert.informativeText = destination == .github ? store.copy.assistedFeedbackStartedMessage : store.copy.assistedFeedbackEmailMessage
         alert.alertStyle = .informational
         alert.addButton(withTitle: store.copy.doneAction)
         alert.runModal()
