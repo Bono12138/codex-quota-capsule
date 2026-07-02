@@ -49,25 +49,34 @@ struct DockedCapsuleView: View {
     @ObservedObject var store: QuotaStore
 
     var body: some View {
-        HStack(spacing: 7) {
+        HStack(spacing: 6) {
             Circle()
                 .fill(toneColor(store.displayModel.tone))
                 .frame(width: 8, height: 8)
-            VStack(alignment: .leading, spacing: 1) {
-                Text(store.visibleStatusText)
-                    .font(.system(size: 12, weight: .bold))
-                    .lineLimit(1)
-                if let usedText = store.visibleCompactUsedBadgeText {
-                    Text(usedText)
-                        .font(.system(size: 9, weight: .bold))
-                        .foregroundStyle(.secondary)
-                        .lineLimit(1)
-                        .minimumScaleFactor(0.72)
+            Image(systemName: "gauge.with.dots.needle.33percent")
+                .font(.system(size: 12, weight: .bold))
+                .foregroundStyle(.primary.opacity(0.76))
+            VStack(alignment: .leading, spacing: 2) {
+                HStack(spacing: 4) {
+                    Text(store.visibleStatusText)
+                        .font(.system(size: 12, weight: .bold))
+                    if let used = store.compactUsedPercent {
+                        Text("\(used)%")
+                            .font(.system(size: 11, weight: .bold))
+                            .monospacedDigit()
+                            .foregroundStyle(toneColor(store.displayModel.tone))
+                    }
                 }
+                .lineLimit(1)
+                .minimumScaleFactor(0.72)
+                Text(store.copy.compactUsageLabel)
+                    .font(.system(size: 9, weight: .bold))
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
             }
             .layoutPriority(1)
         }
-        .padding(.horizontal, 12)
+        .padding(.horizontal, 10)
         .frame(width: CapsuleViewMetrics.dockedContentWidth, height: CapsuleViewMetrics.dockedContentHeight)
         .background {
             Capsule(style: .continuous)
@@ -171,7 +180,7 @@ struct CompactCapsuleView: View {
     }
 
     private var compactMeterWidth: CGFloat {
-        min(118, max(96, store.capsuleWidth * 0.28))
+        min(150, max(126, store.capsuleWidth * 0.34))
     }
 }
 
@@ -228,6 +237,11 @@ struct CompactPaceTrack: View {
                 }
             }
             .frame(height: 4)
+            Text("\(percent)%")
+                .font(.system(size: 10, weight: .bold))
+                .monospacedDigit()
+                .foregroundStyle(.primary.opacity(0.72))
+                .frame(width: 34, alignment: .trailing)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
     }
@@ -375,17 +389,17 @@ struct MetricRow: View {
 
     var body: some View {
         VStack(spacing: 5) {
-            HStack {
-                Text(metric.label)
-                    .font(.system(size: 12, weight: .medium))
-                    .foregroundStyle(.secondary)
-                Spacer()
-                Text(metric.value)
-                    .font(.system(size: 12, weight: .bold))
-                    .monospacedDigit()
-            }
-
             if let numericValue = metric.numericValue {
+                HStack {
+                    Text(metric.label)
+                        .font(.system(size: 12, weight: .medium))
+                        .foregroundStyle(.secondary)
+                    Spacer()
+                    Text(metric.value)
+                        .font(.system(size: 12, weight: .bold))
+                        .monospacedDigit()
+                }
+
                 GeometryReader { geometry in
                     ZStack(alignment: .leading) {
                         Capsule()
@@ -396,6 +410,19 @@ struct MetricRow: View {
                     }
                 }
                 .frame(height: 7)
+            } else {
+                HStack(spacing: 8) {
+                    Text(metric.label)
+                        .font(.system(size: 12, weight: .medium))
+                        .foregroundStyle(.secondary)
+                    Text(metric.value)
+                        .font(.system(size: 12, weight: .bold))
+                        .monospacedDigit()
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 3)
+                        .background(toneColor(tone).opacity(0.16), in: Capsule())
+                    Spacer(minLength: 0)
+                }
             }
         }
     }
