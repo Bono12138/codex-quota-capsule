@@ -42,7 +42,7 @@ APP_RESOURCE_SOURCE="$ROOT_DIR/Sources/QuotaCapsuleMac/Resources"
 pkill -x "$EXECUTABLE_NAME" >/dev/null 2>&1 || true
 
 if [[ "$CHANNEL" == "development" && -z "$GITHUB_ISSUES_URL" ]]; then
-  echo "warning: development build has no QUOTA_CAPSULE_DEV_GITHUB_ISSUES_URL; GitHub Issues button will be hidden." >&2
+  echo "warning: development build has no QUOTA_CAPSULE_DEV_GITHUB_ISSUES_URL; unified feedback will open an email draft." >&2
 fi
 
 swift build -c release --product "$PRODUCT_NAME"
