@@ -6,7 +6,7 @@ private let douyinID = "huotuichang439"
 private let douyinURL = "https://v.douyin.com/Alo9NohbnoY/"
 
 enum CapsuleViewMetrics {
-    static let shadowPadding: CGFloat = 8
+    static let shadowPadding: CGFloat = 16
     static let collapsedContentHeight: CGFloat = 60
     static let collapsedHeight: CGFloat = collapsedContentHeight + shadowPadding * 2
     static let expandedHeight: CGFloat = 640
@@ -271,7 +271,12 @@ struct CompactStatusNote: View {
 struct DetailPopoverView: View {
     @ObservedObject var store: QuotaStore
     private var visibleMetrics: [CapsuleMetric] {
-        store.displayModel.metrics.filter { $0.label != store.copy.metricResetBuffer }
+        store.displayModel.metrics.filter {
+            $0.label != store.copy.metricResetBuffer && $0.label != store.copy.metricPace
+        }
+    }
+    private var paceMetric: CapsuleMetric? {
+        store.displayModel.metrics.first { $0.label == store.copy.metricPace }
     }
 
     var body: some View {
@@ -308,11 +313,17 @@ struct DetailPopoverView: View {
                 }
             }
 
-            HStack(spacing: 10) {
-                MiniStat(title: store.copy.weeklyRemainingTitle, value: store.weeklyText)
-                MiniStat(title: store.copy.resetTimeTitle, value: store.resetText)
-                MiniStat(title: store.copy.successUpdateTitle, value: store.lastRefreshText)
-            }
+            OverviewStatsGrid(
+                paceTitle: store.copy.metricPace,
+                paceValue: paceMetric?.value ?? store.copy.unknownValue,
+                weeklyTitle: store.copy.weeklyRemainingTitle,
+                weeklyValue: store.weeklyText,
+                resetTitle: store.copy.resetTimeTitle,
+                resetValue: store.resetText,
+                updatedTitle: store.copy.successUpdateTitle,
+                updatedValue: store.lastRefreshText,
+                tone: store.displayModel.tone
+            )
 
             WeeklyProjectionView(store: store)
 
@@ -338,7 +349,7 @@ struct DetailPopoverView: View {
         .background {
             RoundedRectangle(cornerRadius: 22, style: .continuous)
                 .fill(panelSurfaceColor())
-                .shadow(color: .black.opacity(0.12), radius: 18, y: 9)
+                .shadow(color: .black.opacity(0.08), radius: 9, y: 5)
                 .overlay(
                     RoundedRectangle(cornerRadius: 22, style: .continuous)
                         .fill(
@@ -358,6 +369,70 @@ struct DetailPopoverView: View {
             RoundedRectangle(cornerRadius: 22, style: .continuous)
                 .stroke(toneColor(store.displayModel.tone).opacity(store.onboardingFocus == .detail ? 0.95 : 0), lineWidth: 3)
                 .shadow(color: toneColor(store.displayModel.tone).opacity(store.onboardingFocus == .detail ? 0.45 : 0), radius: 9)
+        )
+    }
+}
+
+struct OverviewStatsGrid: View {
+    let paceTitle: String
+    let paceValue: String
+    let weeklyTitle: String
+    let weeklyValue: String
+    let resetTitle: String
+    let resetValue: String
+    let updatedTitle: String
+    let updatedValue: String
+    let tone: CapsuleLevel
+
+    private var columns: [GridItem] {
+        [
+            GridItem(.flexible(), spacing: 10),
+            GridItem(.flexible(), spacing: 10)
+        ]
+    }
+
+    var body: some View {
+        LazyVGrid(columns: columns, alignment: .leading, spacing: 10) {
+            OverviewStatTile(title: paceTitle, value: paceValue, tone: tone, emphasized: true)
+            OverviewStatTile(title: weeklyTitle, value: weeklyValue, tone: tone, emphasized: false)
+            OverviewStatTile(title: resetTitle, value: resetValue, tone: tone, emphasized: false)
+            OverviewStatTile(title: updatedTitle, value: updatedValue, tone: tone, emphasized: false)
+        }
+        .padding(10)
+        .background(.white.opacity(0.06), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                .stroke(.white.opacity(0.12), lineWidth: 1)
+        )
+    }
+}
+
+struct OverviewStatTile: View {
+    let title: String
+    let value: String
+    let tone: CapsuleLevel
+    let emphasized: Bool
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 5) {
+            Text(title)
+                .font(.system(size: 10, weight: .bold))
+                .foregroundStyle(.secondary)
+                .lineLimit(1)
+                .minimumScaleFactor(0.78)
+            Text(value)
+                .font(.system(size: emphasized ? 18 : 17, weight: .bold))
+                .monospacedDigit()
+                .foregroundStyle(emphasized ? Color.primary : Color.primary.opacity(0.92))
+                .lineLimit(1)
+                .minimumScaleFactor(0.72)
+        }
+        .frame(maxWidth: .infinity, minHeight: 54, alignment: .leading)
+        .padding(.horizontal, 11)
+        .padding(.vertical, 9)
+        .background(
+            (emphasized ? toneColor(tone).opacity(0.16) : Color.white.opacity(0.07)),
+            in: RoundedRectangle(cornerRadius: 12, style: .continuous)
         )
     }
 }
