@@ -92,7 +92,7 @@ owner 本机保留两个可并存版本：
 
 | 版本 | App 名称 | Bundle ID | 本地数据目录 | GitHub Issues 默认值 | Analytics endpoint |
 | --- | --- | --- | --- | --- | --- |
-| 开发版 | `Quota Capsule Dev.app` | `com.bono.quota-capsule.dev` | `~/Library/Application Support/Quota Capsule Dev` | 不默认指向 public；需要 `QUOTA_CAPSULE_DEV_GITHUB_ISSUES_URL` | `QUOTA_CAPSULE_DEV_ANALYTICS_ENDPOINT`，兼容旧 `QUOTA_CAPSULE_ANALYTICS_ENDPOINT` |
+| 开发版 | `Quota Capsule Dev Local.app` | `com.bono.quota-capsule.dev` | `~/Library/Application Support/Quota Capsule Dev Local` | 不默认指向 public；需要 `QUOTA_CAPSULE_DEV_GITHUB_ISSUES_URL` | `QUOTA_CAPSULE_DEV_ANALYTICS_ENDPOINT`，兼容旧 `QUOTA_CAPSULE_ANALYTICS_ENDPOINT` |
 | 内测版 | `Quota Capsule Beta.app` | `com.bono.quota-capsule.beta` | `~/Library/Application Support/Quota Capsule Beta` | `https://github.com/Bono12138/codex-quota-capsule/issues` | `QUOTA_CAPSULE_PUBLIC_ANALYTICS_ENDPOINT` |
 
 执行规则：
@@ -100,6 +100,7 @@ owner 本机保留两个可并存版本：
 - 内测版的用户反馈入口必须默认打开 public issues。
 - 开发版不能默认打开 public issues；没有配置 private issues URL 时，隐藏 GitHub Issues 按钮。
 - 两个版本使用不同的 UserDefaults key 前缀、Application Support 目录和匿名 install id，避免本机状态串用。
+- 两个版本使用不同进程名：内测版 `QuotaCapsuleBeta`，开发版 `QuotaCapsuleDevLocal`，允许同时打开做对比。
 - 产品事件上报和用户主动提交 issue 是两条通道：analytics endpoint 只收结构化产品事件，GitHub Issues 用于用户主动反馈、bug 和公开需求。
 
 ## 仓库拆分

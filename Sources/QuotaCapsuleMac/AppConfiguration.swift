@@ -101,7 +101,7 @@ struct AppConfiguration {
     private static func defaultDisplayName(for channel: ReleaseChannel) -> String {
         switch channel {
         case .development:
-            return "Quota Capsule Dev"
+            return "Quota Capsule Dev Local"
         case .internalTest:
             return "Quota Capsule Beta"
         }
@@ -119,7 +119,7 @@ struct AppConfiguration {
     private static func applicationSupportDirectoryName(for channel: ReleaseChannel) -> String {
         switch channel {
         case .development:
-            return "Quota Capsule Dev"
+            return "Quota Capsule Dev Local"
         case .internalTest:
             return "Quota Capsule Beta"
         }

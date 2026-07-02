@@ -7,12 +7,14 @@ CHANNEL="${QUOTA_CAPSULE_CHANNEL:-internal-test}"
 case "$CHANNEL" in
   development|dev)
     CHANNEL="development"
-    BUNDLE_NAME="${QUOTA_CAPSULE_BUNDLE_NAME:-Quota Capsule Dev}"
-    ZIP_NAME="Quota-Capsule-Dev-macOS.zip"
+    BUNDLE_NAME="${QUOTA_CAPSULE_BUNDLE_NAME:-Quota Capsule Dev Local}"
+    EXECUTABLE_NAME="QuotaCapsuleDevLocal"
+    ZIP_NAME="Quota-Capsule-Dev-Local-macOS.zip"
     ;;
   internal-test|internal_test|beta|public)
     CHANNEL="internal-test"
     BUNDLE_NAME="${QUOTA_CAPSULE_BUNDLE_NAME:-Quota Capsule Beta}"
+    EXECUTABLE_NAME="QuotaCapsuleBeta"
     ZIP_NAME="Quota-Capsule-Beta-macOS.zip"
     ;;
   *)
@@ -27,7 +29,7 @@ APP_BUNDLE="$DIST_DIR/$BUNDLE_NAME.app"
 ZIP_PATH="$DIST_DIR/$ZIP_NAME"
 
 QUOTA_CAPSULE_CHANNEL="$CHANNEL" "$ROOT_DIR/script/build_and_run.sh" --verify
-pkill -x "QuotaCapsuleMac" >/dev/null 2>&1 || true
+pkill -x "$EXECUTABLE_NAME" >/dev/null 2>&1 || true
 
 rm -f "$ZIP_PATH"
 (

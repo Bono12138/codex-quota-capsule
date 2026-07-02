@@ -11,14 +11,16 @@ ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 case "$CHANNEL" in
   development|dev)
     CHANNEL="development"
-    BUNDLE_NAME="${QUOTA_CAPSULE_BUNDLE_NAME:-Quota Capsule Dev}"
+    BUNDLE_NAME="${QUOTA_CAPSULE_BUNDLE_NAME:-Quota Capsule Dev Local}"
     BUNDLE_ID="${QUOTA_CAPSULE_BUNDLE_ID:-com.bono.quota-capsule.dev}"
+    EXECUTABLE_NAME="QuotaCapsuleDevLocal"
     GITHUB_ISSUES_URL="${QUOTA_CAPSULE_DEV_GITHUB_ISSUES_URL:-}"
     ;;
   internal-test|internal_test|beta|public)
     CHANNEL="internal-test"
     BUNDLE_NAME="${QUOTA_CAPSULE_BUNDLE_NAME:-Quota Capsule Beta}"
     BUNDLE_ID="${QUOTA_CAPSULE_BUNDLE_ID:-com.bono.quota-capsule.beta}"
+    EXECUTABLE_NAME="QuotaCapsuleBeta"
     GITHUB_ISSUES_URL="${QUOTA_CAPSULE_PUBLIC_GITHUB_ISSUES_URL:-https://github.com/Bono12138/codex-quota-capsule/issues}"
     ;;
   *)
@@ -33,11 +35,11 @@ APP_BUNDLE="$DIST_DIR/$BUNDLE_NAME.app"
 APP_CONTENTS="$APP_BUNDLE/Contents"
 APP_MACOS="$APP_CONTENTS/MacOS"
 APP_RESOURCES="$APP_CONTENTS/Resources"
-APP_BINARY="$APP_MACOS/$PRODUCT_NAME"
+APP_BINARY="$APP_MACOS/$EXECUTABLE_NAME"
 INFO_PLIST="$APP_CONTENTS/Info.plist"
 APP_RESOURCE_SOURCE="$ROOT_DIR/Sources/QuotaCapsuleMac/Resources"
 
-pkill -x "$PRODUCT_NAME" >/dev/null 2>&1 || true
+pkill -x "$EXECUTABLE_NAME" >/dev/null 2>&1 || true
 
 if [[ "$CHANNEL" == "development" && -z "$GITHUB_ISSUES_URL" ]]; then
   echo "warning: development build has no QUOTA_CAPSULE_DEV_GITHUB_ISSUES_URL; GitHub Issues button will be hidden." >&2
@@ -61,7 +63,7 @@ cat >"$INFO_PLIST" <<PLIST
 <plist version="1.0">
 <dict>
   <key>CFBundleExecutable</key>
-  <string>$PRODUCT_NAME</string>
+  <string>$EXECUTABLE_NAME</string>
   <key>CFBundleIdentifier</key>
   <string>$BUNDLE_ID</string>
   <key>CFBundleName</key>
@@ -105,7 +107,7 @@ case "$MODE" in
     ;;
   --logs|logs)
     open_app
-    /usr/bin/log stream --info --style compact --predicate "process == \"$PRODUCT_NAME\""
+    /usr/bin/log stream --info --style compact --predicate "process == \"$EXECUTABLE_NAME\""
     ;;
   --telemetry|telemetry)
     open_app
@@ -114,7 +116,7 @@ case "$MODE" in
   --verify|verify)
     open_app
     sleep 2
-    pgrep -x "$PRODUCT_NAME" >/dev/null
+    pgrep -x "$EXECUTABLE_NAME" >/dev/null
     ;;
   *)
     echo "usage: $0 [run|--debug|--logs|--telemetry|--verify]" >&2

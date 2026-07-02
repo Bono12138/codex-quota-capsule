@@ -161,7 +161,7 @@ Apple Developer Program 不等于支付系统。
 https://github.com/Bono12138/codex-quota-capsule
 ```
 
-公开内测版默认构建 `Quota Capsule Beta.app`，反馈入口默认打开 public GitHub Issues。owner 本机开发版使用 `Quota Capsule Dev.app`，需要通过 `QUOTA_CAPSULE_DEV_GITHUB_ISSUES_URL` 接 private issues。
+公开内测版默认构建 `Quota Capsule Beta.app`，反馈入口默认打开 public GitHub Issues。owner 本机开发版使用 `Quota Capsule Dev Local.app`，需要通过 `QUOTA_CAPSULE_DEV_GITHUB_ISSUES_URL` 接 private issues。
 
 推荐文案：
 

@@ -47,7 +47,19 @@ open "/Applications/Quota Capsule Beta.app"
 | 通道 | 应用名 | Bundle ID | 本地数据目录 | 默认反馈入口 |
 | --- | --- | --- | --- | --- |
 | 内测版 | `Quota Capsule Beta.app` | `com.bono.quota-capsule.beta` | `~/Library/Application Support/Quota Capsule Beta` | public GitHub Issues |
-| 开发版 | `Quota Capsule Dev.app` | `com.bono.quota-capsule.dev` | `~/Library/Application Support/Quota Capsule Dev` | 需要显式配置 private Issues URL |
+| 开发版 | `Quota Capsule Dev Local.app` | `com.bono.quota-capsule.dev` | `~/Library/Application Support/Quota Capsule Dev Local` | 需要显式配置 private Issues URL |
+
+两个版本的 app 包也放在不同构建目录：
+
+```text
+dist/internal-test/Quota Capsule Beta.app
+dist/development/Quota Capsule Dev Local.app
+```
+
+两个版本的进程名不同，允许同时打开做对比：
+
+- 内测版进程：`QuotaCapsuleBeta`
+- 开发版进程：`QuotaCapsuleDevLocal`
 
 内测版命令：
 
