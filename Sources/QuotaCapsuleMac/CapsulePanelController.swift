@@ -26,6 +26,7 @@ final class CapsulePanelController {
     private let store: QuotaStore
     private var dragStartOrigin: NSPoint?
     private var dragStartMouseLocation: NSPoint?
+    private var dragStartFrame: NSRect?
     private var hiddenEdge: EdgeHiddenState?
     private var isResizeInProgress = false
     private var resizeEdge: CapsuleResizeEdge?
@@ -39,6 +40,7 @@ final class CapsulePanelController {
     private let edgeSnapThreshold: CGFloat = 18
     private let edgeMargin: CGFloat = 12
     private let dockedEdgeInset: CGFloat = 4
+    private let edgeDockPushDistance: CGFloat = 16
 
     init(store: QuotaStore) {
         self.store = store
@@ -132,7 +134,8 @@ final class CapsulePanelController {
         store.$capsuleWidth
             .removeDuplicates()
             .sink { [weak self] _ in
-                self?.resizeForCurrentState()
+                guard let self, !self.isResizeInProgress else { return }
+                self.resizeForCurrentState()
             }
             .store(in: &cancellables)
 
@@ -163,10 +166,10 @@ final class CapsulePanelController {
         return store.isPanelExpanded ? expandedHeight : collapsedHeight
     }
 
-    private static func resize(panel: NSPanel, width: CGFloat, height: CGFloat) {
+    private static func resize(panel: NSPanel, width: CGFloat, height: CGFloat, originX: CGFloat? = nil) {
         let oldFrame = panel.frame
         let newFrame = NSRect(
-            x: oldFrame.origin.x,
+            x: originX ?? oldFrame.origin.x,
             y: oldFrame.maxY - height,
             width: width,
             height: height
@@ -202,16 +205,17 @@ final class CapsulePanelController {
 
     private func handleResizeChanged(_ targetWidth: CGFloat) {
         store.setCapsuleWidth(targetWidth)
-        guard resizeEdge == .leading,
-              let resizeStartFrame else {
-            return
+        let originX: CGFloat?
+        if resizeEdge == .leading, let resizeStartFrame {
+            originX = resizeStartFrame.maxX - currentPanelWidth
+        } else {
+            originX = nil
         }
-        let frame = panel.frame
-        panel.setFrameOrigin(
-            NSPoint(
-                x: resizeStartFrame.maxX - frame.width,
-                y: frame.origin.y
-            )
+        Self.resize(
+            panel: panel,
+            width: currentPanelWidth,
+            height: currentPanelHeight,
+            originX: originX
         )
     }
 
@@ -231,6 +235,7 @@ final class CapsulePanelController {
         if dragStartOrigin == nil {
             dragStartOrigin = panel.frame.origin
             dragStartMouseLocation = currentMouse
+            dragStartFrame = panel.frame
         }
 
         guard let start = dragStartOrigin,
@@ -250,12 +255,14 @@ final class CapsulePanelController {
     }
 
     private func finishMovingPanel() {
+        let startFrame = dragStartFrame
         dragStartOrigin = nil
         dragStartMouseLocation = nil
-        snapToEdgeIfNeeded()
+        dragStartFrame = nil
+        snapToEdgeIfNeeded(startFrame: startFrame)
     }
 
-    private func snapToEdgeIfNeeded() {
+    private func snapToEdgeIfNeeded(startFrame: NSRect?) {
         guard let visible = activeScreen()?.visibleFrame else {
             return
         }
@@ -263,12 +270,12 @@ final class CapsulePanelController {
         var frame = panel.frame
         frame.origin.y = clampedY(frame.origin.y, height: frame.height, visible: visible)
 
-        if frame.minX <= visible.minX + edgeSnapThreshold {
+        if shouldDockLeft(frame: frame, visible: visible, startFrame: startFrame) {
             dockCapsule(edge: .left, visible: visible, y: frame.origin.y)
             return
         }
 
-        if frame.maxX >= visible.maxX - edgeSnapThreshold {
+        if shouldDockRight(frame: frame, visible: visible, startFrame: startFrame) {
             dockCapsule(edge: .right, visible: visible, y: frame.origin.y)
             return
         }
@@ -276,6 +283,34 @@ final class CapsulePanelController {
         hiddenEdge = nil
         store.setCapsuleDocked(false)
         panel.setFrameOrigin(clampedOrigin(for: frame, visible: visible))
+    }
+
+    private func shouldDockLeft(frame: NSRect, visible: NSRect, startFrame: NSRect?) -> Bool {
+        guard frame.minX <= visible.minX + edgeSnapThreshold else {
+            return false
+        }
+        guard let startFrame else {
+            return true
+        }
+        let startedNearEdge = startFrame.minX <= visible.minX + edgeSnapThreshold
+        guard startedNearEdge else {
+            return true
+        }
+        return frame.minX <= visible.minX - 4 || startFrame.minX - frame.minX >= edgeDockPushDistance
+    }
+
+    private func shouldDockRight(frame: NSRect, visible: NSRect, startFrame: NSRect?) -> Bool {
+        guard frame.maxX >= visible.maxX - edgeSnapThreshold else {
+            return false
+        }
+        guard let startFrame else {
+            return true
+        }
+        let startedNearEdge = startFrame.maxX >= visible.maxX - edgeSnapThreshold
+        guard startedNearEdge else {
+            return true
+        }
+        return frame.maxX >= visible.maxX + 4 || frame.maxX - startFrame.maxX >= edgeDockPushDistance
     }
 
     private func dockCapsule(edge: EdgeHiddenState, visible: NSRect, y: CGFloat) {
@@ -381,9 +416,13 @@ private final class TransparentHostingView<Content: View>: NSHostingView<Content
     private var mouseDownLocation: NSPoint?
     private var isPanelDragging = false
     private var activeMouseMode: MouseMode?
+    private var pendingResizeEdge: CapsuleResizeEdge?
     private var activeResizeEdge: CapsuleResizeEdge?
     private var resizeStartMouseX: CGFloat?
     private var resizeStartWidth: CGFloat?
+    private var dragActivationDistance: CGFloat { 12 }
+    private var resizeActivationDistance: CGFloat { 12 }
+    private var resizeHitWidth: CGFloat { 42 }
 
     private enum MouseMode {
         case moveOrClick
@@ -446,20 +485,14 @@ private final class TransparentHostingView<Content: View>: NSHostingView<Content
 
     override func mouseDown(with event: NSEvent) {
         let point = convert(event.locationInWindow, from: nil)
-        if let edge = resizeEdge(at: point) {
-            activeMouseMode = .resize
-            activeResizeEdge = edge
-            resizeStartMouseX = NSEvent.mouseLocation.x
-            resizeStartWidth = max(
-                0,
-                bounds.width - CapsuleViewMetrics.shadowPadding * 2
-            )
-            onResizeStarted?(edge)
-            return
-        }
-
         activeMouseMode = .moveOrClick
         mouseDownLocation = NSEvent.mouseLocation
+        pendingResizeEdge = resizeEdge(at: point)
+        resizeStartMouseX = NSEvent.mouseLocation.x
+        resizeStartWidth = max(
+            0,
+            bounds.width - CapsuleViewMetrics.shadowPadding * 2
+        )
         isPanelDragging = false
     }
 
@@ -492,8 +525,31 @@ private final class TransparentHostingView<Content: View>: NSHostingView<Content
         }
 
         let current = NSEvent.mouseLocation
+        let deltaX = current.x - start.x
+        let deltaY = current.y - start.y
         let distance = hypot(current.x - start.x, current.y - start.y)
-        guard isPanelDragging || distance >= 8 else {
+
+        if let pendingResizeEdge,
+           !isPanelDragging,
+           distance >= resizeActivationDistance,
+           abs(deltaX) >= max(6, abs(deltaY) * 1.2),
+           let resizeStartMouseX,
+           let resizeStartWidth {
+            activeMouseMode = .resize
+            activeResizeEdge = pendingResizeEdge
+            onResizeStarted?(pendingResizeEdge)
+            let rawWidth: CGFloat
+            switch pendingResizeEdge {
+            case .leading:
+                rawWidth = resizeStartWidth - (NSEvent.mouseLocation.x - resizeStartMouseX)
+            case .trailing:
+                rawWidth = resizeStartWidth + (NSEvent.mouseLocation.x - resizeStartMouseX)
+            }
+            onResizeChanged?((rawWidth / 2).rounded() * 2)
+            return
+        }
+
+        guard isPanelDragging || distance >= dragActivationDistance else {
             return
         }
 
@@ -504,7 +560,10 @@ private final class TransparentHostingView<Content: View>: NSHostingView<Content
     override func mouseUp(with event: NSEvent) {
         if activeMouseMode == .resize {
             activeMouseMode = nil
+            pendingResizeEdge = nil
             activeResizeEdge = nil
+            mouseDownLocation = nil
+            isPanelDragging = false
             resizeStartMouseX = nil
             resizeStartWidth = nil
             onResizeEnded?()
@@ -515,6 +574,10 @@ private final class TransparentHostingView<Content: View>: NSHostingView<Content
             activeMouseMode = nil
             mouseDownLocation = nil
             isPanelDragging = false
+            pendingResizeEdge = nil
+            activeResizeEdge = nil
+            resizeStartMouseX = nil
+            resizeStartWidth = nil
         }
 
         if isPanelDragging {
@@ -535,8 +598,8 @@ private final class TransparentHostingView<Content: View>: NSHostingView<Content
         let topBandHeight = min(bounds.height, CapsuleViewMetrics.collapsedHeight + 18)
         let y = bounds.maxY - topBandHeight
         return [
-            NSRect(x: bounds.minX, y: y, width: 58, height: topBandHeight),
-            NSRect(x: bounds.maxX - 58, y: y, width: 58, height: topBandHeight)
+            NSRect(x: bounds.minX, y: y, width: resizeHitWidth, height: topBandHeight),
+            NSRect(x: bounds.maxX - resizeHitWidth, y: y, width: resizeHitWidth, height: topBandHeight)
         ]
     }
 
@@ -548,10 +611,10 @@ private final class TransparentHostingView<Content: View>: NSHostingView<Content
         guard point.y >= bounds.maxY - topBandHeight else {
             return nil
         }
-        if point.x <= bounds.minX + 58 {
+        if point.x <= bounds.minX + resizeHitWidth {
             return .leading
         }
-        if point.x >= bounds.maxX - 58 {
+        if point.x >= bounds.maxX - resizeHitWidth {
             return .trailing
         }
         return nil

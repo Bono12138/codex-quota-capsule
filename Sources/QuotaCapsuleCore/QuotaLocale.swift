@@ -196,7 +196,7 @@ public struct QuotaCopy: Equatable, Sendable {
         switch locale {
         case .zhHans: "实时读取成功"
         case .zhHant: "即時讀取成功"
-        case .en: "Live read succeeded"
+        case .en: "Live"
         }
     }
 
@@ -204,7 +204,7 @@ public struct QuotaCopy: Equatable, Sendable {
         switch locale {
         case .zhHans: "显示上次成功数据"
         case .zhHant: "顯示上次成功資料"
-        case .en: "Showing last success"
+        case .en: "Last success"
         }
     }
 
@@ -212,7 +212,7 @@ public struct QuotaCopy: Equatable, Sendable {
         switch locale {
         case .zhHans: "读取失败"
         case .zhHant: "讀取失敗"
-        case .en: "Read failed"
+        case .en: "Failed"
         }
     }
 
@@ -236,7 +236,15 @@ public struct QuotaCopy: Equatable, Sendable {
         switch locale {
         case .zhHans: "可从菜单栏手动刷新。"
         case .zhHant: "可從選單列手動重新整理。"
-        case .en: "You can refresh manually from the menu bar."
+        case .en: "Manual refresh is in the menu bar."
+        }
+    }
+
+    public var projectHomeAction: String {
+        switch locale {
+        case .zhHans: "项目主页"
+        case .zhHant: "專案主頁"
+        case .en: "Project home"
         }
     }
 
@@ -711,9 +719,9 @@ public struct QuotaCopy: Equatable, Sendable {
 
     public var onboardingAuthorActionBody: String {
         switch locale {
-        case .zhHans: "内测阶段会持续更新。关注 X 或抖音可以看到后续进展，也可以直接把问题发到 GitHub Issues 或邮箱。"
-        case .zhHant: "內測階段會持續更新。追蹤 X 或抖音可以看到後續進展，也可以直接把問題傳到 GitHub Issues 或信箱。"
-        case .en: "This beta will keep changing. Follow X or Douyin for updates, or send issues through GitHub Issues and email."
+        case .zhHans: "内测会持续更新。关注 X 或抖音看进展，也可以把问题发到 GitHub Issues 或邮箱。"
+        case .zhHant: "內測會持續更新。追蹤 X 或抖音看進展，也可以把問題傳到 GitHub Issues 或信箱。"
+        case .en: "Follow X or Douyin for updates, or send issues through GitHub Issues and email."
         }
     }
 
@@ -743,9 +751,9 @@ public struct QuotaCopy: Equatable, Sendable {
 
     public var onboardingInteraction: String {
         switch locale {
-        case .zhHans: "点击悬浮胶囊看原因；菜单栏可以刷新、反馈、退出。"
-        case .zhHant: "點擊懸浮膠囊看原因；選單列可以重新整理、回饋、退出。"
-        case .en: "Click the capsule for details; use the menu bar to refresh, send feedback, or quit."
+        case .zhHans: "点击胶囊看原因；拖两侧调整宽度，拖到边缘进入迷你形态。"
+        case .zhHant: "點擊膠囊看原因；拖兩側調整寬度，拖到邊緣進入迷你形態。"
+        case .en: "Click for details; drag side handles to resize, or drag to an edge for mini mode."
         }
     }
 
@@ -1023,9 +1031,9 @@ public struct QuotaCopy: Equatable, Sendable {
 
     public var onboardingCapsuleStepBody: String {
         switch locale {
-        case .zhHans: "收起时显示状态、5 小时已用比例和节奏对比。颜色先告诉你风险。"
-        case .zhHant: "收起時顯示狀態、5 小時已用比例和節奏對比。顏色會先告訴你風險。"
-        case .en: "Collapsed mode shows status, 5-hour usage, and pace comparison. Color gives the risk signal first."
+        case .zhHans: "收起态显示状态、5 小时已用比例和时间/用量对比。两侧把手可调整宽度，拖到边缘可进入迷你形态。"
+        case .zhHant: "收起態顯示狀態、5 小時已用比例和時間／用量對比。兩側把手可調整寬度，拖到邊緣可進入迷你形態。"
+        case .en: "Collapsed mode shows status, 5-hour usage, and time-vs-use tracks. Side handles resize it; edge drag enters mini mode."
         }
     }
 
@@ -1039,9 +1047,9 @@ public struct QuotaCopy: Equatable, Sendable {
 
     public var onboardingDetailStepBody: String {
         switch locale {
-        case .zhHans: "详情面板解释当前判断：时间进度、额度已用、当前速度、数据来源和最近失败。"
-        case .zhHant: "詳細面板會解釋目前判斷：時間進度、額度已用、目前速度、資料來源和最近失敗。"
-        case .en: "The detail panel explains the judgment: time elapsed, quota used, current pace, source, and latest failure."
+        case .zhHans: "详情面板解释判断来源：时间进度、额度已用、速度、周余量、刷新时间、最近更新和数据来源。"
+        case .zhHant: "詳細面板會解釋判斷來源：時間進度、額度已用、速度、週餘量、重設時間、最近更新和資料來源。"
+        case .en: "Details show elapsed time, used quota, pace, weekly left, reset time, last update, and source."
         }
     }
 
@@ -1071,9 +1079,9 @@ public struct QuotaCopy: Equatable, Sendable {
 
     public var onboardingMenuStepBody: String {
         switch locale {
-        case .zhHans: "菜单栏只放状态和已用比例。刷新、反馈、退出都从菜单里操作。"
-        case .zhHant: "選單列只放狀態和已用比例。重新整理、回饋、退出都從選單操作。"
-        case .en: "The menu bar keeps status and usage only. Refresh, feedback, and quit live in the menu."
+        case .zhHans: "菜单栏只放状态和已用比例。刷新、语言、联系作者、关于反馈、高级数据设置和退出都从菜单里操作。"
+        case .zhHant: "選單列只放狀態和已用比例。重新整理、語言、聯絡作者、關於回饋、進階資料設定和退出都從選單操作。"
+        case .en: "The menu bar shows status and usage. Refresh, language, contact, about, data, and quit stay in the menu."
         }
     }
 
@@ -1087,9 +1095,9 @@ public struct QuotaCopy: Equatable, Sendable {
 
     public var onboardingFeedbackStepBody: String {
         switch locale {
-        case .zhHans: "反馈面板提供 Email、GitHub Issues、X 和抖音。抖音号可以直接点一下复制。"
-        case .zhHant: "回饋面板提供 Email、GitHub Issues、X 和抖音。抖音號可以直接點一下複製。"
-        case .en: "The feedback panel includes Email, GitHub Issues, X, and Douyin. Tap the Douyin ID to copy it."
+        case .zhHans: "最后一步提供 Email、GitHub Issues、X、抖音和抖音号复制入口。"
+        case .zhHant: "最後一步提供 Email、GitHub Issues、X、抖音和抖音號複製入口。"
+        case .en: "Use Email, GitHub Issues, X, Douyin, or copied Douyin ID for feedback."
         }
     }
 

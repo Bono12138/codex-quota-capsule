@@ -4,12 +4,14 @@ import QuotaCapsuleCore
 
 private let douyinID = "huotuichang439"
 private let douyinURL = "https://v.douyin.com/Alo9NohbnoY/"
+private let projectHomeURL = "https://github.com/Bono12138/codex-quota-capsule"
 
 enum CapsuleViewMetrics {
     static let shadowPadding: CGFloat = 16
     static let collapsedContentHeight: CGFloat = 60
     static let collapsedHeight: CGFloat = collapsedContentHeight + shadowPadding * 2
     static let expandedHeight: CGFloat = 640
+    static let expandedDetailContentHeight: CGFloat = expandedHeight - shadowPadding * 2 - collapsedContentHeight - 8
     static let dockedContentWidth: CGFloat = 116
     static let dockedContentHeight: CGFloat = 46
     static let dockedWidth: CGFloat = dockedContentWidth + shadowPadding * 2
@@ -202,15 +204,16 @@ struct CapsuleResizeHandle: View {
 
     var body: some View {
         VStack(spacing: 3) {
-            ForEach(0..<3, id: \.self) { index in
-                Circle()
-                    .fill(.primary.opacity(index == 1 ? 0.28 : 0.18))
-                    .frame(width: 4, height: 4)
-            }
+            Image(systemName: "arrow.left.and.right")
+                .font(.system(size: 9, weight: .bold))
+                .foregroundStyle(.primary.opacity(0.36))
+            RoundedRectangle(cornerRadius: 2, style: .continuous)
+                .fill(.primary.opacity(0.18))
+                .frame(width: 13, height: 3)
         }
         .frame(width: 28, height: 42)
         .contentShape(Rectangle())
-        .opacity(0.9)
+        .opacity(0.82)
         .help(helpText)
     }
 }
@@ -294,6 +297,40 @@ struct DetailPopoverView: View {
     }
 
     var body: some View {
+        ScrollView(.vertical) {
+            detailContent
+                .padding(16)
+                .frame(maxWidth: .infinity, alignment: .leading)
+        }
+        .scrollIndicators(.visible)
+        .frame(maxHeight: CapsuleViewMetrics.expandedDetailContentHeight)
+        .background {
+            RoundedRectangle(cornerRadius: 22, style: .continuous)
+                .fill(panelSurfaceColor())
+                .shadow(color: .black.opacity(0.08), radius: 9, y: 5)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 22, style: .continuous)
+                        .fill(
+                            LinearGradient(
+                                colors: [.white.opacity(0.14), .clear],
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            )
+                        )
+                )
+        }
+        .overlay(
+            RoundedRectangle(cornerRadius: 22, style: .continuous)
+                .stroke(.white.opacity(0.22), lineWidth: 1)
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 22, style: .continuous)
+                .stroke(toneColor(store.displayModel.tone).opacity(store.onboardingFocus == .detail ? 0.95 : 0), lineWidth: 3)
+                .shadow(color: toneColor(store.displayModel.tone).opacity(store.onboardingFocus == .detail ? 0.45 : 0), radius: 9)
+        )
+    }
+
+    private var detailContent: some View {
         VStack(alignment: .leading, spacing: 13) {
             HStack(alignment: .top) {
                 VStack(alignment: .leading, spacing: 5) {
@@ -354,36 +391,19 @@ struct DetailPopoverView: View {
                     .font(.system(size: 10, weight: .medium))
                     .foregroundStyle(.secondary)
                     .lineLimit(2)
-                Text(store.copy.manualRefreshNote)
-                    .font(.system(size: 10, weight: .medium))
-                    .foregroundStyle(.secondary)
+                HStack(spacing: 8) {
+                    Text(store.copy.manualRefreshNote)
+                        .font(.system(size: 10, weight: .medium))
+                        .foregroundStyle(.secondary)
+                    Spacer(minLength: 0)
+                    Button(store.copy.projectHomeAction) {
+                        openExternalURL(projectHomeURL)
+                    }
+                    .buttonStyle(.borderless)
+                    .font(.system(size: 10, weight: .bold))
+                }
             }
         }
-        .padding(16)
-        .background {
-            RoundedRectangle(cornerRadius: 22, style: .continuous)
-                .fill(panelSurfaceColor())
-                .shadow(color: .black.opacity(0.08), radius: 9, y: 5)
-                .overlay(
-                    RoundedRectangle(cornerRadius: 22, style: .continuous)
-                        .fill(
-                            LinearGradient(
-                                colors: [.white.opacity(0.14), .clear],
-                                startPoint: .topLeading,
-                                endPoint: .bottomTrailing
-                            )
-                        )
-                )
-        }
-        .overlay(
-            RoundedRectangle(cornerRadius: 22, style: .continuous)
-                .stroke(.white.opacity(0.22), lineWidth: 1)
-        )
-        .overlay(
-            RoundedRectangle(cornerRadius: 22, style: .continuous)
-                .stroke(toneColor(store.displayModel.tone).opacity(store.onboardingFocus == .detail ? 0.95 : 0), lineWidth: 3)
-                .shadow(color: toneColor(store.displayModel.tone).opacity(store.onboardingFocus == .detail ? 0.45 : 0), radius: 9)
-        )
     }
 }
 
@@ -1149,7 +1169,7 @@ struct OnboardingView: View {
             .padding(24)
             .frame(maxWidth: .infinity, alignment: .leading)
         }
-        .frame(width: 640, height: store.needsLanguageSelection ? 320 : 540)
+        .frame(width: 680, height: store.needsLanguageSelection ? 340 : 620)
         .background(.thickMaterial)
         .onAppear {
             store.recordOnboardingStarted()
@@ -1223,17 +1243,17 @@ struct OnboardingView: View {
                 .frame(maxWidth: .infinity, alignment: .leading)
 
                 OnboardingPreviewCard(store: store, step: step)
-                    .frame(width: 220)
+                    .frame(width: 236)
             }
 
             if step.id == "capsule", store.snapshot.sourceStatus != .ok {
                 diagnosticPanel
             }
 
-            if step.id == "feedback" {
-                onboardingAuthorActions
-            } else {
+            if step.id == "capsule" {
                 GuideRow(symbol: "person.crop.circle", text: store.copy.onboardingAuthorIntro)
+            } else if step.id == "feedback" {
+                onboardingAuthorActions
             }
 
             HStack(spacing: 8) {
@@ -1328,10 +1348,12 @@ struct OnboardingView: View {
                 store.recordFeedbackClick("douyin_open")
                 openExternalURL(douyinURL)
             }
-            Button(didCopyDouyin ? store.copy.douyinCopiedShortAction : store.copy.copyDouyinIdAction) {
+            Button {
                 copyToClipboard(douyinID)
                 didCopyDouyin = true
                 store.recordFeedbackClick("douyin_copy")
+            } label: {
+                Label(didCopyDouyin ? store.copy.douyinCopiedShortAction : store.copy.copyDouyinIdAction, systemImage: didCopyDouyin ? "checkmark.circle.fill" : "doc.on.doc")
             }
         }
     }
@@ -1343,12 +1365,15 @@ struct OnboardingView: View {
             VStack(alignment: .leading, spacing: 10) {
                 GuideRow(symbol: "lock.shield", text: store.copy.onboardingLocalRead)
                 GuideRow(symbol: "checkmark.shield", text: store.copy.onboardingPrivacy)
-                GuideRow(symbol: "gauge.with.dots.needle.67percent", text: store.copy.onboardingStatus)
+                GuideRow(symbol: "arrow.left.and.right", text: store.copy.onboardingInteraction)
             }
         case "detail":
-            GuideRow(symbol: "cursorarrow.click", text: store.copy.onboardingInteraction)
+            VStack(alignment: .leading, spacing: 10) {
+                GuideRow(symbol: "gauge.with.dots.needle.67percent", text: store.copy.onboardingStatus)
+                GuideRow(symbol: "tablecells", text: store.copy.onboardingDetailStepBody)
+            }
         case "feedback":
-            AnalyticsConsentPanel(store: store, compact: true)
+            EmptyView()
         default:
             EmptyView()
         }
@@ -1532,13 +1557,23 @@ struct OnboardingPreviewCard: View {
 
     private var previewFeedback: some View {
         VStack(alignment: .leading, spacing: 7) {
-            Label("Bono MA", systemImage: "person.crop.circle")
-            Label("mmz1218bono@gmail.com", systemImage: "envelope")
-            Label("@starlightsz0", systemImage: "link")
-            Label(douyinID, systemImage: "doc.on.doc")
+            previewLine("person.crop.circle", "Bono MA")
+            previewLine("envelope", "mmz1218bono@gmail.com")
+            previewLine("link", "@starlightsz0")
+            previewLine("doc.on.doc", douyinID)
         }
         .font(.caption)
         .foregroundStyle(.secondary)
+    }
+
+    private func previewLine(_ symbol: String, _ text: String) -> some View {
+        HStack(spacing: 6) {
+            Image(systemName: symbol)
+                .frame(width: 14)
+            Text(text)
+                .lineLimit(1)
+                .minimumScaleFactor(0.72)
+        }
     }
 
     private func previewBar(label: String, value: Int) -> some View {

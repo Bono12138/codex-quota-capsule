@@ -251,7 +251,7 @@ public enum QuotaPredictor {
         switch locale {
         case .zhHans: "还没开始消耗，能撑到 \(resetText) 刷新"
         case .zhHant: "尚未開始消耗，可撐到 \(resetText) 重設"
-        case .en: "No usage yet; should last until \(resetText)"
+        case .en: "No usage yet; lasts until \(resetText)"
         }
     }
 
@@ -267,7 +267,7 @@ public enum QuotaPredictor {
         switch locale {
         case .zhHans: "按当前速度，预计 \(emptyText) 用完"
         case .zhHant: "依目前速度，預計 \(emptyText) 用完"
-        case .en: "At this pace, quota runs out around \(emptyText)"
+        case .en: "Quota runs out around \(emptyText)"
         }
     }
 
@@ -283,7 +283,7 @@ public enum QuotaPredictor {
         switch locale {
         case .zhHans: "能撑到 \(resetText)，但余量不多"
         case .zhHant: "可撐到 \(resetText)，但餘量不多"
-        case .en: "Can last until \(resetText), but buffer is thin"
+        case .en: "Thin buffer until \(resetText)"
         }
     }
 
@@ -291,7 +291,7 @@ public enum QuotaPredictor {
         switch locale {
         case .zhHans: "按当前速度，够用到 \(resetText) 刷新"
         case .zhHant: "依目前速度，可用到 \(resetText) 重設"
-        case .en: "At this pace, quota lasts until \(resetText)"
+        case .en: "Quota lasts until \(resetText)"
         }
     }
 

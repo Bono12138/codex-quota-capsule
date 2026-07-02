@@ -94,6 +94,7 @@ const secretPatterns = [
   /\bOPENAI_API_KEY\s*=/i,
   /"access_token"\s*:\s*"[^"]{8,}"/i,
   /"refresh_token"\s*:\s*"[^"]{8,}"/i,
+  /\/Users\/(?!example\/)[A-Za-z0-9._-]+\//,
 ];
 
 const binaryExtensions = new Set([

@@ -340,7 +340,8 @@ func testBuildsEnglishDisplayModel() {
 
     expect(model.statusLabel == "Safe", "English status label should be localized")
     expect(model.metrics.map(\.label) == ["Time elapsed", "Quota used", "Current pace", "Reset buffer"], "English metrics should be localized")
-    expect(prediction.headline.contains("quota lasts"), "English prediction headline should be localized")
+    expect(prediction.headline.lowercased().contains("quota lasts"), "English prediction headline should be localized")
+    expect(model.defaultText.hasPrefix("Until "), "English compact text should shorten the safe headline")
 }
 
 func testBuildsTraditionalChineseDisplayModel() {
@@ -359,6 +360,32 @@ func testBuildsTraditionalChineseDisplayModel() {
     expect(model.statusLabel == "危險", "Traditional Chinese danger label should be localized")
     expect(model.defaultText.contains("見底"), "Traditional Chinese compact danger text should be localized")
     expect(model.metrics.map(\.label) == ["時間進度", "額度已用", "目前速度", "重設餘量"], "Traditional Chinese metrics should be localized")
+}
+
+func testCompactCopyStaysShortAcrossLocales() {
+    let now = Date(timeIntervalSince1970: 1_788_270_000)
+    let snapshot = AgentQuotaSnapshot(
+        provider: "codex",
+        sourceStatus: .ok,
+        fetchedAt: now,
+        shortWindow: QuotaWindow(
+            label: "5h",
+            windowMinutes: 300,
+            usedPercent: 20,
+            remainingPercent: 80,
+            resetsAt: now.addingTimeInterval(120 * 60)
+        ),
+        weeklyWindow: nil,
+        errorMessage: nil
+    )
+
+    for locale in [QuotaLocale.zhHans, .zhHant, .en] {
+        let prediction = QuotaPredictor.predict(snapshot: snapshot, now: now, locale: locale)
+        let model = CapsuleDisplayModel.make(prediction: prediction, locale: locale)
+
+        expect(model.statusLabel.count <= 8, "compact status label should stay short in \(locale)")
+        expect(model.defaultText.count <= 24, "compact projection text should stay short in \(locale)")
+    }
 }
 
 final class FakeCodexTransport: CodexRPCTransport {
@@ -637,6 +664,7 @@ do {
     testOnboardingCopyAvoidsAccountManagerNegation()
     testBuildsEnglishDisplayModel()
     testBuildsTraditionalChineseDisplayModel()
+    testCompactCopyStaysShortAcrossLocales()
     try testCodexAppServerClientReadsRateLimits()
     testCodexAppServerClientReturnsRpcErrors()
     testCodexAppServerClientReturnsTransportErrors()

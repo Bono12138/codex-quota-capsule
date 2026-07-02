@@ -57,6 +57,17 @@ public struct CapsuleDisplayModel: Equatable, Sendable {
         if locale == .zhHant, prediction.headline.contains("可撐到") {
             return prediction.headline.replacingOccurrences(of: "，但餘量不多", with: "")
         }
+        if locale == .en {
+            if prediction.headline.hasPrefix("Quota lasts until ") {
+                return prediction.headline.replacingOccurrences(of: "Quota lasts until ", with: "Until ")
+            }
+            if prediction.headline.hasPrefix("Thin buffer until ") {
+                return prediction.headline.replacingOccurrences(of: "Thin buffer until ", with: "Thin buffer to ")
+            }
+            if prediction.headline.hasPrefix("No usage yet; lasts until ") {
+                return "No usage yet"
+            }
+        }
         return prediction.headline
     }
 
