@@ -1,0 +1,45 @@
+- name: bug
+  color: d73a4a
+  description: Something is broken.
+- name: enhancement
+  color: a2eeef
+  description: Product or feature request.
+- name: install
+  color: 7057ff
+  description: Installation, launch, or environment setup issue.
+- name: adapter
+  color: 0e8a16
+  description: Provider adapter request.
+- name: p0
+  color: b60205
+  description: Must fix before new feature work or internal testing.
+- name: p1
+  color: d93f0b
+  description: Should fix in the current version.
+- name: p2
+  color: fbca04
+  description: Scheduled after the current stability pass.
+- name: p3
+  color: cfd3d7
+  description: Deferred or exploratory.
+- name: release-blocker
+  color: 5319e7
+  description: Blocks public release.
+- name: internal-test-blocker
+  color: e99695
+  description: Blocks owner or friend internal testing.
+- name: mac
+  color: 1d76db
+  description: macOS native app surface.
+- name: codex-source
+  color: 006b75
+  description: Codex CLI, app-server, or rate-limit data source.
+- name: i18n
+  color: 5319e7
+  description: Simplified Chinese, Traditional Chinese, or English copy.
+- name: product-decision
+  color: fef2c0
+  description: Requires owner or product direction before implementation.
+- name: public-repo
+  color: c2e0c6
+  description: Public release repository preparation.

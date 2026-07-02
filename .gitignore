@@ -1,0 +1,16 @@
+node_modules/
+.build/
+dist/
+.turbo/
+.vite/
+.playwright-cli/
+coverage/
+*.log
+.DS_Store
+.env
+.env.*
+!.env.example
+local-state/
+**/local-state/
+probe-output/
+artifacts/

@@ -1,0 +1,39 @@
+{
+  "name": "codex-quota-capsule",
+  "private": true,
+  "version": "0.0.0",
+  "description": "Codex-first quota capsule, designed as an extensible desktop quota gauge for agent products.",
+  "license": "MIT",
+  "type": "module",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "build": "npm run build -w packages/core && npm run build -w packages/source-codex && npm run build -w packages/analytics-collector && npm run build -w apps/desktop",
+    "analytics:dev": "npm run dev -w packages/analytics-collector",
+    "analytics:start": "npm run start -w packages/analytics-collector",
+    "dev": "npm run dev -w apps/desktop",
+    "lint": "tsc -p tsconfig.base.json --noEmit",
+    "mac:package": "./script/package_macos.sh",
+    "mac:package:dev": "QUOTA_CAPSULE_CHANNEL=development ./script/package_macos.sh",
+    "mac:package:internal-test": "QUOTA_CAPSULE_CHANNEL=internal-test ./script/package_macos.sh",
+    "mac:run": "./script/build_and_run.sh",
+    "mac:run:dev": "QUOTA_CAPSULE_CHANNEL=development ./script/build_and_run.sh",
+    "mac:run:internal-test": "QUOTA_CAPSULE_CHANNEL=internal-test ./script/build_and_run.sh",
+    "mac:spec": "swift run QuotaCapsuleCoreSpec",
+    "probe:codex": "npm run build -w packages/source-codex && tsx scripts/run-codex-probe.ts",
+    "probe:codex:rate-limits": "npm run build -w packages/core && npm run build -w packages/source-codex && tsx scripts/read-codex-rate-limits.ts",
+    "public:prepare": "tsx scripts/prepare-public-repo-manifest.ts",
+    "test": "npm run build -w packages/core && npm run build -w packages/source-codex && vitest run",
+    "test:watch": "vitest"
+  },
+  "devDependencies": {
+    "@types/node": "^20.19.2",
+    "@vitejs/plugin-react": "^4.7.0",
+    "tsx": "^4.20.3",
+    "typescript": "^5.8.3",
+    "vite": "^7.3.6",
+    "vitest": "^3.2.6"
+  }
+}
