@@ -235,6 +235,8 @@ func testRuntimeLocaleCopyCoversMenuOnboardingAndConsent() {
         expect(!copy.contactAuthorTitle.isEmpty, "contact author title should be localized")
         expect(!copy.authorProfileAction.isEmpty, "author profile action should be localized")
         expect(!copy.panelQuickActionsTitle.isEmpty, "panel quick actions title should be localized")
+        expect(!copy.submitFeedbackAction.isEmpty, "unified submit feedback action should be localized")
+        expect(!copy.feedbackAlternativeHint.isEmpty, "feedback alternative hint should be localized")
         expect(!copy.codexFeedbackAction.isEmpty, "Codex-assisted feedback action should be localized")
         expect(!copy.codexFeedbackCopiedAction.isEmpty, "Codex-assisted feedback copied action should be localized")
         expect(!copy.codexFeedbackHint.isEmpty, "Codex-assisted feedback hint should be localized")
@@ -262,6 +264,8 @@ func testRuntimeLocaleCopyCoversMenuOnboardingAndConsent() {
     }
     expect(QuotaCopy(locale: .zhHans).analyticsRevokeAction == "不参与产品改进计划", "Simplified revoke action should use user-approved wording")
     expect(QuotaCopy(locale: .zhHans).authorProfileAction == "作者 X 主页", "X profile action should not be labelled as project home")
+    expect(QuotaCopy(locale: .zhHans).submitFeedbackAction == "提交反馈", "Simplified feedback action should be unified")
+    expect(QuotaCopy(locale: .zhHans).codexFeedbackCopiedAction != "已打开反馈入口", "Simplified feedback success should not duplicate the opened destination")
     expect(QuotaCopy(locale: .en).codexFeedbackHint.contains("Codex"), "English Codex feedback hint should name Codex")
 }
 

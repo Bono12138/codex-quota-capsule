@@ -405,65 +405,20 @@ struct PanelQuickActionsView: View {
     @Binding var assistedFeedbackMessage: String
 
     private var columns: [GridItem] {
-        [GridItem(.adaptive(minimum: 134), spacing: 8)]
+        [GridItem(.adaptive(minimum: 86), spacing: 6)]
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            HStack(spacing: 6) {
-                Image(systemName: "slider.horizontal.3")
-                    .font(.system(size: 10, weight: .bold))
-                    .foregroundStyle(toneColor(store.displayModel.tone))
-                Text(store.copy.panelQuickActionsTitle)
-                    .font(.system(size: 10, weight: .bold))
-                    .foregroundStyle(.secondary)
-                Spacer(minLength: 0)
-            }
-
-            LazyVGrid(columns: columns, alignment: .leading, spacing: 8) {
-                quickActionButton(title: store.copy.refreshNowAction, symbol: "arrow.clockwise") {
-                    store.refresh()
+        VStack(alignment: .leading, spacing: 6) {
+            ViewThatFits(in: .horizontal) {
+                HStack(spacing: 6) {
+                    actionChips
                 }
-
-                if let githubIssuesURL = store.githubIssuesURL {
-                    quickActionButton(title: store.copy.githubIssuesAction, symbol: "exclamationmark.bubble") {
-                        store.recordFeedbackClick("github")
-                        openExternalURL(githubIssuesURL)
-                    }
-                } else {
-                    quickActionButton(title: store.copy.emailFeedbackAction, symbol: "envelope") {
-                        store.recordFeedbackClick("email")
-                        openExternalURL("mailto:\(FeedbackDestinations.authorEmail)")
-                    }
-                }
-
-                quickActionButton(
-                    title: assistedFeedbackMessage.isEmpty ? store.copy.codexFeedbackAction : store.copy.codexFeedbackCopiedAction,
-                    symbol: assistedFeedbackMessage.isEmpty ? "sparkles" : "checkmark.circle.fill"
-                ) {
-                    let destination = startAssistedFeedback(store: store)
-                    assistedFeedbackMessage = destination == .github ? store.copy.assistedFeedbackStartedMessage : store.copy.assistedFeedbackEmailMessage
-                }
-
-                quickActionButton(title: store.copy.authorProfileAction, symbol: "person.crop.circle") {
-                    store.recordFeedbackClick("x")
-                    openExternalURL(authorXURL)
-                }
-
-                quickActionButton(title: store.copy.advancedDataSettingsTitle, symbol: "lock.shield") {
-                    NotificationCenter.default.post(name: .quotaCapsuleShowAdvancedDataSettings, object: nil)
-                }
-
-                quickActionButton(title: store.copy.aboutFeedbackTitle, symbol: "info.circle") {
-                    NotificationCenter.default.post(name: .quotaCapsuleShowAboutFeedback, object: nil)
+                LazyVGrid(columns: columns, alignment: .leading, spacing: 6) {
+                    actionChips
                 }
             }
 
-            Text(store.copy.codexFeedbackHint)
-                .font(.system(size: 10, weight: .medium))
-                .foregroundStyle(.secondary)
-                .lineLimit(2)
-                .fixedSize(horizontal: false, vertical: true)
             if !assistedFeedbackMessage.isEmpty {
                 Label(assistedFeedbackMessage, systemImage: "checkmark.circle.fill")
                     .font(.system(size: 10, weight: .bold))
@@ -471,9 +426,34 @@ struct PanelQuickActionsView: View {
                     .fixedSize(horizontal: false, vertical: true)
             }
         }
-        .padding(10)
+        .padding(.vertical, 2)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(.white.opacity(0.07), in: RoundedRectangle(cornerRadius: 13, style: .continuous))
+    }
+
+    @ViewBuilder
+    private var actionChips: some View {
+        quickActionButton(title: store.copy.refreshNowAction, symbol: "arrow.clockwise") {
+            store.refresh()
+        }
+
+        quickActionButton(title: store.copy.submitFeedbackAction, symbol: "paperplane") {
+            let destination = startAssistedFeedback(store: store)
+            assistedFeedbackMessage = destination == .github ? store.copy.assistedFeedbackStartedMessage : store.copy.assistedFeedbackEmailMessage
+        }
+        .help(store.copy.codexFeedbackHint)
+
+        quickActionButton(title: store.copy.authorProfileAction, symbol: "person.crop.circle") {
+            store.recordFeedbackClick("x")
+            openExternalURL(authorXURL)
+        }
+
+        quickActionButton(title: store.copy.advancedDataSettingsTitle, symbol: "lock.shield") {
+            NotificationCenter.default.post(name: .quotaCapsuleShowAdvancedDataSettings, object: nil)
+        }
+
+        quickActionButton(title: store.copy.aboutFeedbackTitle, symbol: "info.circle") {
+            NotificationCenter.default.post(name: .quotaCapsuleShowAboutFeedback, object: nil)
+        }
     }
 
     private func quickActionButton(title: String, symbol: String, action: @escaping () -> Void) -> some View {
@@ -481,11 +461,11 @@ struct PanelQuickActionsView: View {
             Label(title, systemImage: symbol)
                 .font(.system(size: 10, weight: .bold))
                 .lineLimit(1)
-                .minimumScaleFactor(0.72)
-                .frame(maxWidth: .infinity, alignment: .leading)
+                .minimumScaleFactor(0.68)
+                .frame(maxWidth: .infinity, alignment: .center)
         }
         .buttonStyle(.bordered)
-        .controlSize(.small)
+        .controlSize(.mini)
     }
 }
 
@@ -761,14 +741,8 @@ struct MenuBarContent: View {
                     onShowAdvancedDataSettings()
                 }
             }
-            if let githubIssuesURL = store.githubIssuesURL {
-                Button(store.copy.githubIssuesAction) {
-                    store.recordFeedbackClick("github")
-                    openExternalURL(githubIssuesURL)
-                }
-            }
-            Button(store.copy.codexFeedbackAction) {
-                copyCodexFeedbackPromptToClipboard(store: store)
+            Button(store.copy.submitFeedbackAction) {
+                _ = startAssistedFeedback(store: store)
             }
             Divider()
             Button(store.copy.quitAction) {
@@ -991,20 +965,31 @@ struct AboutFeedbackView: View {
                         .font(.system(size: 13, weight: .medium))
                         .foregroundStyle(.secondary)
                         .fixedSize(horizontal: false, vertical: true)
-                    ViewThatFits(in: .horizontal) {
-                        HStack(spacing: 8) {
-                            feedbackButtons
-                        }
-                        VStack(alignment: .leading, spacing: 8) {
-                            feedbackButtons
-                        }
+                    Button(store.copy.submitFeedbackAction) {
+                        let destination = startAssistedFeedback(store: store)
+                        assistedFeedbackMessage = destination == .github ? store.copy.assistedFeedbackStartedMessage : store.copy.assistedFeedbackEmailMessage
                     }
                     .buttonStyle(.borderedProminent)
+                    .controlSize(.regular)
                     .padding(.top, 2)
                     Text(store.copy.codexFeedbackHint)
                         .font(.caption)
                         .foregroundStyle(.secondary)
                         .fixedSize(horizontal: false, vertical: true)
+                    Text(store.copy.feedbackAlternativeHint)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                    ViewThatFits(in: .horizontal) {
+                        HStack(spacing: 8) {
+                            feedbackAlternativeButtons
+                        }
+                        VStack(alignment: .leading, spacing: 8) {
+                            feedbackAlternativeButtons
+                        }
+                    }
+                    .buttonStyle(.bordered)
+                    .controlSize(.small)
                     if !assistedFeedbackMessage.isEmpty {
                         Label(assistedFeedbackMessage, systemImage: "checkmark.circle.fill")
                             .font(.caption.bold())
@@ -1044,22 +1029,19 @@ struct AboutFeedbackView: View {
         }
     }
 
-    private var feedbackButtons: some View {
-        Group {
-            if let githubIssuesURL = store.githubIssuesURL {
-                Button(store.copy.githubIssuesAction) {
-                    store.recordFeedbackClick("github")
-                    openExternalURL(githubIssuesURL)
-                }
-            }
-            Button(store.copy.emailFeedbackAction) {
-                store.recordFeedbackClick("email")
-                openExternalURL("mailto:\(FeedbackDestinations.authorEmail)")
-            }
-            Button(assistedFeedbackMessage.isEmpty ? store.copy.codexFeedbackAction : store.copy.codexFeedbackCopiedAction) {
-                let destination = startAssistedFeedback(store: store)
-                assistedFeedbackMessage = destination == .github ? store.copy.assistedFeedbackStartedMessage : store.copy.assistedFeedbackEmailMessage
-            }
+    @ViewBuilder
+    private var feedbackAlternativeButtons: some View {
+        Button(store.copy.emailFeedbackAction) {
+            store.recordFeedbackClick("email")
+            openExternalURL("mailto:\(FeedbackDestinations.authorEmail)")
+        }
+        Button(store.copy.openXAction) {
+            store.recordFeedbackClick("x")
+            openExternalURL(authorXURL)
+        }
+        Button(store.copy.openDouyinAction) {
+            store.recordFeedbackClick("douyin_open")
+            openExternalURL(douyinURL)
         }
     }
 }
@@ -1237,15 +1219,13 @@ struct ContactAuthorView: View {
                         .frame(maxWidth: .infinity, alignment: .leading)
 
                         LazyVGrid(columns: [GridItem(.adaptive(minimum: 132), spacing: 8)], alignment: .leading, spacing: 8) {
+                            Button(store.copy.submitFeedbackAction) {
+                                let destination = startAssistedFeedback(store: store)
+                                assistedFeedbackMessage = destination == .github ? store.copy.assistedFeedbackStartedMessage : store.copy.assistedFeedbackEmailMessage
+                            }
                             Button(store.copy.emailFeedbackAction) {
                                 store.recordFeedbackClick("email")
                                 openExternalURL("mailto:\(FeedbackDestinations.authorEmail)")
-                            }
-                            if let githubIssuesURL = store.githubIssuesURL {
-                                Button(store.copy.githubIssuesAction) {
-                                    store.recordFeedbackClick("github")
-                                    openExternalURL(githubIssuesURL)
-                                }
                             }
                             Button(store.copy.openXAction) {
                                 store.recordFeedbackClick("x")
@@ -1254,10 +1234,6 @@ struct ContactAuthorView: View {
                             Button(store.copy.openDouyinAction) {
                                 store.recordFeedbackClick("douyin_open")
                                 openExternalURL(douyinURL)
-                            }
-                            Button(assistedFeedbackMessage.isEmpty ? store.copy.codexFeedbackAction : store.copy.codexFeedbackCopiedAction) {
-                                let destination = startAssistedFeedback(store: store)
-                                assistedFeedbackMessage = destination == .github ? store.copy.assistedFeedbackStartedMessage : store.copy.assistedFeedbackEmailMessage
                             }
                             Button(store.copy.refreshQuotaAction) {
                                 store.refresh()
@@ -1487,15 +1463,12 @@ struct OnboardingView: View {
 
     private var authorButtonsPrimary: some View {
         HStack(spacing: 8) {
+            Button(store.copy.submitFeedbackAction) {
+                _ = startAssistedFeedback(store: store)
+            }
             Button(store.copy.emailFeedbackAction) {
                 store.recordFeedbackClick("email")
                 openExternalURL("mailto:\(FeedbackDestinations.authorEmail)")
-            }
-            Button(store.copy.githubIssuesAction) {
-                store.recordFeedbackClick("github")
-                if let url = store.githubIssuesURL {
-                    openExternalURL(url)
-                }
             }
         }
     }

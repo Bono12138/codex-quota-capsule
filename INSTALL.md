@@ -73,7 +73,7 @@ npm run mac:run:internal-test
 QUOTA_CAPSULE_DEV_GITHUB_ISSUES_URL="https://github.com/<owner>/<private-repo>/issues" npm run mac:run:dev
 ```
 
-如果开发版没有配置 `QUOTA_CAPSULE_DEV_GITHUB_ISSUES_URL`，应用不会显示 GitHub Issues 按钮，避免把开发问题误提交到 public 仓库。
+如果开发版没有配置 `QUOTA_CAPSULE_DEV_GITHUB_ISSUES_URL`，统一反馈入口会打开邮件草稿，避免把开发问题误提交到 public 仓库。
 
 ## Codex-assisted 安装
 

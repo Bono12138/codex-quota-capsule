@@ -17,7 +17,8 @@ final class StatusBarController {
 
     init(store: QuotaStore) {
         self.store = store
-        statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
+        statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
+        statusItem.isVisible = true
         configureButton()
         rebuildMenu()
 
@@ -33,20 +34,41 @@ final class StatusBarController {
 
     private func configureButton() {
         guard let button = statusItem.button else {
+            NSLog("Quota Capsule status item button is unavailable")
             return
         }
 
-        button.image = NSImage(systemSymbolName: "gauge.with.dots.needle.33percent", accessibilityDescription: "Quota Capsule")
-        button.imagePosition = .imageLeading
-        button.title = statusBarTitle
-        button.toolTip = "Quota Capsule · \(store.visibleStatusText)"
+        button.image = makeStatusIcon()
+        button.imagePosition = .imageOnly
+        button.title = ""
+        button.toolTip = "Quota Capsule · \(statusBarTooltip)"
+        button.appearsDisabled = false
     }
 
-    private var statusBarTitle: String {
+    private var statusBarTooltip: String {
         if let used = store.compactUsedPercent {
-            return " \(store.visibleStatusText) \(used)%"
+            return "\(store.visibleStatusText) · \(used)%"
         }
-        return " \(store.visibleStatusText)"
+        return store.visibleStatusText
+    }
+
+    private func makeStatusIcon() -> NSImage {
+        let size = NSSize(width: 18, height: 18)
+        let image = NSImage(size: size)
+        image.lockFocus()
+
+        NSColor.black.setFill()
+        let bodyRect = NSRect(x: 2.4, y: 5.1, width: 13.2, height: 7.8)
+        NSBezierPath(roundedRect: bodyRect, xRadius: 3.9, yRadius: 3.9).fill()
+
+        NSColor.clear.setFill()
+        NSBezierPath(ovalIn: NSRect(x: 5.2, y: 7.2, width: 3.4, height: 3.4)).fill()
+        NSBezierPath(ovalIn: NSRect(x: 10.1, y: 7.2, width: 3.4, height: 3.4)).fill()
+
+        image.unlockFocus()
+        image.isTemplate = true
+        image.accessibilityDescription = "Quota Capsule"
+        return image
     }
 
     private func rebuildMenu() {
@@ -76,14 +98,7 @@ final class StatusBarController {
         })
         menu.addItem(advancedDataSettingsMenuItem())
 
-        if let githubIssuesURL = store.githubIssuesURL {
-            menu.addItem(actionItem(store.copy.githubIssuesAction) { [weak self] in
-                self?.store.recordFeedbackClick("github")
-                NSWorkspace.shared.open(githubIssuesURL)
-            })
-        }
-
-        menu.addItem(actionItem(store.copy.codexFeedbackAction) { [weak self] in
+        menu.addItem(actionItem(store.copy.submitFeedbackAction) { [weak self] in
             guard let self else { return }
             let destination = startAssistedFeedback(store: self.store)
             self.showAssistedFeedbackAlert(destination: destination)
