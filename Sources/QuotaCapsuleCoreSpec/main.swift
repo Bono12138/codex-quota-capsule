@@ -54,6 +54,37 @@ func testPredictsBurnRateRunway() {
     expect(prediction.headline.contains("够用到"), "headline should be human-readable runway copy")
 }
 
+func testPredictsUnusedShortWindowAsSafe() {
+    let now = Date(timeIntervalSince1970: 1_788_270_000)
+    let snapshot = AgentQuotaSnapshot(
+        provider: "codex",
+        sourceStatus: .ok,
+        fetchedAt: now,
+        shortWindow: QuotaWindow(
+            label: "5h",
+            windowMinutes: 300,
+            usedPercent: 0,
+            remainingPercent: 100,
+            resetsAt: now.addingTimeInterval(120 * 60)
+        ),
+        weeklyWindow: QuotaWindow(
+            label: "weekly",
+            windowMinutes: 10_080,
+            usedPercent: 0,
+            remainingPercent: 100,
+            resetsAt: now.addingTimeInterval(5_040 * 60)
+        ),
+        errorMessage: nil
+    )
+
+    let prediction = QuotaPredictor.predict(snapshot: snapshot, now: now)
+
+    expect(prediction.level == .safe, "unused short window should be safe")
+    expect(prediction.canReachReset == true, "unused short window can reach reset")
+    expect(prediction.quotaUsedPercent == 0, "unused short window should report 0 percent used")
+    expect(prediction.projectedRemainingAtReset == 100, "unused short window should project full remaining quota")
+}
+
 func testPredictsExhaustedShortWindowAsDanger() {
     let now = Date(timeIntervalSince1970: 1_788_270_000)
     let snapshot = AgentQuotaSnapshot(
@@ -235,6 +266,7 @@ func testRuntimeLocaleCopyCoversMenuOnboardingAndConsent() {
         expect(!copy.contactAuthorTitle.isEmpty, "contact author title should be localized")
         expect(!copy.authorProfileAction.isEmpty, "author profile action should be localized")
         expect(!copy.panelQuickActionsTitle.isEmpty, "panel quick actions title should be localized")
+        expect(!copy.openStatusMenuAction.isEmpty, "open status menu action should be localized")
         expect(!copy.submitFeedbackAction.isEmpty, "unified submit feedback action should be localized")
         expect(!copy.feedbackAlternativeHint.isEmpty, "feedback alternative hint should be localized")
         expect(!copy.codexFeedbackAction.isEmpty, "Codex-assisted feedback action should be localized")
@@ -673,6 +705,7 @@ func testCodexAppServerClientDefaultTimeoutIsProductionTolerant() {
 do {
     try testParsesCodexRateLimitsByDuration()
     testPredictsBurnRateRunway()
+    testPredictsUnusedShortWindowAsSafe()
     testPredictsExhaustedShortWindowAsDanger()
     testPredictsExhaustedWeeklyWindowAsDanger()
     testPredictsMissingShortWindowAsUnknownWhenWeeklyIsNotExhausted()

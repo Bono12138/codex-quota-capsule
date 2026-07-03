@@ -8,12 +8,7 @@ struct QuotaCapsuleMacApp: App {
 
     var body: some Scene {
         Settings {
-            AdvancedDataSettingsView(
-                store: appDelegate.store,
-                context: "settings",
-                onConfirmRevokeAnalytics: appDelegate.confirmRevokeAnalytics,
-                onConfirmClearLocalHistory: appDelegate.confirmClearLocalHistory
-            )
+            EmptyView()
         }
     }
 }
@@ -199,9 +194,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         controller.onShowContactAuthor = { [weak self] in
             self?.showContactAuthor()
         }
-        controller.onShowAdvancedDataSettings = { [weak self] in
-            self?.showAdvancedDataSettings()
-        }
         controller.onShowOnboarding = { [weak self] in
             self?.showOnboarding()
         }
@@ -234,6 +226,27 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             center.addObserver(forName: .quotaCapsuleShowAdvancedDataSettings, object: nil, queue: .main) { [weak self] _ in
                 Task { @MainActor in
                     self?.showAdvancedDataSettings()
+                }
+            }
+        )
+        notificationObservers.append(
+            center.addObserver(forName: .quotaCapsuleShowOnboarding, object: nil, queue: .main) { [weak self] _ in
+                Task { @MainActor in
+                    self?.showOnboarding()
+                }
+            }
+        )
+        notificationObservers.append(
+            center.addObserver(forName: .quotaCapsuleTogglePanel, object: nil, queue: .main) { [weak self] _ in
+                Task { @MainActor in
+                    self?.togglePanel()
+                }
+            }
+        )
+        notificationObservers.append(
+            center.addObserver(forName: .quotaCapsuleShowStatusMenu, object: nil, queue: .main) { [weak self] _ in
+                Task { @MainActor in
+                    self?.statusBarController?.showMenu()
                 }
             }
         )

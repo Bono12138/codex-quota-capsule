@@ -10,14 +10,13 @@ final class StatusBarController {
     var onTogglePanel: (() -> Void)?
     var onShowAboutFeedback: (() -> Void)?
     var onShowContactAuthor: (() -> Void)?
-    var onShowAdvancedDataSettings: (() -> Void)?
     var onShowOnboarding: (() -> Void)?
     var onConfirmRevokeAnalytics: (() -> Void)?
     var onConfirmClearLocalHistory: (() -> Void)?
 
     init(store: QuotaStore) {
         self.store = store
-        statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
+        statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
         statusItem.isVisible = true
         configureButton()
         rebuildMenu()
@@ -39,10 +38,25 @@ final class StatusBarController {
         }
 
         button.image = makeStatusIcon()
-        button.imagePosition = .imageOnly
-        button.title = ""
+        button.imagePosition = .imageLeading
+        button.title = " \(statusBarTitle)"
         button.toolTip = "Quota Capsule · \(statusBarTooltip)"
         button.appearsDisabled = false
+    }
+
+    func showMenu() {
+        rebuildMenu()
+        guard let menu = statusItem.menu else {
+            return
+        }
+        menu.popUp(positioning: nil, at: NSEvent.mouseLocation, in: nil)
+    }
+
+    private var statusBarTitle: String {
+        if let used = store.compactUsedPercent {
+            return "\(store.visibleStatusText) \(used)%"
+        }
+        return store.visibleStatusText
     }
 
     private var statusBarTooltip: String {
@@ -96,7 +110,6 @@ final class StatusBarController {
         menu.addItem(actionItem(store.copy.aboutFeedbackTitle) { [weak self] in
             self?.onShowAboutFeedback?()
         })
-        menu.addItem(advancedDataSettingsMenuItem())
 
         menu.addItem(actionItem(store.copy.submitFeedbackAction) { [weak self] in
             guard let self else { return }
@@ -151,28 +164,6 @@ final class StatusBarController {
         })
         submenu.addItem(actionItem(store.copy.contactAuthorTitle) { [weak self] in
             self?.onShowContactAuthor?()
-        })
-        item.submenu = submenu
-        return item
-    }
-
-    private func advancedDataSettingsMenuItem() -> NSMenuItem {
-        let item = NSMenuItem(title: store.copy.advancedDataSettingsTitle, action: nil, keyEquivalent: "")
-        let submenu = NSMenu()
-
-        let privacyItem = NSMenuItem(title: store.copy.localDataPrivacyAuthorizationTitle, action: nil, keyEquivalent: "")
-        let privacySubmenu = NSMenu()
-        privacySubmenu.addItem(actionItem(store.copy.analyticsRevokeAction) { [weak self] in
-            self?.onConfirmRevokeAnalytics?()
-        })
-        privacySubmenu.addItem(actionItem(store.copy.clearLocalHistoryAction) { [weak self] in
-            self?.onConfirmClearLocalHistory?()
-        })
-        privacyItem.submenu = privacySubmenu
-        submenu.addItem(privacyItem)
-
-        submenu.addItem(actionItem(store.copy.advancedDataSettingsTitle) { [weak self] in
-            self?.onShowAdvancedDataSettings?()
         })
         item.submenu = submenu
         return item

@@ -234,9 +234,9 @@ public struct QuotaCopy: Equatable, Sendable {
 
     public var manualRefreshNote: String {
         switch locale {
-        case .zhHans: "可从菜单栏手动刷新。"
-        case .zhHant: "可從選單列手動重新整理。"
-        case .en: "Manual refresh is in the menu bar."
+        case .zhHans: "可从菜单栏或展开面板手动刷新。"
+        case .zhHant: "可從選單列或展開面板手動重新整理。"
+        case .en: "Manual refresh is in the menu bar or detail panel."
         }
     }
 
@@ -461,28 +461,28 @@ public struct QuotaCopy: Equatable, Sendable {
         case .zhHans:
             [
                 "读取 Codex app-server 的 5 小时窗口和周窗口。",
-                "桌面悬浮胶囊、极简菜单栏图标和展开详情面板。",
+                "桌面悬浮胶囊、菜单栏短状态和展开详情面板。",
                 "自动刷新、手动刷新和读取失败时保留上次成功数据。",
                 "靠边停靠迷你形态、胶囊宽度调整和三语界面。",
-                "展开面板里可以进入反馈、设置和作者主页，菜单栏作为补充入口。",
+                "展开面板里可以进入反馈、语言、引导、作者、关于和退出，菜单栏作为补充入口。",
                 "本地历史记录、基础诊断和可选产品改进数据。"
             ]
         case .zhHant:
             [
                 "讀取 Codex app-server 的 5 小時週期和週額度。",
-                "桌面懸浮膠囊、極簡選單列圖示和展開詳細面板。",
+                "桌面懸浮膠囊、選單列短狀態和展開詳細面板。",
                 "自動重新整理、手動重新整理，讀取失敗時保留上次成功資料。",
                 "靠邊停靠迷你形態、膠囊寬度調整和三語介面。",
-                "展開面板可進入回饋、設定和作者個人頁，選單列作為補充入口。",
+                "展開面板可進入回饋、語言、引導、作者、關於和退出，選單列作為補充入口。",
                 "本機歷史記錄、基礎診斷和可選產品改善資料。"
             ]
         case .en:
             [
                 "Reads Codex app-server 5-hour and weekly quota windows.",
-                "Desktop floating capsule, minimal menu bar icon, and detail panel.",
+                "Desktop floating capsule, short menu bar status, and detail panel.",
                 "Auto refresh, manual refresh, and last-success fallback after read failures.",
                 "Edge-docked mini state, adjustable capsule width, and three interface languages.",
-                "Feedback, settings, and author links in the detail panel, with the menu bar as a secondary entry.",
+                "Feedback, language, guide, author, about, and quit actions in the detail panel, with the menu bar as a secondary entry.",
                 "Local history, basic diagnostics, and optional product improvement analytics."
             ]
         }
@@ -658,6 +658,14 @@ public struct QuotaCopy: Equatable, Sendable {
         case .zhHans: "操作"
         case .zhHant: "操作"
         case .en: "Actions"
+        }
+    }
+
+    public var openStatusMenuAction: String {
+        switch locale {
+        case .zhHans: "打开状态栏菜单"
+        case .zhHant: "開啟選單列選單"
+        case .en: "Open menu bar menu"
         }
     }
 
@@ -1199,17 +1207,17 @@ public struct QuotaCopy: Equatable, Sendable {
 
     public var onboardingMenuStepTitle: String {
         switch locale {
-        case .zhHans: "菜单栏保持很短"
-        case .zhHant: "選單列保持很短"
-        case .en: "Menu bar stays short"
+        case .zhHans: "菜单栏和面板互为备份"
+        case .zhHant: "選單列和面板互為備份"
+        case .en: "Menu bar and panel back each other up"
         }
     }
 
     public var onboardingMenuStepBody: String {
         switch locale {
-        case .zhHans: "菜单栏只放一个极简图标，避免被系统挤掉。刷新、语言、联系作者、关于反馈和高级数据设置也能从展开面板进入。"
-        case .zhHant: "選單列只放一個極簡圖示，避免被系統擠掉。重新整理、語言、聯絡作者、關於回饋和進階資料設定也能從展開面板進入。"
-        case .en: "The menu bar uses a minimal icon to avoid crowding. Refresh, language, contact, about, and data settings are also available from the detail panel."
+        case .zhHans: "菜单栏显示短状态和已用比例。展开面板也提供刷新、语言、联系作者、关于反馈和退出，找不到菜单栏时仍能操作。"
+        case .zhHant: "選單列顯示短狀態和已用比例。展開面板也提供重新整理、語言、聯絡作者、關於回饋和退出，找不到選單列時仍能操作。"
+        case .en: "The menu bar shows short status and usage. The detail panel also provides refresh, language, contact, about, and quit actions when the menu bar is hard to find."
         }
     }
 

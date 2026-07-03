@@ -13,6 +13,36 @@ describe("predictCapsuleState", () => {
     expect(prediction.projectedRemainingAtReset).toBeGreaterThan(10);
   });
 
+  it("marks an unused short window as safe", () => {
+    const prediction = predictCapsuleState(
+      {
+        provider: "codex",
+        sourceStatus: "ok",
+        fetchedAt: now,
+        shortWindow: {
+          label: "5h",
+          windowMinutes: 300,
+          usedPercent: 0,
+          remainingPercent: 100,
+          resetsAt: new Date(now.getTime() + 120 * 60_000),
+        },
+        weeklyWindow: {
+          label: "weekly",
+          windowMinutes: 10080,
+          usedPercent: 0,
+          remainingPercent: 100,
+          resetsAt: new Date(now.getTime() + 5_040 * 60_000),
+        },
+      },
+      { now },
+    );
+
+    expect(prediction.level).toBe("safe");
+    expect(prediction.canReachReset).toBe(true);
+    expect(prediction.quotaUsedPercent).toBe(0);
+    expect(prediction.projectedRemainingAtReset).toBe(100);
+  });
+
   it("marks low projected reset buffer as watch", () => {
     const prediction = predictCapsuleState(createMockSnapshot("watch", now), { now });
 

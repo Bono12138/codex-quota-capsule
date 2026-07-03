@@ -12,6 +12,9 @@ extension Notification.Name {
     static let quotaCapsuleShowAboutFeedback = Notification.Name("QuotaCapsuleShowAboutFeedback")
     static let quotaCapsuleShowContactAuthor = Notification.Name("QuotaCapsuleShowContactAuthor")
     static let quotaCapsuleShowAdvancedDataSettings = Notification.Name("QuotaCapsuleShowAdvancedDataSettings")
+    static let quotaCapsuleShowOnboarding = Notification.Name("QuotaCapsuleShowOnboarding")
+    static let quotaCapsuleTogglePanel = Notification.Name("QuotaCapsuleTogglePanel")
+    static let quotaCapsuleShowStatusMenu = Notification.Name("QuotaCapsuleShowStatusMenu")
     static let quotaCapsuleRequestFeedbackNudge = Notification.Name("QuotaCapsuleRequestFeedbackNudge")
 }
 

@@ -175,8 +175,8 @@ struct CompactCapsuleView: View {
         .overlay(Capsule().stroke(.white.opacity(0.24), lineWidth: 1))
         .overlay(
             Capsule()
-                .stroke(toneColor(store.displayModel.tone).opacity(store.onboardingFocus == .capsule ? 0.95 : 0), lineWidth: 3)
-                .shadow(color: toneColor(store.displayModel.tone).opacity(store.onboardingFocus == .capsule ? 0.45 : 0), radius: 8)
+                .stroke(onboardingHighlightColor().opacity(store.onboardingFocus == .capsule ? 0.98 : 0), lineWidth: 3)
+                .shadow(color: onboardingHighlightColor().opacity(store.onboardingFocus == .capsule ? 0.55 : 0), radius: 8)
         )
     }
 
@@ -327,8 +327,8 @@ struct DetailPopoverView: View {
         )
         .overlay(
             RoundedRectangle(cornerRadius: 22, style: .continuous)
-                .stroke(toneColor(store.displayModel.tone).opacity(store.onboardingFocus == .detail ? 0.95 : 0), lineWidth: 3)
-                .shadow(color: toneColor(store.displayModel.tone).opacity(store.onboardingFocus == .detail ? 0.45 : 0), radius: 9)
+                .stroke(onboardingHighlightColor().opacity(store.onboardingFocus == .detail ? 0.98 : 0), lineWidth: 3)
+                .shadow(color: onboardingHighlightColor().opacity(store.onboardingFocus == .detail ? 0.55 : 0), radius: 9)
         )
     }
 
@@ -405,7 +405,7 @@ struct PanelQuickActionsView: View {
     @Binding var assistedFeedbackMessage: String
 
     private var columns: [GridItem] {
-        [GridItem(.adaptive(minimum: 86), spacing: 6)]
+        [GridItem(.adaptive(minimum: 108), spacing: 6)]
     }
 
     var body: some View {
@@ -436,24 +436,67 @@ struct PanelQuickActionsView: View {
             store.refresh()
         }
 
+        quickActionButton(title: store.copy.openStatusMenuAction, symbol: "menubar.rectangle") {
+            NotificationCenter.default.post(name: .quotaCapsuleShowStatusMenu, object: nil)
+        }
+
+        quickActionButton(title: store.copy.toggleCapsuleAction, symbol: "capsule") {
+            NotificationCenter.default.post(name: .quotaCapsuleTogglePanel, object: nil)
+        }
+
+        languageMenu
+
+        quickActionButton(title: store.copy.userGuideAction, symbol: "questionmark.circle") {
+            NotificationCenter.default.post(name: .quotaCapsuleShowOnboarding, object: nil)
+        }
+
+        quickActionButton(title: store.copy.contactAuthorTitle, symbol: "person.crop.circle") {
+            NotificationCenter.default.post(name: .quotaCapsuleShowContactAuthor, object: nil)
+        }
+
+        quickActionButton(title: store.copy.aboutFeedbackTitle, symbol: "info.circle") {
+            NotificationCenter.default.post(name: .quotaCapsuleShowAboutFeedback, object: nil)
+        }
+
         quickActionButton(title: store.copy.submitFeedbackAction, symbol: "paperplane") {
             let destination = startAssistedFeedback(store: store)
             assistedFeedbackMessage = destination == .github ? store.copy.assistedFeedbackStartedMessage : store.copy.assistedFeedbackEmailMessage
         }
         .help(store.copy.codexFeedbackHint)
 
-        quickActionButton(title: store.copy.authorProfileAction, symbol: "person.crop.circle") {
-            store.recordFeedbackClick("x")
-            openExternalURL(authorXURL)
+        Button(role: .destructive) {
+            NSApp.terminate(nil)
+        } label: {
+            Label(store.copy.quitAction, systemImage: "power")
+                .font(.system(size: 10, weight: .bold))
+                .lineLimit(1)
+                .minimumScaleFactor(0.68)
+                .frame(maxWidth: .infinity, alignment: .center)
         }
+        .buttonStyle(.bordered)
+        .controlSize(.mini)
+    }
 
-        quickActionButton(title: store.copy.advancedDataSettingsTitle, symbol: "lock.shield") {
-            NotificationCenter.default.post(name: .quotaCapsuleShowAdvancedDataSettings, object: nil)
+    private var languageMenu: some View {
+        Menu {
+            Button("简体中文 · \(store.copy.languageSimplifiedAssistiveLabel)") {
+                store.selectLocale(.zhHans)
+            }
+            Button("繁體中文 · \(store.copy.languageTraditionalAssistiveLabel)") {
+                store.selectLocale(.zhHant)
+            }
+            Button("English · \(store.copy.languageEnglishAssistiveLabel)") {
+                store.selectLocale(.en)
+            }
+        } label: {
+            Label(store.copy.languageMenuTitle, systemImage: "globe")
+                .font(.system(size: 10, weight: .bold))
+                .lineLimit(1)
+                .minimumScaleFactor(0.68)
+                .frame(maxWidth: .infinity, alignment: .center)
         }
-
-        quickActionButton(title: store.copy.aboutFeedbackTitle, symbol: "info.circle") {
-            NotificationCenter.default.post(name: .quotaCapsuleShowAboutFeedback, object: nil)
-        }
+        .buttonStyle(.bordered)
+        .controlSize(.mini)
     }
 
     private func quickActionButton(title: String, symbol: String, action: @escaping () -> Void) -> some View {
@@ -635,8 +678,8 @@ struct WeeklyProjectionView: View {
         .background(.white.opacity(0.07), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
         .overlay(
             RoundedRectangle(cornerRadius: 12, style: .continuous)
-                .stroke(toneColor(store.weeklyProjectionTone).opacity(store.onboardingFocus == .weekly ? 0.95 : 0), lineWidth: 3)
-                .shadow(color: toneColor(store.weeklyProjectionTone).opacity(store.onboardingFocus == .weekly ? 0.45 : 0), radius: 8)
+                .stroke(onboardingHighlightColor().opacity(store.onboardingFocus == .weekly ? 0.98 : 0), lineWidth: 3)
+                .shadow(color: onboardingHighlightColor().opacity(store.onboardingFocus == .weekly ? 0.55 : 0), radius: 8)
         )
     }
 }
@@ -657,102 +700,6 @@ struct MiniStat: View {
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(10)
         .background(.white.opacity(0.08), in: RoundedRectangle(cornerRadius: 13, style: .continuous))
-    }
-}
-
-struct MenuBarContent: View {
-    @ObservedObject var store: QuotaStore
-    let onTogglePanel: () -> Void
-    let onShowAboutFeedback: () -> Void
-    let onShowContactAuthor: () -> Void
-    let onShowAdvancedDataSettings: () -> Void
-    let onShowOnboarding: () -> Void
-    let onConfirmRevokeAnalytics: () -> Void
-    let onConfirmClearLocalHistory: () -> Void
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            HStack(spacing: 6) {
-                Circle()
-                    .fill(toneColor(store.displayModel.tone))
-                    .frame(width: 8, height: 8)
-                Text(store.visibleMenuBarText)
-                    .font(.caption.bold())
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.82)
-            }
-            Divider()
-            Button(store.copy.refreshNowAction) {
-                store.refresh()
-            }
-            Button(store.copy.toggleCapsuleAction) {
-                onTogglePanel()
-            }
-            Button(store.copy.userGuideAction) {
-                onShowOnboarding()
-            }
-            Menu(store.copy.languageMenuTitle) {
-                Button("简体中文 · \(store.copy.languageSimplifiedAssistiveLabel)") {
-                    store.selectLocale(.zhHans)
-                }
-                Button("繁體中文 · \(store.copy.languageTraditionalAssistiveLabel)") {
-                    store.selectLocale(.zhHant)
-                }
-                Button("English · \(store.copy.languageEnglishAssistiveLabel)") {
-                    store.selectLocale(.en)
-                }
-            }
-            Divider()
-            Menu(store.copy.contactAuthorTitle) {
-                Text(store.copy.authorLine)
-                Text(store.copy.emailLine)
-                Text(store.copy.xLine)
-                Text(store.copy.douyinLine)
-                Divider()
-                Button(store.copy.emailFeedbackAction) {
-                    store.recordFeedbackClick("email")
-                    openExternalURL("mailto:\(FeedbackDestinations.authorEmail)")
-                }
-                Button(store.copy.openXAction) {
-                    store.recordFeedbackClick("x")
-                    openExternalURL(authorXURL)
-                }
-                Button(store.copy.openDouyinAction) {
-                    store.recordFeedbackClick("douyin_open")
-                    openExternalURL(douyinURL)
-                }
-                Button(store.copy.contactAuthorTitle) {
-                    onShowContactAuthor()
-                }
-            }
-            Button(store.copy.aboutFeedbackTitle) {
-                onShowAboutFeedback()
-            }
-            Menu(store.copy.advancedDataSettingsTitle) {
-                Menu(store.copy.localDataPrivacyAuthorizationTitle) {
-                    Button(store.copy.analyticsRevokeAction) {
-                        onConfirmRevokeAnalytics()
-                    }
-                    Button(store.copy.clearLocalHistoryAction) {
-                        onConfirmClearLocalHistory()
-                    }
-                }
-                Button(store.copy.advancedDataSettingsTitle) {
-                    onShowAdvancedDataSettings()
-                }
-            }
-            Button(store.copy.submitFeedbackAction) {
-                _ = startAssistedFeedback(store: store)
-            }
-            Divider()
-            Button(store.copy.quitAction) {
-                NSApp.terminate(nil)
-            }
-        }
-        .padding(.vertical, 6)
-        .onAppear {
-            store.recordMenuOpened()
-        }
     }
 }
 
@@ -1016,6 +963,8 @@ struct AboutFeedbackView: View {
                     rows: store.copy.futureVersionFeatures,
                     tone: .accentColor
                 )
+
+                AdvancedDataSettingsEntry(store: store)
             }
             .padding(24)
             .frame(maxWidth: .infinity, alignment: .leading)
@@ -1077,6 +1026,35 @@ struct AboutAuthorBlock: View {
         .padding(14)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(.white.opacity(0.07), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+    }
+}
+
+struct AdvancedDataSettingsEntry: View {
+    @ObservedObject var store: QuotaStore
+
+    var body: some View {
+        HStack(alignment: .center, spacing: 10) {
+            Image(systemName: "lock.shield")
+                .font(.system(size: 15, weight: .semibold))
+                .foregroundStyle(.secondary)
+                .frame(width: 20)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(store.copy.advancedDataSettingsTitle)
+                    .font(.system(size: 13, weight: .bold))
+                Text(store.copy.localDataPrivacyAuthorizationTitle)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+            Spacer(minLength: 8)
+            Button(store.copy.advancedDataSettingsTitle) {
+                NotificationCenter.default.post(name: .quotaCapsuleShowAdvancedDataSettings, object: nil)
+            }
+            .buttonStyle(.bordered)
+            .controlSize(.small)
+        }
+        .padding(12)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(.secondary.opacity(0.07), in: RoundedRectangle(cornerRadius: 13, style: .continuous))
     }
 }
 
@@ -1832,6 +1810,10 @@ func toneColor(_ level: CapsuleLevel) -> Color {
     case .unknown:
         Color(red: 0.66, green: 0.70, blue: 0.68)
     }
+}
+
+func onboardingHighlightColor() -> Color {
+    Color(red: 0.16, green: 0.50, blue: 0.98)
 }
 
 @MainActor
