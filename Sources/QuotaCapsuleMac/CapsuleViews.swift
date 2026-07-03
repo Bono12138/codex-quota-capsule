@@ -405,17 +405,18 @@ struct PanelQuickActionsView: View {
     @Binding var assistedFeedbackMessage: String
 
     private var columns: [GridItem] {
-        [GridItem(.adaptive(minimum: 108), spacing: 6)]
+        [GridItem(.adaptive(minimum: 128), spacing: 7)]
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Label(store.copy.panelQuickActionsTitle, systemImage: "slider.horizontal.3")
-                .font(.system(size: 10, weight: .bold))
-                .foregroundStyle(.secondary)
-
-            LazyVGrid(columns: columns, alignment: .leading, spacing: 6) {
-                actionChips
+        VStack(alignment: .leading, spacing: 7) {
+            ViewThatFits(in: .horizontal) {
+                HStack(spacing: 7) {
+                    primaryActions
+                }
+                LazyVGrid(columns: columns, alignment: .leading, spacing: 7) {
+                    primaryActions
+                }
             }
 
             if !assistedFeedbackMessage.isEmpty {
@@ -430,31 +431,9 @@ struct PanelQuickActionsView: View {
     }
 
     @ViewBuilder
-    private var actionChips: some View {
+    private var primaryActions: some View {
         quickActionButton(title: store.copy.refreshNowAction, symbol: "arrow.clockwise") {
             store.refresh()
-        }
-
-        quickActionButton(title: store.copy.openStatusMenuAction, symbol: "menubar.rectangle") {
-            NotificationCenter.default.post(name: .quotaCapsuleShowStatusMenu, object: nil)
-        }
-
-        quickActionButton(title: store.copy.toggleCapsuleAction, symbol: "capsule") {
-            NotificationCenter.default.post(name: .quotaCapsuleTogglePanel, object: nil)
-        }
-
-        languageMenu
-
-        quickActionButton(title: store.copy.userGuideAction, symbol: "questionmark.circle") {
-            NotificationCenter.default.post(name: .quotaCapsuleShowOnboarding, object: nil)
-        }
-
-        quickActionButton(title: store.copy.contactAuthorTitle, symbol: "person.crop.circle") {
-            NotificationCenter.default.post(name: .quotaCapsuleShowContactAuthor, object: nil)
-        }
-
-        quickActionButton(title: store.copy.aboutFeedbackTitle, symbol: "info.circle") {
-            NotificationCenter.default.post(name: .quotaCapsuleShowAboutFeedback, object: nil)
         }
 
         quickActionButton(title: store.copy.submitFeedbackAction, symbol: "paperplane") {
@@ -463,20 +442,47 @@ struct PanelQuickActionsView: View {
         }
         .help(store.copy.codexFeedbackHint)
 
-        Button(role: .destructive) {
-            NSApp.terminate(nil)
-        } label: {
-            Label(store.copy.quitAction, systemImage: "power")
-                .font(.system(size: 10, weight: .bold))
-                .lineLimit(1)
-                .minimumScaleFactor(0.68)
-                .frame(maxWidth: .infinity, alignment: .center)
-        }
-        .buttonStyle(.bordered)
-        .controlSize(.mini)
+        moreActionsMenu
     }
 
-    private var languageMenu: some View {
+    private var moreActionsMenu: some View {
+        Menu {
+            Button(store.copy.openStatusMenuAction) {
+                NotificationCenter.default.post(name: .quotaCapsuleShowStatusMenu, object: nil)
+            }
+
+            Button(store.copy.toggleCapsuleAction) {
+                NotificationCenter.default.post(name: .quotaCapsuleTogglePanel, object: nil)
+            }
+
+            languageSubmenu
+
+            Button(store.copy.userGuideAction) {
+                NotificationCenter.default.post(name: .quotaCapsuleShowOnboarding, object: nil)
+            }
+
+            Button(store.copy.contactAuthorTitle) {
+                NotificationCenter.default.post(name: .quotaCapsuleShowContactAuthor, object: nil)
+            }
+
+            Button(store.copy.aboutFeedbackTitle) {
+                NotificationCenter.default.post(name: .quotaCapsuleShowAboutFeedback, object: nil)
+            }
+
+            Divider()
+
+            Button(role: .destructive) {
+                NSApp.terminate(nil)
+            } label: {
+                Label(store.copy.quitAction, systemImage: "power")
+            }
+        } label: {
+            panelActionLabel(title: store.copy.moreActionsTitle, symbol: "ellipsis.circle")
+        }
+        .buttonStyle(.plain)
+    }
+
+    private var languageSubmenu: some View {
         Menu {
             Button("简体中文 · \(store.copy.languageSimplifiedAssistiveLabel)") {
                 store.selectLocale(.zhHans)
@@ -489,25 +495,29 @@ struct PanelQuickActionsView: View {
             }
         } label: {
             Label(store.copy.languageMenuTitle, systemImage: "globe")
-                .font(.system(size: 10, weight: .bold))
-                .lineLimit(1)
-                .minimumScaleFactor(0.68)
-                .frame(maxWidth: .infinity, alignment: .center)
         }
-        .buttonStyle(.bordered)
-        .controlSize(.mini)
     }
 
     private func quickActionButton(title: String, symbol: String, action: @escaping () -> Void) -> some View {
         Button(action: action) {
-            Label(title, systemImage: symbol)
-                .font(.system(size: 10, weight: .bold))
-                .lineLimit(1)
-                .minimumScaleFactor(0.68)
-                .frame(maxWidth: .infinity, alignment: .center)
+            panelActionLabel(title: title, symbol: symbol)
         }
-        .buttonStyle(.bordered)
-        .controlSize(.mini)
+        .buttonStyle(.plain)
+    }
+
+    private func panelActionLabel(title: String, symbol: String) -> some View {
+        Label(title, systemImage: symbol)
+            .font(.system(size: 10.5, weight: .bold))
+            .lineLimit(1)
+            .minimumScaleFactor(0.76)
+            .symbolVariant(.none)
+            .frame(maxWidth: .infinity, minHeight: 28, alignment: .center)
+            .padding(.horizontal, 9)
+            .background(.white.opacity(0.075), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+            .overlay(
+                RoundedRectangle(cornerRadius: 8, style: .continuous)
+                    .stroke(.white.opacity(0.12), lineWidth: 1)
+            )
     }
 }
 

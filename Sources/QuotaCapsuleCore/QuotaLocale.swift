@@ -464,7 +464,7 @@ public struct QuotaCopy: Equatable, Sendable {
                 "桌面悬浮胶囊、菜单栏短状态和展开详情面板。",
                 "自动刷新、手动刷新和读取失败时保留上次成功数据。",
                 "靠边停靠迷你形态、胶囊宽度调整和三语界面。",
-                "展开面板里可以进入反馈、语言、引导、作者、关于和退出，菜单栏作为补充入口。",
+                "展开面板提供刷新、反馈和更多操作；语言、引导、作者、关于和退出收在更多操作里。",
                 "本地历史记录、基础诊断和可选产品改进数据。"
             ]
         case .zhHant:
@@ -473,7 +473,7 @@ public struct QuotaCopy: Equatable, Sendable {
                 "桌面懸浮膠囊、選單列短狀態和展開詳細面板。",
                 "自動重新整理、手動重新整理，讀取失敗時保留上次成功資料。",
                 "靠邊停靠迷你形態、膠囊寬度調整和三語介面。",
-                "展開面板可進入回饋、語言、引導、作者、關於和退出，選單列作為補充入口。",
+                "展開面板提供重新整理、回饋和更多操作；語言、引導、作者、關於和退出收在更多操作裡。",
                 "本機歷史記錄、基礎診斷和可選產品改善資料。"
             ]
         case .en:
@@ -482,7 +482,7 @@ public struct QuotaCopy: Equatable, Sendable {
                 "Desktop floating capsule, short menu bar status, and detail panel.",
                 "Auto refresh, manual refresh, and last-success fallback after read failures.",
                 "Edge-docked mini state, adjustable capsule width, and three interface languages.",
-                "Feedback, language, guide, author, about, and quit actions in the detail panel, with the menu bar as a secondary entry.",
+                "Refresh, feedback, and More actions in the detail panel; language, guide, author, about, and quit live under More actions.",
                 "Local history, basic diagnostics, and optional product improvement analytics."
             ]
         }
@@ -658,6 +658,14 @@ public struct QuotaCopy: Equatable, Sendable {
         case .zhHans: "操作"
         case .zhHant: "操作"
         case .en: "Actions"
+        }
+    }
+
+    public var moreActionsTitle: String {
+        switch locale {
+        case .zhHans: "更多操作"
+        case .zhHant: "更多操作"
+        case .en: "More actions"
         }
     }
 
@@ -1215,9 +1223,9 @@ public struct QuotaCopy: Equatable, Sendable {
 
     public var onboardingMenuStepBody: String {
         switch locale {
-        case .zhHans: "菜单栏显示短状态和已用比例。展开面板也提供刷新、语言、联系作者、关于反馈和退出，找不到菜单栏时仍能操作。"
-        case .zhHant: "選單列顯示短狀態和已用比例。展開面板也提供重新整理、語言、聯絡作者、關於回饋和退出，找不到選單列時仍能操作。"
-        case .en: "The menu bar shows short status and usage. The detail panel also provides refresh, language, contact, about, and quit actions when the menu bar is hard to find."
+        case .zhHans: "菜单栏显示短状态和已用比例。展开面板提供刷新、提交反馈和更多操作；找不到菜单栏时，更多操作里也能进入语言、联系作者、关于反馈和退出。"
+        case .zhHant: "選單列顯示短狀態和已用比例。展開面板提供重新整理、送出回饋和更多操作；找不到選單列時，更多操作裡也能進入語言、聯絡作者、關於回饋和退出。"
+        case .en: "The menu bar shows short status and usage. The detail panel provides refresh, send feedback, and More actions; More actions keeps language, contact, about, and quit available when the menu bar is hard to find."
         }
     }
 

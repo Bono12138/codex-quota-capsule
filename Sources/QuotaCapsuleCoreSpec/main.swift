@@ -266,6 +266,7 @@ func testRuntimeLocaleCopyCoversMenuOnboardingAndConsent() {
         expect(!copy.contactAuthorTitle.isEmpty, "contact author title should be localized")
         expect(!copy.authorProfileAction.isEmpty, "author profile action should be localized")
         expect(!copy.panelQuickActionsTitle.isEmpty, "panel quick actions title should be localized")
+        expect(!copy.moreActionsTitle.isEmpty, "more actions title should be localized")
         expect(!copy.openStatusMenuAction.isEmpty, "open status menu action should be localized")
         expect(!copy.submitFeedbackAction.isEmpty, "unified submit feedback action should be localized")
         expect(!copy.feedbackAlternativeHint.isEmpty, "feedback alternative hint should be localized")

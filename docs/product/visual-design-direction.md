@@ -138,6 +138,7 @@ Quota Capsule 的视觉应该靠近现代 Mac 状态控件，远离后台 dashbo
 - compact 形态。
 - 环形图的 glanceable 感觉。
 - expanded panel 的层次。
+- 展开面板的备用操作必须视觉降级，默认只露出少量主入口；不要把所有低频动作平铺成密集工具栏。
 
 不要学：
 
