@@ -360,8 +360,6 @@ struct DetailPopoverView: View {
                 .font(.system(size: 13, weight: .medium))
                 .foregroundStyle(.secondary)
 
-            PanelQuickActionsView(store: store, assistedFeedbackMessage: $assistedFeedbackMessage)
-
             VStack(spacing: 10) {
                 ForEach(visibleMetrics, id: \.label) { metric in
                     MetricRow(metric: metric, tone: store.displayModel.tone)
@@ -381,6 +379,8 @@ struct DetailPopoverView: View {
             )
 
             WeeklyProjectionView(store: store)
+
+            PanelQuickActionsView(store: store, assistedFeedbackMessage: $assistedFeedbackMessage)
 
             VStack(alignment: .leading, spacing: 7) {
                 Text(store.copy.dataSourceTitle)
@@ -409,14 +409,13 @@ struct PanelQuickActionsView: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            ViewThatFits(in: .horizontal) {
-                HStack(spacing: 6) {
-                    actionChips
-                }
-                LazyVGrid(columns: columns, alignment: .leading, spacing: 6) {
-                    actionChips
-                }
+        VStack(alignment: .leading, spacing: 8) {
+            Label(store.copy.panelQuickActionsTitle, systemImage: "slider.horizontal.3")
+                .font(.system(size: 10, weight: .bold))
+                .foregroundStyle(.secondary)
+
+            LazyVGrid(columns: columns, alignment: .leading, spacing: 6) {
+                actionChips
             }
 
             if !assistedFeedbackMessage.isEmpty {
