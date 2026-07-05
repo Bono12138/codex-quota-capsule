@@ -49,8 +49,11 @@ const publicPaths = [
   "docs/product/analytics-collector.md",
   "docs/assets/douyin-qr-scan.png",
   "docs/distribution/codex-assisted-distribution-strategy.md",
+  "docs/distribution/launch-video-materials-requirements.md",
+  "docs/distribution/launch-video-production-brief.md",
   "docs/distribution/public-launch-materials.md",
   "docs/distribution/public-repo-file-manifest.md",
+  "docs/distribution/quota-anxiety-psychology-notes.md",
   "docs/research/data-source-probe.md",
 ];
 
@@ -60,6 +63,7 @@ const privatePaths = [
   "docs/product/product-ops-feedback-and-copy.md",
   "docs/product/development-plan.md",
   "docs/research/competitors",
+  ".codex/skills",
 ];
 
 const ignoredPathSegments = new Set([

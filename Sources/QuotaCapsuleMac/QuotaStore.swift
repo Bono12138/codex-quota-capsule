@@ -126,7 +126,7 @@ final class QuotaStore: ObservableObject {
         recordEvent(name: "quota_refresh_started", surface: "menu_bar", requiresConsent: false)
         let locale = self.locale
         Task.detached(priority: .utility) {
-            let snapshot = CodexAppServerClient.fetchCurrent(locale: locale)
+            let snapshot = await CodexAppServerClient.fetchCurrentWithRetry(locale: locale)
             let now = Date()
 
             await MainActor.run {

@@ -69,8 +69,11 @@ docs/product/bug-triage-and-release-blockers.md
 docs/product/analytics-collector.md
 docs/assets/douyin-qr-scan.png
 docs/distribution/codex-assisted-distribution-strategy.md
+docs/distribution/launch-video-materials-requirements.md
+docs/distribution/launch-video-production-brief.md
 docs/distribution/public-launch-materials.md
 docs/distribution/public-repo-file-manifest.md
+docs/distribution/quota-anxiety-psychology-notes.md
 docs/research/data-source-probe.md
 ```
 
@@ -82,11 +85,13 @@ docs/product/strategy-and-commercialization.md
 docs/product/product-ops-feedback-and-copy.md
 docs/product/development-plan.md
 docs/research/competitors/**
+.codex/skills/**
 ```
 
 原因：
 
 - 这些文件包含内部交接、商业化判断、未整理竞品过程或 owner 决策上下文。
+- `.codex/skills/**` 里包含本地工作方法和第三方 skill。`dontbesilent2025/dbskill` 是 CC BY-NC 4.0，不能混入 MIT public 产品仓库。
 - 它们对 private 工作仓库有价值，public 用户优先需要安装、隐私、使用和贡献信息。
 
 ## 需要改写后再公开

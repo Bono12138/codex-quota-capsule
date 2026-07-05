@@ -57,6 +57,49 @@ public enum CodexAppServerClient {
         }
     }
 
+    public static func fetchCurrentWithRetry(
+        codexPath: String? = nil,
+        timeoutSeconds: TimeInterval = defaultTimeoutSeconds,
+        locale: QuotaLocale = .zhHans,
+        maxAttempts: Int = 3,
+        retryDelaySeconds: TimeInterval = 1.25
+    ) async -> AgentQuotaSnapshot {
+        let attempts = max(1, maxAttempts)
+        var latest = fetchCurrent(codexPath: codexPath, timeoutSeconds: timeoutSeconds, locale: locale)
+        guard attempts > 1 else {
+            return latest
+        }
+
+        for attempt in 1..<attempts {
+            guard shouldRetry(latest) else {
+                return latest
+            }
+            let delay = UInt64(retryDelaySeconds * Double(attempt) * 1_000_000_000)
+            try? await Task.sleep(nanoseconds: delay)
+            latest = fetchCurrent(codexPath: codexPath, timeoutSeconds: timeoutSeconds, locale: locale)
+            if latest.sourceStatus == .ok {
+                return latest
+            }
+        }
+
+        return latest
+    }
+
+    public static func shouldRetry(_ snapshot: AgentQuotaSnapshot) -> Bool {
+        guard snapshot.sourceStatus != .ok else {
+            return false
+        }
+        let message = (snapshot.errorMessage ?? "").lowercased()
+        if message.contains("not signed in")
+            || message.contains("未登录")
+            || message.contains("未登入")
+            || message.contains("找不到 codex")
+            || message.contains("could not find the codex command") {
+            return false
+        }
+        return true
+    }
+
     public static func fetchSnapshot(
         transport: CodexRPCTransport,
         fetchedAt: Date,

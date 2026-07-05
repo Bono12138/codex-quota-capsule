@@ -703,6 +703,47 @@ func testCodexAppServerClientDefaultTimeoutIsProductionTolerant() {
     expect(CodexAppServerClient.defaultTimeoutSeconds >= 30, "default app-server timeout should tolerate Codex startup sync work")
 }
 
+func testCodexAppServerClientRetriesOnlyTransientFailures() {
+    let now = Date(timeIntervalSince1970: 1_788_270_000)
+    let timeoutSnapshot = AgentQuotaSnapshot(
+        provider: "codex",
+        sourceStatus: .error,
+        fetchedAt: now,
+        shortWindow: nil,
+        weeklyWindow: nil,
+        errorMessage: "codex app-server 读取超时。"
+    )
+    let sourceSnapshot = AgentQuotaSnapshot(
+        provider: "codex",
+        sourceStatus: .error,
+        fetchedAt: now,
+        shortWindow: nil,
+        weeklyWindow: nil,
+        errorMessage: "codex app-server did not return a response for id=2."
+    )
+    let authSnapshot = AgentQuotaSnapshot(
+        provider: "codex",
+        sourceStatus: .error,
+        fetchedAt: now,
+        shortWindow: nil,
+        weeklyWindow: nil,
+        errorMessage: "not signed in"
+    )
+    let missingCLISnapshot = AgentQuotaSnapshot(
+        provider: "codex",
+        sourceStatus: .error,
+        fetchedAt: now,
+        shortWindow: nil,
+        weeklyWindow: nil,
+        errorMessage: "找不到 codex 命令。"
+    )
+
+    expect(CodexAppServerClient.shouldRetry(timeoutSnapshot), "timeout should be retried")
+    expect(CodexAppServerClient.shouldRetry(sourceSnapshot), "transient source errors should be retried")
+    expect(!CodexAppServerClient.shouldRetry(authSnapshot), "auth errors should not be retried")
+    expect(!CodexAppServerClient.shouldRetry(missingCLISnapshot), "missing CLI should not be retried")
+}
+
 do {
     try testParsesCodexRateLimitsByDuration()
     testPredictsBurnRateRunway()
@@ -731,6 +772,7 @@ do {
     testQuotaRefreshReducerPreservesLastSuccessAfterFailure()
     testQuotaRefreshReducerUsesErrorWhenNoSuccessExists()
     testCodexAppServerClientDefaultTimeoutIsProductionTolerant()
+    testCodexAppServerClientRetriesOnlyTransientFailures()
     print("QuotaCapsuleCoreSpec passed")
 } catch {
     fputs("Spec failed with error: \(error)\n", stderr)

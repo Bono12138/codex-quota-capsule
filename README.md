@@ -1,49 +1,63 @@
-# Quota Capsule
+# Quota Capsule / 额度胶囊
 
 Languages: [简体中文](README.zh-CN.md) | [English](README.en.md)
 
-Quota Capsule is a small macOS quota gauge for heavy Codex users. It turns quota-window data into a direct question:
+Quota Capsule is a small macOS quota runway capsule for heavy Codex users.
 
-> At the current pace, can I make it to the next reset? If not, when will I run out?
+额度胶囊是一个面向 Codex 重度用户的 macOS 桌面小胶囊。
 
-Quota Capsule 是一个面向 Codex 重度用户的 macOS 额度小胶囊。它把 quota window 数据翻译成用户真正关心的问题：
+It answers the question a bare quota percentage cannot answer:
 
-> 按现在这个速度，我能不能撑到下一次刷新？如果撑不到，预计几点见底？
+> At the current pace, can I keep working until the next reset?
 
-## What It Does / 它能做什么
+它把 quota window 数据翻译成用户真正关心的判断：
 
-- Shows a quiet floating capsule and a menu bar status item.
-- Reads local Codex rate-limit windows through a read-only Codex app-server call.
-- Predicts whether the current pace can last until reset.
-- Supports 5-hour and weekly quota windows.
-- Keeps the first version Codex-first while leaving the model agent-extensible.
+> 按现在这个速度，我能不能撑到下一次刷新？
 
-- 显示桌面悬浮胶囊和菜单栏状态。
-- 通过只读 Codex app-server 调用读取本地 rate-limit window。
-- 判断当前速度能不能撑到刷新。
-- 支持 5 小时窗口和周窗口。
-- 第一版先服务 Codex，同时保留其他 Agent 产品适配空间。
+## Why This Exists / 为什么做
+
+Heavy Codex users often run multiple tasks, check usage pages repeatedly, and still hold back even with paid quota available. A percentage is only evidence. The working decision is whether the current pace can last until reset.
+
+很多 Codex 重度用户会同时跑多个任务，也会反复查看 usage 页面。百分比只能提供证据。真正影响工作节奏的是：现在还能不能继续放心用。
+
+Quota Capsule stays visible on the desktop and in the menu bar, then turns 5-hour and weekly quota windows into direct states:
+
+额度胶囊常驻桌面和菜单栏，把 5 小时窗口和周窗口转换成直接状态：
+
+- Safe / 安全：当前速度大概率能撑到刷新。
+- Watch / 注意：暂时能用，但余量偏薄。
+- Danger / 危险：当前速度大概率会在刷新前见底。
+- Unknown / 未知：数据缺失、过期或读取失败。
+
+## Who It Is For / 适合谁
+
+- Codex users who often run several tasks at once.
+- People who repeatedly check quota or usage pages while working.
+- Developers who want a local-first quota gauge they can inspect and modify.
+- Agent communities that want to add their own quota source adapters.
+
+- 经常同时跑多个 Codex 任务的用户。
+- 工作时反复查看额度或 usage 页面的人。
+- 想要本地优先、可检查、可修改工具的开发者。
+- 想为其他 Agent 产品贡献 source adapter 的社区。
 
 ## Quick Start / 快速开始
 
-Read the full setup guide before running the app:
+Early public testing uses GitHub + Codex-assisted installation. Open this repository and give the prompt below to your own Codex:
 
-```text
-INSTALL.md
-```
-
-早期公开试用推荐使用 Codex-assisted 安装。把下面这段交给自己的 Codex：
+早期公开试用采用 GitHub + Codex-assisted 安装。打开本仓库，把下面这段交给自己的 Codex：
 
 ```text
 Please install and run Quota Capsule on this Mac:
 1. Open https://github.com/Bono12138/codex-quota-capsule
-2. Read README.md, INSTALL.md, and AGENTS.md first.
-3. Do not modify my Codex login state, log me out, or reinstall Codex.
+2. Read README.md, INSTALL.md, AGENTS.md, and package.json first.
+3. Do not modify my Codex login state, log me out, reinstall Codex, or replace Codex binaries.
 4. Only do local clone, dependency install, build, test, and launch.
-5. If Node, npm, Swift, or Codex CLI is missing, tell me before changing the system.
-6. Run npm ci, npm test, npm run build, swift run QuotaCapsuleCoreSpec.
-7. Run npm run mac:run:internal-test -- --verify.
-8. After it launches, tell me how to open it again.
+5. Do not read, copy, print, or upload auth tokens, cookies, API keys, prompt text, session text, code content, or private file paths.
+6. If Node, npm, Swift, Xcode Command Line Tools, or Codex CLI is missing, tell me before changing the system.
+7. Run npm ci, npm test, npm run build, and swift run QuotaCapsuleCoreSpec.
+8. Run npm run mac:run:internal-test -- --verify.
+9. After it launches, tell me how to open it again.
 ```
 
 Manual install:
@@ -58,6 +72,18 @@ swift run QuotaCapsuleCoreSpec
 npm run mac:run:internal-test -- --verify
 ```
 
+## Privacy Boundary / 隐私边界
+
+- By default, quota data is read and computed locally.
+- Product events are not uploaded unless an analytics endpoint is explicitly configured.
+- Prompt text, session text, code content, private file paths, account credentials, auth tokens, and cookies stay on this Mac.
+- Missing or stale quota data is shown as `unknown`.
+
+- 默认本地读取、本地计算。
+- 未显式配置 analytics endpoint 时，不上传产品事件。
+- prompt 正文、session 正文、代码内容、私有文件路径、账号凭据、auth token、cookie 留在本机。
+- 缺失或过期数据显示为 `unknown`。
+
 ## Local Channels / 本机版本通道
 
 | Channel | App | Purpose |
@@ -65,17 +91,39 @@ npm run mac:run:internal-test -- --verify
 | Internal test | `Quota Capsule Beta.app` | Public beta build; feedback goes to public GitHub Issues. |
 | Development | `Quota Capsule Dev Local.app` | Local owner/developer build; private issue URL must be configured explicitly. |
 
-## Privacy Boundary / 隐私边界
+## Current Status / 当前状态
 
-- By default, the app reads and computes locally.
-- Product events are not uploaded unless an analytics endpoint is explicitly configured.
-- Prompts, session text, code, file paths, account credentials, tokens, and cookies stay on this Mac.
-- Missing or stale quota data must be shown as `unknown`, not `safe`.
+The first public beta is a macOS app built from source. It currently includes:
 
-- 默认本地读取、本地计算。
-- 未显式配置 analytics endpoint 时不上传产品事件。
-- prompt、session 正文、代码、文件路径、账号凭据、token、cookie 留在本机。
-- 缺失或过期数据显示为 `unknown`，不能显示为 `safe`。
+- Native floating desktop capsule and menu bar item.
+- Read-only Codex app-server rate-limit source.
+- 5-hour and weekly quota prediction.
+- Local history snapshots.
+- Multilingual UI.
+- Feedback links for GitHub Issues, email, X, and Douyin.
+
+当前公开内测版是从源码构建的 macOS app，已经包括：
+
+- 原生桌面悬浮胶囊和菜单栏入口。
+- 只读 Codex app-server rate-limit 数据源。
+- 5 小时窗口和周窗口预测。
+- 本地历史快照。
+- 多语言界面。
+- GitHub Issues、邮箱、X、抖音反馈入口。
+
+## Roadmap / 路线图
+
+- Better onboarding and in-product guidance.
+- History trends and usage rhythm review.
+- Chrome version.
+- More agent provider adapters.
+- Signed, notarized, packaged macOS distribution after the beta stabilizes.
+
+- 更完整的新手引导和产品内提示。
+- 历史趋势和使用节奏复盘。
+- Chrome 独立版本。
+- 更多 Agent provider adapter。
+- 内测稳定后补签名、公证和正式 macOS 分发。
 
 ## Feedback / 反馈
 

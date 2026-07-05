@@ -485,6 +485,11 @@ private final class TransparentHostingView<Content: View>: NSHostingView<Content
 
     override func mouseDown(with event: NSEvent) {
         let point = convert(event.locationInWindow, from: nil)
+        guard shouldHandlePanelInteraction(at: point) else {
+            super.mouseDown(with: event)
+            return
+        }
+
         activeMouseMode = .moveOrClick
         mouseDownLocation = NSEvent.mouseLocation
         pendingResizeEdge = resizeEdge(at: point)
@@ -497,6 +502,11 @@ private final class TransparentHostingView<Content: View>: NSHostingView<Content
     }
 
     override func mouseDragged(with event: NSEvent) {
+        guard activeMouseMode != nil else {
+            super.mouseDragged(with: event)
+            return
+        }
+
         if activeMouseMode == .resize {
             guard let resizeStartMouseX,
                   let resizeStartWidth,
@@ -558,6 +568,11 @@ private final class TransparentHostingView<Content: View>: NSHostingView<Content
     }
 
     override func mouseUp(with event: NSEvent) {
+        guard activeMouseMode != nil else {
+            super.mouseUp(with: event)
+            return
+        }
+
         if activeMouseMode == .resize {
             activeMouseMode = nil
             pendingResizeEdge = nil
