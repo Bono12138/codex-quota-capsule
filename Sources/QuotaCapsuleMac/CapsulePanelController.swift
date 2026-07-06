@@ -597,10 +597,8 @@ private final class TransparentHostingView<Content: View>: NSHostingView<Content
 
         if isPanelDragging {
             onPanelDragEnded?()
-        } else if pendingResizeEdge == nil {
-            onPrimaryClick?()
         } else {
-            window?.invalidateCursorRects(for: self)
+            onPrimaryClick?()
         }
     }
 
@@ -621,13 +619,16 @@ private final class TransparentHostingView<Content: View>: NSHostingView<Content
             return []
         }
         return [
-            NSRect(x: bounds.minX, y: bounds.minY, width: resizeHitWidth, height: bounds.height),
-            NSRect(x: bounds.maxX - resizeHitWidth, y: bounds.minY, width: resizeHitWidth, height: bounds.height)
+            NSRect(x: bounds.minX, y: capsuleChromeRect.minY, width: resizeHitWidth, height: capsuleChromeRect.height),
+            NSRect(x: bounds.maxX - resizeHitWidth, y: capsuleChromeRect.minY, width: resizeHitWidth, height: capsuleChromeRect.height)
         ]
     }
 
     private func resizeEdge(at point: NSPoint) -> CapsuleResizeEdge? {
         guard bounds.width > CapsuleViewMetrics.dockedWidth + 30 else {
+            return nil
+        }
+        guard capsuleChromeRect.contains(point) else {
             return nil
         }
         if point.x <= bounds.minX + resizeHitWidth {
@@ -644,15 +645,20 @@ private final class TransparentHostingView<Content: View>: NSHostingView<Content
             return true
         }
 
-        if point.x <= bounds.minX + resizeHitWidth || point.x >= bounds.maxX - resizeHitWidth {
-            return true
-        }
+        return capsuleChromeRect.contains(point)
+    }
 
+    private var capsuleChromeRect: NSRect {
         let topBandHeight = min(
             bounds.height,
             CapsuleViewMetrics.shadowPadding + CapsuleViewMetrics.collapsedContentHeight + 8
         )
-        return point.y >= bounds.maxY - topBandHeight
+        return NSRect(
+            x: bounds.minX,
+            y: bounds.maxY - topBandHeight,
+            width: bounds.width,
+            height: topBandHeight
+        )
     }
 }
 
