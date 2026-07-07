@@ -8,6 +8,7 @@ export default defineConfig({
       "**/.git/**",
       "**/.build/**",
       "artifacts/**",
+      "projects/**",
     ],
   },
 });

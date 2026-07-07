@@ -166,7 +166,7 @@ final class QuotaStore: ObservableObject {
             )
         }
 
-        return copy.weeklyProjectionUnavailable
+        return weeklyProjection.headline
     }
 
     var weeklyProjectionTone: CapsuleLevel {
@@ -524,7 +524,7 @@ final class QuotaStore: ObservableObject {
         }
 
         if let weeklyWindow = snapshot.weeklyWindow {
-            let weeklyPrediction = QuotaPredictor.predict(window: weeklyWindow, now: snapshot.fetchedAt, locale: locale)
+            let weeklyPrediction = QuotaPredictor.predictWeekly(window: weeklyWindow, now: snapshot.fetchedAt, locale: locale)
             properties["weekly_window_minutes"] = "\(weeklyWindow.windowMinutes)"
             properties["weekly_used_percent"] = "\(weeklyWindow.usedPercent)"
             properties["weekly_remaining_percent"] = "\(weeklyWindow.remainingPercent)"

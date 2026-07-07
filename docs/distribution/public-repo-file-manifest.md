@@ -60,6 +60,7 @@ docs/decisions/0001-repo-boundary.md
 docs/decisions/0002-codex-first-agent-extensible.md
 docs/decisions/0003-distribution-and-surface-plan.md
 docs/decisions/0004-release-channels-and-repository-split.md
+docs/decisions/0005-version-management-and-release-flow.md
 docs/product/brief.md
 docs/product/mvp-scope.md
 docs/product/acceptance-criteria.md

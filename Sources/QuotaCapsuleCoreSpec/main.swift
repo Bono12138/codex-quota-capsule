@@ -191,6 +191,89 @@ func testWeeklyPredictionUsesWeeklyWindowInputsOnly() {
     expect(prediction?.projectedRemainingAtReset == 80, "weekly projected remaining should use weekly pace only")
 }
 
+func testWeeklyPredictionWaitsForEnoughEarlyWindowSignal() {
+    let now = Date(timeIntervalSince1970: 1_788_270_000)
+    let snapshot = AgentQuotaSnapshot(
+        provider: "codex",
+        sourceStatus: .ok,
+        fetchedAt: now,
+        shortWindow: QuotaWindow(
+            label: "5h",
+            windowMinutes: 300,
+            usedPercent: 57,
+            remainingPercent: 43,
+            resetsAt: now.addingTimeInterval(160 * 60)
+        ),
+        weeklyWindow: QuotaWindow(
+            label: "weekly",
+            windowMinutes: 10_080,
+            usedPercent: 1,
+            remainingPercent: 99,
+            resetsAt: now.addingTimeInterval((10_080 - 45) * 60)
+        ),
+        errorMessage: nil
+    )
+
+    let prediction = QuotaPredictor.predictWeekly(snapshot: snapshot, now: now)
+
+    expect(prediction?.level == .unknown, "early weekly prediction should stay low-confidence")
+    expect(prediction?.canReachReset == nil, "early weekly prediction should not claim a run-out time")
+    expect(prediction?.quotaUsedPercent == 1, "early weekly prediction should still expose weekly used percent")
+    expect(prediction?.estimatedEmptyAt == nil, "early weekly prediction should not extrapolate a false empty time")
+    expect(prediction?.projectedRemainingAtReset == nil, "early weekly prediction should not project reset buffer")
+}
+
+func testWeeklyPredictionDoesNotEstimateExactRunOutAtFivePercentEarlyWindow() {
+    let now = Date(timeIntervalSince1970: 1_788_270_000)
+    let snapshot = AgentQuotaSnapshot(
+        provider: "codex",
+        sourceStatus: .ok,
+        fetchedAt: now,
+        shortWindow: nil,
+        weeklyWindow: QuotaWindow(
+            label: "weekly",
+            windowMinutes: 10_080,
+            usedPercent: 5,
+            remainingPercent: 95,
+            resetsAt: now.addingTimeInterval((10_080 - 55) * 60)
+        ),
+        errorMessage: nil
+    )
+
+    let prediction = QuotaPredictor.predictWeekly(snapshot: snapshot, now: now)
+
+    expect(prediction?.level == .watch, "5% weekly usage very early should be watch-level pressure")
+    expect(prediction?.canReachReset == nil, "5% weekly usage very early should not claim whether it reaches reset")
+    expect(prediction?.quotaUsedPercent == 5, "early weekly watch should expose weekly used percent")
+    expect(prediction?.estimatedEmptyAt == nil, "early weekly watch should not estimate an exact empty time")
+    expect(prediction?.projectedRemainingAtReset == nil, "early weekly watch should not project reset buffer")
+}
+
+func testWeeklyPredictionFlagsFastEarlyBurnWithoutExactRunOutTime() {
+    let now = Date(timeIntervalSince1970: 1_788_270_000)
+    let snapshot = AgentQuotaSnapshot(
+        provider: "codex",
+        sourceStatus: .ok,
+        fetchedAt: now,
+        shortWindow: nil,
+        weeklyWindow: QuotaWindow(
+            label: "weekly",
+            windowMinutes: 10_080,
+            usedPercent: 8,
+            remainingPercent: 92,
+            resetsAt: now.addingTimeInterval((10_080 - 45) * 60)
+        ),
+        errorMessage: nil
+    )
+
+    let prediction = QuotaPredictor.predictWeekly(snapshot: snapshot, now: now)
+
+    expect(prediction?.level == .watch, "material early weekly burn should be flagged without exact exhaustion")
+    expect(prediction?.canReachReset == nil, "material early weekly burn should not claim whether it reaches reset")
+    expect(prediction?.estimatedEmptyAt == nil, "material early weekly burn should not estimate an exact empty time")
+    expect(prediction?.projectedRemainingAtReset == nil, "material early weekly burn should not project reset buffer")
+}
+
 func testPredictsExpiredResetAsUnknown() {
     let now = Date(timeIntervalSince1970: 1_788_270_000)
     let snapshot = AgentQuotaSnapshot(
@@ -752,6 +835,9 @@ do {
     testPredictsExhaustedWeeklyWindowAsDanger()
     testPredictsMissingShortWindowAsUnknownWhenWeeklyIsNotExhausted()
     testWeeklyPredictionUsesWeeklyWindowInputsOnly()
+    testWeeklyPredictionWaitsForEnoughEarlyWindowSignal()
+    testWeeklyPredictionDoesNotEstimateExactRunOutAtFivePercentEarlyWindow()
+    testWeeklyPredictionFlagsFastEarlyBurnWithoutExactRunOutTime()
     testPredictsExpiredResetAsUnknown()
     testBuildsCompactDisplayModel()
     testQuotaLocaleResolvesPreferredLanguages()

@@ -65,6 +65,27 @@
 
 读取失败不能显示成绿色安全状态。
 
+### 4. Token 用量趋势与周报
+
+这是历史层和高级层功能，不能挤占默认胶囊。
+
+已验证：
+
+- Codex app-server `account/usage/read` 可以返回账户级 token 汇总和日粒度 buckets。
+- 当前返回的是账户级 token 活动，不是会话级 input/output 明细。
+
+路线：
+
+- V0.2：账户级 token 趋势、峰值日、本周 token 节奏和周报建议。
+- V0.3：高级本地会话分析，需要单独授权，默认不读取原始 session 文件。
+- V0.4：跨 provider 比较和计划推荐，优先使用官方 usage/cost API、用户导入和公开计划数据。
+
+边界：
+
+- 默认不读取 prompt、assistant 回复、tool call 参数、终端命令、文件路径、项目名或原始 session 文件。
+- 远程 analytics 不上传原始 token 明细；如需上传，只能上传粗粒度分桶或节奏类型，并更新用户授权文案。
+- 不能把 API token 计费、会员 quota、credit 和 fair-use 限制混成一个数字。
+
 ## 吸收竞品功能
 
 ### 来自 QuotaGem

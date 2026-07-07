@@ -653,9 +653,10 @@ private final class TransparentHostingView<Content: View>: NSHostingView<Content
             bounds.height,
             CapsuleViewMetrics.shadowPadding + CapsuleViewMetrics.collapsedContentHeight + 8
         )
+        let originY = isFlipped ? bounds.minY : bounds.maxY - topBandHeight
         return NSRect(
             x: bounds.minX,
-            y: bounds.maxY - topBandHeight,
+            y: originY,
             width: bounds.width,
             height: topBandHeight
         )

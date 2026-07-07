@@ -1,6 +1,9 @@
 import Foundation
 
 public enum QuotaPredictor {
+    private static let weeklyForecastEarlyWatchUsedPercent = 5
+    private static let weeklyForecastMinimumElapsedPercent = 5.0
+
     public static func predict(snapshot: AgentQuotaSnapshot, now: Date = Date(), locale: QuotaLocale = .zhHans) -> CapsulePrediction {
         let copy = QuotaCopy(locale: locale)
 
@@ -25,7 +28,36 @@ public enum QuotaPredictor {
         guard snapshot.sourceStatus == .ok, let weeklyWindow = snapshot.weeklyWindow else {
             return nil
         }
-        return predict(window: weeklyWindow, now: now, locale: locale)
+        return predictWeekly(window: weeklyWindow, now: now, locale: locale)
+    }
+
+    public static func predictWeekly(window: QuotaWindow, now: Date = Date(), locale: QuotaLocale = .zhHans) -> CapsulePrediction {
+        let windowStart = window.resetsAt.addingTimeInterval(TimeInterval(-window.windowMinutes * 60))
+        let elapsedMinutes = now.timeIntervalSince(windowStart) / 60
+        let minutesUntilReset = window.resetsAt.timeIntervalSince(now) / 60
+        let elapsedPercentExact = (elapsedMinutes / Double(window.windowMinutes)) * 100
+        let elapsedPercent = clampPercent(Int(elapsedPercentExact.rounded()))
+        let usedPercent = clampPercent(window.usedPercent)
+
+        if minutesUntilReset > 0,
+           elapsedMinutes > 0,
+           window.remainingPercent > 0,
+           usedPercent > 0,
+           elapsedPercentExact < weeklyForecastMinimumElapsedPercent {
+            let level: CapsuleLevel = usedPercent >= weeklyForecastEarlyWatchUsedPercent ? .watch : .unknown
+            return CapsulePrediction(
+                level: level,
+                canReachReset: nil,
+                elapsedPercent: elapsedPercent,
+                quotaUsedPercent: usedPercent,
+                projectedRemainingAtReset: nil,
+                estimatedEmptyAt: nil,
+                headline: weeklyWarmupHeadline(usedPercent: usedPercent, locale),
+                detail: justResetDetail(locale)
+            )
+        }
+
+        return predict(window: window, now: now, locale: locale)
     }
 
     public static func predict(window: QuotaWindow, now: Date = Date(), locale: QuotaLocale = .zhHans) -> CapsulePrediction {
@@ -244,6 +276,14 @@ public enum QuotaPredictor {
         case .zhHans: "窗口刚开始，当前消耗速度还不稳定。"
         case .zhHant: "週期剛開始，目前消耗速度還不穩定。"
         case .en: "The window just started, so the current burn rate is not stable yet."
+        }
+    }
+
+    private static func weeklyWarmupHeadline(usedPercent: Int, _ locale: QuotaLocale) -> String {
+        switch locale {
+        case .zhHans: "本周刚开始，已用 \(usedPercent)%，先观察趋势"
+        case .zhHant: "本週剛開始，已用 \(usedPercent)%，先觀察趨勢"
+        case .en: "Week just started; \(usedPercent)% used so far"
         }
     }
 

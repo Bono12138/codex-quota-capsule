@@ -120,7 +120,7 @@ final class QuotaHistoryStore {
         }
 
         if let weeklyWindow = snapshot.weeklyWindow {
-            let windowPrediction = QuotaPredictor.predict(window: weeklyWindow, now: snapshot.fetchedAt, locale: locale)
+            let windowPrediction = QuotaPredictor.predictWeekly(window: weeklyWindow, now: snapshot.fetchedAt, locale: locale)
             insertWindowRecord(captureID: captureID, snapshot: snapshot, window: weeklyWindow, windowType: "weekly", prediction: windowPrediction)
         }
 
