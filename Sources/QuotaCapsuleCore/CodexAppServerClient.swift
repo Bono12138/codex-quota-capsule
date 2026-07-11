@@ -292,6 +292,9 @@ public final class ProcessCodexRPCTransport: CodexRPCTransport, @unchecked Senda
 
     public func readMessage(timeoutSeconds: TimeInterval) throws -> [String: Any] {
         if let message = popMessage() {
+            // Keep the semaphore count aligned when a notification was queued
+            // before the caller started waiting for a response.
+            _ = semaphore.wait(timeout: .now())
             return message
         }
 

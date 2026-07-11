@@ -80,19 +80,6 @@ public enum QuotaPredictor {
             return unknown(localTimeAbnormalHeadline(locale), localTimeAbnormalDetail(locale))
         }
 
-        if elapsedMinutes < 3 {
-            return CapsulePrediction(
-                level: .unknown,
-                canReachReset: nil,
-                elapsedPercent: elapsedPercent,
-                quotaUsedPercent: usedPercent,
-                projectedRemainingAtReset: nil,
-                estimatedEmptyAt: nil,
-                headline: justResetHeadline(locale),
-                detail: justResetDetail(locale)
-            )
-        }
-
         if usedPercent <= 0 {
             let resetText = formatTime(window.resetsAt, locale: locale)
             return CapsulePrediction(
@@ -104,6 +91,19 @@ public enum QuotaPredictor {
                 estimatedEmptyAt: nil,
                 headline: noUsageHeadline(resetText, locale),
                 detail: noUsageDetail(locale)
+            )
+        }
+
+        if elapsedMinutes < 3 {
+            return CapsulePrediction(
+                level: .unknown,
+                canReachReset: nil,
+                elapsedPercent: elapsedPercent,
+                quotaUsedPercent: usedPercent,
+                projectedRemainingAtReset: nil,
+                estimatedEmptyAt: nil,
+                headline: justResetHeadline(locale),
+                detail: justResetDetail(locale)
             )
         }
 

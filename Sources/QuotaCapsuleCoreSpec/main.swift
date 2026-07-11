@@ -85,6 +85,31 @@ func testPredictsUnusedShortWindowAsSafe() {
     expect(prediction.projectedRemainingAtReset == 100, "unused short window should project full remaining quota")
 }
 
+func testPredictsUnusedShortWindowAsSafeImmediatelyAfterReset() {
+    let now = Date(timeIntervalSince1970: 1_788_270_000)
+    let snapshot = AgentQuotaSnapshot(
+        provider: "codex",
+        sourceStatus: .ok,
+        fetchedAt: now,
+        shortWindow: QuotaWindow(
+            label: "5h",
+            windowMinutes: 300,
+            usedPercent: 0,
+            remainingPercent: 100,
+            resetsAt: now.addingTimeInterval(299 * 60)
+        ),
+        weeklyWindow: nil,
+        errorMessage: nil
+    )
+
+    let prediction = QuotaPredictor.predict(snapshot: snapshot, now: now)
+
+    expect(prediction.level == .safe, "zero usage immediately after reset should be safe")
+    expect(prediction.canReachReset == true, "zero usage immediately after reset can reach reset")
+    expect(prediction.quotaUsedPercent == 0, "zero usage immediately after reset should report 0 percent used")
+    expect(prediction.projectedRemainingAtReset == 100, "zero usage immediately after reset should project full remaining quota")
+}
+
 func testPredictsExhaustedShortWindowAsDanger() {
     let now = Date(timeIntervalSince1970: 1_788_270_000)
     let snapshot = AgentQuotaSnapshot(
@@ -614,6 +639,31 @@ func testCodexAppServerClientReturnsTransportErrors() {
     expect(snapshot.errorMessage?.contains("读取超时") == true, "transport errors should preserve timeout message")
 }
 
+func testCodexAppServerClientHandlesQueuedNotifications() throws {
+    let executableURL = URL(fileURLWithPath: NSTemporaryDirectory())
+        .appendingPathComponent("quota-capsule-fake-codex-\(UUID().uuidString)")
+    let script = #"""
+#!/bin/sh
+IFS= read -r initialize
+printf '%s\n' '{"jsonrpc":"2.0","id":1,"result":{"capabilities":{}}}'
+printf '%s\n' '{"jsonrpc":"2.0","method":"window/logMessage","params":{"message":"ready"}}'
+IFS= read -r initialized
+IFS= read -r rate_limits
+printf '%s\n' '{"jsonrpc":"2.0","id":2,"result":{"rateLimits":{"primary":{"usedPercent":62,"windowDurationMins":300,"resetsAt":1788271414},"secondary":{"usedPercent":24,"windowDurationMins":10080,"resetsAt":1788299735}}}}'
+"""#
+    try script.write(to: executableURL, atomically: true, encoding: .utf8)
+    try FileManager.default.setAttributes([.posixPermissions: 0o755], ofItemAtPath: executableURL.path)
+    defer { try? FileManager.default.removeItem(at: executableURL) }
+
+    let snapshot = CodexAppServerClient.fetchCurrent(
+        codexPath: executableURL.path,
+        timeoutSeconds: 2
+    )
+
+    expect(snapshot.sourceStatus == .ok, "app-server should ignore queued notifications and read the following response")
+    expect(snapshot.shortWindow?.usedPercent == 62, "queued notification test should parse short window")
+}
+
 func testCodexRateLimitParserRejectsMalformedWindows() {
     let snapshot = CodexRateLimitParser.parse(
         result: [
@@ -831,6 +881,7 @@ do {
     try testParsesCodexRateLimitsByDuration()
     testPredictsBurnRateRunway()
     testPredictsUnusedShortWindowAsSafe()
+    testPredictsUnusedShortWindowAsSafeImmediatelyAfterReset()
     testPredictsExhaustedShortWindowAsDanger()
     testPredictsExhaustedWeeklyWindowAsDanger()
     testPredictsMissingShortWindowAsUnknownWhenWeeklyIsNotExhausted()
@@ -851,6 +902,7 @@ do {
     try testCodexAppServerClientReadsRateLimits()
     testCodexAppServerClientReturnsRpcErrors()
     testCodexAppServerClientReturnsTransportErrors()
+    try testCodexAppServerClientHandlesQueuedNotifications()
     testCodexRateLimitParserRejectsMalformedWindows()
     try testCodexExecutableResolverFindsUserLocalBin()
     testCodexExecutableResolverReportsCheckedPaths()
