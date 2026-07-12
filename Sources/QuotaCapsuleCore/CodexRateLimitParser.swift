@@ -41,23 +41,34 @@ public enum CodexRateLimitParser {
         guard let window = value as? [String: Any],
               let usedPercent = readNumber(window["usedPercent"]),
               let windowMinutes = readNumber(window["windowDurationMins"]),
-              let resetsAtSeconds = readNumber(window["resetsAt"]) else {
+              let resetsAtSeconds = readNumber(window["resetsAt"]),
+              usedPercent.isFinite,
+              (0...100).contains(usedPercent),
+              windowMinutes.isFinite,
+              windowMinutes >= 1,
+              windowMinutes <= 525_600,
+              windowMinutes.rounded() == windowMinutes,
+              resetsAtSeconds.isFinite,
+              resetsAtSeconds >= 946_684_800,
+              resetsAtSeconds <= 4_102_444_800 else {
             return nil
         }
 
-        let used = clampPercent(Int(usedPercent.rounded()))
         let minutes = Int(windowMinutes.rounded())
 
         return QuotaWindow(
             label: minutes <= 360 ? "5h" : "weekly",
             windowMinutes: minutes,
-            usedPercent: used,
-            remainingPercent: clampPercent(100 - used),
+            usedPercent: usedPercent,
+            remainingPercent: 100 - usedPercent,
             resetsAt: Date(timeIntervalSince1970: resetsAtSeconds)
         )
     }
 
     private static func readNumber(_ value: Any?) -> Double? {
+        guard !(value is Bool) else {
+            return nil
+        }
         if let number = value as? Double {
             return number
         }
@@ -65,10 +76,6 @@ public enum CodexRateLimitParser {
             return Double(number)
         }
         return nil
-    }
-
-    private static func clampPercent(_ value: Int) -> Int {
-        min(100, max(0, value))
     }
 
     private static func missingUsableWindowsMessage(_ locale: QuotaLocale) -> String {

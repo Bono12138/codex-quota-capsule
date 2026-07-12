@@ -54,7 +54,28 @@ func testPredictsBurnRateRunway() {
     expect(prediction.headline.contains("够用到"), "headline should be human-readable runway copy")
 }
 
-func testPredictsUnusedShortWindowAsSafe() {
+func testFractionalUsageStaysConsistentInDisplayMath() {
+    let now = Date(timeIntervalSince1970: 1_788_270_000)
+    let prediction = QuotaPredictor.predict(
+        window: QuotaWindow(
+            label: "5h",
+            windowMinutes: 300,
+            usedPercent: 1.9,
+            remainingPercent: 98.1,
+            resetsAt: now.addingTimeInterval(120 * 60)
+        ),
+        now: now
+    )
+    let model = CapsuleDisplayModel.make(prediction: prediction)
+
+    expect(prediction.quotaUsedPercent == 1, "progress bars may use the floored integer percent")
+    expect(prediction.quotaUsedPercentExact == 1.9, "prediction should retain exact usage for display math")
+    expect(model.compactDetail == "1.9%", "compact display should preserve fractional usage")
+    expect(model.metrics.first { $0.label == "额度已用" }?.value == "1.9%", "usage metric should preserve fractional usage")
+    expect(model.metrics.first { $0.label == "当前速度" }?.value == "0.03x", "pace should use exact usage rather than the floored integer")
+}
+
+func testPredictsBelowReportingPrecisionConservatively() {
     let now = Date(timeIntervalSince1970: 1_788_270_000)
     let snapshot = AgentQuotaSnapshot(
         provider: "codex",
@@ -79,13 +100,19 @@ func testPredictsUnusedShortWindowAsSafe() {
 
     let prediction = QuotaPredictor.predict(snapshot: snapshot, now: now)
 
-    expect(prediction.level == .safe, "unused short window should be safe")
-    expect(prediction.canReachReset == true, "unused short window can reach reset")
-    expect(prediction.quotaUsedPercent == 0, "unused short window should report 0 percent used")
-    expect(prediction.projectedRemainingAtReset == 100, "unused short window should project full remaining quota")
+    expect(prediction.level == .safe, "a below-precision reading late in the window should be safe")
+    expect(prediction.canReachReset == true, "the conservative upper bound can reach reset")
+    expect(prediction.quotaUsedPercent == 0, "the numeric progress remains the reported integer percent")
+    expect(prediction.projectedRemainingAtReset == 98, "zero should use a conservative less-than-one-percent upper bound")
+    expect(prediction.headline.contains("低于 1%"), "zero must not claim that the user has not started consuming quota")
+
+    let model = CapsuleDisplayModel.make(prediction: prediction)
+    expect(model.compactDetail == "<1%", "compact usage should expose reporting precision")
+    expect(model.metrics.first { $0.label == "额度已用" }?.value == "<1%", "usage metric should expose reporting precision")
+    expect(model.metrics.first { $0.label == "当前速度" }?.value.hasPrefix("<") == true, "zero pace should be presented as an upper bound")
 }
 
-func testPredictsUnusedShortWindowAsSafeImmediatelyAfterReset() {
+func testPredictsBelowReportingPrecisionAsUnknownImmediatelyAfterReset() {
     let now = Date(timeIntervalSince1970: 1_788_270_000)
     let snapshot = AgentQuotaSnapshot(
         provider: "codex",
@@ -104,10 +131,44 @@ func testPredictsUnusedShortWindowAsSafeImmediatelyAfterReset() {
 
     let prediction = QuotaPredictor.predict(snapshot: snapshot, now: now)
 
-    expect(prediction.level == .safe, "zero usage immediately after reset should be safe")
-    expect(prediction.canReachReset == true, "zero usage immediately after reset can reach reset")
-    expect(prediction.quotaUsedPercent == 0, "zero usage immediately after reset should report 0 percent used")
-    expect(prediction.projectedRemainingAtReset == 100, "zero usage immediately after reset should project full remaining quota")
+    expect(prediction.level == .unknown, "a below-precision reading immediately after reset is not enough for a safe forecast")
+    expect(prediction.canReachReset == nil, "an early below-precision reading has no reliable runway conclusion")
+    expect(prediction.quotaUsedPercent == 0, "the source reading should remain visible during warmup")
+    expect(prediction.projectedRemainingAtReset == nil, "warmup should not claim an exact full remaining quota")
+    expect(prediction.headline.contains("低于 1%"), "warmup copy should describe reporting precision")
+}
+
+func testWindowStartBoundaryIsWarmupNotClockError() {
+    let now = Date(timeIntervalSince1970: 1_788_270_000)
+    let window = QuotaWindow(
+        label: "5h",
+        windowMinutes: 300,
+        usedPercent: 0,
+        remainingPercent: 100,
+        resetsAt: now.addingTimeInterval(300 * 60)
+    )
+
+    let prediction = QuotaPredictor.predict(window: window, now: now)
+
+    expect(prediction.level == .unknown, "the exact reset boundary should remain warmup")
+    expect(!prediction.headline.contains("本地时间"), "the exact reset boundary is not a clock anomaly")
+}
+
+func testPredictorRejectsInvalidWindowWithoutTrapping() {
+    let now = Date(timeIntervalSince1970: 1_788_270_000)
+    let prediction = QuotaPredictor.predict(
+        window: QuotaWindow(
+            label: "broken",
+            windowMinutes: 0,
+            usedPercent: 1,
+            remainingPercent: 99,
+            resetsAt: now.addingTimeInterval(60)
+        ),
+        now: now
+    )
+
+    expect(prediction.level == .unknown, "invalid direct window input should be rejected without division or integer traps")
+    expect(prediction.headline.contains("无效"), "invalid direct window input should have a clear diagnostic")
 }
 
 func testPredictsExhaustedShortWindowAsDanger() {
@@ -589,6 +650,30 @@ final class ThrowingCodexTransport: CodexRPCTransport {
     func close() {}
 }
 
+final class SlowNotificationCodexTransport: CodexRPCTransport {
+    private var responses: [[String: Any]]
+
+    init(notificationCount: Int) {
+        responses = [["jsonrpc": "2.0", "id": 1, "result": ["capabilities": [:]]]]
+        responses.append(contentsOf: (0..<notificationCount).map { index in
+            ["jsonrpc": "2.0", "method": "window/logMessage", "params": ["index": index]]
+        })
+        responses.append(["jsonrpc": "2.0", "id": 2, "result": ["rateLimits": [:]]])
+    }
+
+    func send(_ payload: [String: Any]) throws {}
+
+    func readMessage(timeoutSeconds: TimeInterval) throws -> [String: Any] {
+        Thread.sleep(forTimeInterval: 0.01)
+        guard !responses.isEmpty else {
+            throw CodexAppServerError.transport("no fake response queued")
+        }
+        return responses.removeFirst()
+    }
+
+    func close() {}
+}
+
 func testCodexAppServerClientReadsRateLimits() throws {
     let transport = FakeCodexTransport(responses: [
         ["jsonrpc": "2.0", "method": "window/logMessage", "params": [:]],
@@ -610,6 +695,32 @@ func testCodexAppServerClientReadsRateLimits() throws {
     expect(snapshot.shortWindow?.usedPercent == 62, "app-server should parse short window")
     expect(snapshot.weeklyWindow?.usedPercent == 24, "app-server should parse weekly window")
     expect(transport.sent.map { $0["method"] as? String } == ["initialize", "initialized", "account/rateLimits/read"], "app-server request order should be fixed")
+}
+
+func testCodexAppServerClientHandlesNotificationBurst() {
+    var responses = (0..<75).map { index in
+        ["jsonrpc": "2.0", "method": "window/logMessage", "params": ["index": index]] as [String: Any]
+    }
+    responses.append(["jsonrpc": "2.0", "id": 1, "result": ["capabilities": [:]]])
+    responses.append(contentsOf: (0..<75).map { index in
+        ["jsonrpc": "2.0", "method": "account/rateLimits/changed", "params": ["index": index]] as [String: Any]
+    })
+    responses.append([
+        "jsonrpc": "2.0",
+        "id": 2,
+        "result": ["rateLimits": [
+            "primary": ["usedPercent": 12, "windowDurationMins": 300, "resetsAt": 1_788_271_414]
+        ]]
+    ])
+
+    let snapshot = CodexAppServerClient.fetchSnapshot(
+        transport: FakeCodexTransport(responses: responses),
+        fetchedAt: Date(timeIntervalSince1970: 1_788_270_000),
+        timeoutSeconds: 1
+    )
+
+    expect(snapshot.sourceStatus == .ok, "a burst of more than 50 notifications should not cause a false refresh failure")
+    expect(snapshot.shortWindow?.usedPercent == 12, "notification burst should still reach the requested response")
 }
 
 func testCodexAppServerClientReturnsRpcErrors() {
@@ -664,6 +775,39 @@ printf '%s\n' '{"jsonrpc":"2.0","id":2,"result":{"rateLimits":{"primary":{"usedP
     expect(snapshot.shortWindow?.usedPercent == 62, "queued notification test should parse short window")
 }
 
+func testCodexAppServerClientReportsEarlyProcessExit() throws {
+    let executableURL = URL(fileURLWithPath: NSTemporaryDirectory())
+        .appendingPathComponent("quota-capsule-exiting-codex-\(UUID().uuidString)")
+    let script = "#!/bin/sh\necho 'Bearer top-secret https://example.test/path?token=secret /Users/private/file' >&2\nexit 42\n"
+    try script.write(to: executableURL, atomically: true, encoding: .utf8)
+    try FileManager.default.setAttributes([.posixPermissions: 0o755], ofItemAtPath: executableURL.path)
+    defer { try? FileManager.default.removeItem(at: executableURL) }
+
+    let startedAt = Date()
+    let snapshot = CodexAppServerClient.fetchCurrent(codexPath: executableURL.path, timeoutSeconds: 2)
+
+    expect(Date().timeIntervalSince(startedAt) < 1, "an exited child should wake the reader immediately")
+    expect(snapshot.sourceStatus == .error, "an exited child should return an error snapshot")
+    expect(snapshot.errorMessage?.contains("42") == true, "process exit diagnostics should preserve the exit status")
+    expect(snapshot.errorMessage?.contains("top-secret") == false, "process diagnostics must redact bearer tokens")
+    expect(snapshot.errorMessage?.contains("https://") == false, "process diagnostics must redact URLs")
+    expect(snapshot.errorMessage?.contains("/Users/private") == false, "process diagnostics must redact home paths")
+}
+
+func testCodexAppServerClientUsesOneOverallDeadline() {
+    let transport = SlowNotificationCodexTransport(notificationCount: 20)
+    let startedAt = Date()
+    let snapshot = CodexAppServerClient.fetchSnapshot(
+        transport: transport,
+        fetchedAt: startedAt,
+        timeoutSeconds: 0.05
+    )
+    let elapsed = Date().timeIntervalSince(startedAt)
+
+    expect(snapshot.sourceStatus == .error, "notifications must not extend the request beyond its deadline")
+    expect(elapsed < 0.15, "the deadline should be total, not renewed for every notification")
+}
+
 func testCodexRateLimitParserRejectsMalformedWindows() {
     let snapshot = CodexRateLimitParser.parse(
         result: [
@@ -678,6 +822,39 @@ func testCodexRateLimitParserRejectsMalformedWindows() {
     expect(snapshot.sourceStatus == .error, "malformed windows should return error snapshots when no usable window remains")
     expect(snapshot.shortWindow == nil, "malformed short window should not be parsed")
     expect(snapshot.errorMessage?.contains("rateLimits") == true, "malformed windows should explain missing usable rateLimits")
+}
+
+func testCodexRateLimitParserRejectsUnsafeNumbers() {
+    let fetchedAt = Date(timeIntervalSince1970: 1_788_270_000)
+    let invalidWindows: [[String: Any]] = [
+        ["usedPercent": -1, "windowDurationMins": 300, "resetsAt": 1_788_299_735],
+        ["usedPercent": 101, "windowDurationMins": 300, "resetsAt": 1_788_299_735],
+        ["usedPercent": 1, "windowDurationMins": 0, "resetsAt": 1_788_299_735],
+        ["usedPercent": 1, "windowDurationMins": 1e300, "resetsAt": 1_788_299_735],
+        ["usedPercent": 1, "windowDurationMins": 300, "resetsAt": Double.infinity]
+    ]
+
+    for window in invalidWindows {
+        let snapshot = CodexRateLimitParser.parse(
+            result: ["rateLimits": ["primary": window]],
+            fetchedAt: fetchedAt
+        )
+        expect(snapshot.sourceStatus == .error, "unsafe numeric input must be rejected without trapping")
+    }
+}
+
+func testCodexRateLimitParserPreservesFractionalUsage() {
+    let snapshot = CodexRateLimitParser.parse(
+        result: [
+            "rateLimits": [
+                "primary": ["usedPercent": 0.9, "windowDurationMins": 300, "resetsAt": 1_788_299_735]
+            ]
+        ],
+        fetchedAt: Date(timeIntervalSince1970: 1_788_270_000)
+    )
+
+    expect(snapshot.shortWindow?.usedPercent == 0.9, "fractional usage must remain available to prediction math")
+    expect(snapshot.shortWindow?.remainingPercent == 99.1, "fractional remaining quota must not be rounded early")
 }
 
 func testCodexExecutableResolverFindsUserLocalBin() throws {
@@ -758,18 +935,19 @@ func testQuotaRefreshReducerUpdatesOnSuccessfulRefresh() {
     expect(reduction.lastErrorText == nil, "successful refresh should clear previous errors")
 }
 
-func testQuotaRefreshReducerPreservesLastSuccessAfterFailure() {
-    let now = Date(timeIntervalSince1970: 1_788_270_000)
+func testQuotaRefreshReducerMarksLastSuccessStaleAfterFailure() {
+    let lastSuccessAt = Date(timeIntervalSince1970: 1_788_270_000)
+    let now = lastSuccessAt.addingTimeInterval(60 * 60)
     let currentSnapshot = AgentQuotaSnapshot(
         provider: "codex",
         sourceStatus: .ok,
-        fetchedAt: now.addingTimeInterval(-60),
+        fetchedAt: lastSuccessAt,
         shortWindow: QuotaWindow(
             label: "5h",
             windowMinutes: 300,
             usedPercent: 20,
             remainingPercent: 80,
-            resetsAt: now.addingTimeInterval(120 * 60)
+            resetsAt: lastSuccessAt.addingTimeInterval(120 * 60)
         ),
         weeklyWindow: nil,
         errorMessage: nil
@@ -791,12 +969,26 @@ func testQuotaRefreshReducerPreservesLastSuccessAfterFailure() {
         attemptText: "12:00:00"
     )
 
-    expect(reduction.snapshot == currentSnapshot, "refresh failure should keep last successful snapshot")
-    expect(reduction.prediction.level == .safe, "refresh failure should recompute prediction from last successful snapshot")
+    expect(reduction.snapshot.sourceStatus == .stale, "refresh failure should explicitly mark cached data stale")
+    expect(reduction.snapshot.shortWindow == currentSnapshot.shortWindow, "stale state should keep the last successful values for reference")
+    expect(reduction.prediction.level == .unknown, "stale data must not remain green safe")
+    expect(reduction.prediction.elapsedPercent == 60, "stale metrics should freeze at the successful fetch time instead of advancing to 80 percent")
+    expect(reduction.latestAttemptSnapshot == failedSnapshot, "history should receive the failed attempt rather than another fake success")
     expect(reduction.lastRefreshText == "11:59:00", "refresh failure should preserve last success time")
     expect(reduction.lastAttemptText == "12:00:00", "refresh failure should update last attempt time")
     expect(reduction.lastErrorText?.contains("读取超时") == true, "refresh failure should keep readable error")
     expect(reduction.lastErrorText?.contains("\n") == false, "refresh failure error should be compressed to one line")
+}
+
+func testQuotaRefreshReducerSanitizesNetworkErrors() {
+    let cleaned = QuotaRefreshReducer.cleanError(
+        "failed to fetch codex rate limits: error sending request for url (https://chatgpt.com/backend-api/wham/usage?token=secret)",
+        locale: .zhHans
+    )
+
+    expect(cleaned.contains("连接失败"), "network failures should use a readable localized classification")
+    expect(!cleaned.contains("https://"), "network failures should not expose internal URLs")
+    expect(!cleaned.contains("secret"), "network failures should not expose query values")
 }
 
 func testQuotaRefreshReducerUsesErrorWhenNoSuccessExists() {
@@ -880,8 +1072,11 @@ func testCodexAppServerClientRetriesOnlyTransientFailures() {
 do {
     try testParsesCodexRateLimitsByDuration()
     testPredictsBurnRateRunway()
-    testPredictsUnusedShortWindowAsSafe()
-    testPredictsUnusedShortWindowAsSafeImmediatelyAfterReset()
+    testFractionalUsageStaysConsistentInDisplayMath()
+    testPredictsBelowReportingPrecisionConservatively()
+    testPredictsBelowReportingPrecisionAsUnknownImmediatelyAfterReset()
+    testWindowStartBoundaryIsWarmupNotClockError()
+    testPredictorRejectsInvalidWindowWithoutTrapping()
     testPredictsExhaustedShortWindowAsDanger()
     testPredictsExhaustedWeeklyWindowAsDanger()
     testPredictsMissingShortWindowAsUnknownWhenWeeklyIsNotExhausted()
@@ -900,14 +1095,20 @@ do {
     testBuildsTraditionalChineseDisplayModel()
     testCompactCopyStaysShortAcrossLocales()
     try testCodexAppServerClientReadsRateLimits()
+    testCodexAppServerClientHandlesNotificationBurst()
     testCodexAppServerClientReturnsRpcErrors()
     testCodexAppServerClientReturnsTransportErrors()
     try testCodexAppServerClientHandlesQueuedNotifications()
+    try testCodexAppServerClientReportsEarlyProcessExit()
+    testCodexAppServerClientUsesOneOverallDeadline()
     testCodexRateLimitParserRejectsMalformedWindows()
+    testCodexRateLimitParserRejectsUnsafeNumbers()
+    testCodexRateLimitParserPreservesFractionalUsage()
     try testCodexExecutableResolverFindsUserLocalBin()
     testCodexExecutableResolverReportsCheckedPaths()
     testQuotaRefreshReducerUpdatesOnSuccessfulRefresh()
-    testQuotaRefreshReducerPreservesLastSuccessAfterFailure()
+    testQuotaRefreshReducerMarksLastSuccessStaleAfterFailure()
+    testQuotaRefreshReducerSanitizesNetworkErrors()
     testQuotaRefreshReducerUsesErrorWhenNoSuccessExists()
     testCodexAppServerClientDefaultTimeoutIsProductionTolerant()
     testCodexAppServerClientRetriesOnlyTransientFailures()

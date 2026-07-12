@@ -64,7 +64,7 @@ dist/development/Quota Capsule Dev Local.app
 内测版命令：
 
 ```bash
-npm run mac:run:internal-test
+npm run mac:install:internal-test
 ```
 
 开发版命令：
@@ -94,7 +94,7 @@ QUOTA_CAPSULE_DEV_GITHUB_ISSUES_URL="https://github.com/<owner>/<private-repo>/i
 9. 运行 npm test。
 10. 运行 npm run build。
 11. 运行 swift run QuotaCapsuleCoreSpec。
-12. 运行 npm run mac:run:internal-test -- --verify。
+12. 运行 npm run mac:install:internal-test，并确认运行进程来自 /Applications。
 13. 启动成功后，告诉我如何再次打开它。
 ```
 

@@ -13,7 +13,7 @@ describe("predictCapsuleState", () => {
     expect(prediction.projectedRemainingAtReset).toBeGreaterThan(10);
   });
 
-  it("marks an unused short window as safe", () => {
+  it("treats a zero report as below one percent and forecasts conservatively", () => {
     const prediction = predictCapsuleState(
       {
         provider: "codex",
@@ -40,7 +40,30 @@ describe("predictCapsuleState", () => {
     expect(prediction.level).toBe("safe");
     expect(prediction.canReachReset).toBe(true);
     expect(prediction.quotaUsedPercent).toBe(0);
-    expect(prediction.projectedRemainingAtReset).toBe(100);
+    expect(prediction.projectedRemainingAtReset).toBe(98);
+    expect(prediction.headline).toContain("低于 1%");
+  });
+
+  it("does not call a below-precision reading safe immediately after reset", () => {
+    const prediction = predictCapsuleState(
+      {
+        provider: "codex",
+        sourceStatus: "ok",
+        fetchedAt: now,
+        shortWindow: {
+          label: "5h",
+          windowMinutes: 300,
+          usedPercent: 0,
+          remainingPercent: 100,
+          resetsAt: new Date(now.getTime() + 299 * 60_000),
+        },
+      },
+      { now },
+    );
+
+    expect(prediction.level).toBe("unknown");
+    expect(prediction.canReachReset).toBeNull();
+    expect(prediction.headline).toContain("低于 1%");
   });
 
   it("marks low projected reset buffer as watch", () => {
@@ -48,6 +71,27 @@ describe("predictCapsuleState", () => {
 
     expect(prediction.level).toBe("watch");
     expect(prediction.canReachReset).toBe(true);
+  });
+
+  it("rejects invalid direct windows without producing Infinity or NaN", () => {
+    const prediction = predictCapsuleState(
+      {
+        provider: "codex",
+        sourceStatus: "ok",
+        fetchedAt: now,
+        shortWindow: {
+          label: "broken",
+          windowMinutes: 0,
+          usedPercent: 1,
+          remainingPercent: 99,
+          resetsAt: new Date(now.getTime() + 60_000),
+        },
+      },
+      { now },
+    );
+
+    expect(prediction.level).toBe("unknown");
+    expect(prediction.headline).toContain("无效");
   });
 
   it("marks projected pre-reset exhaustion as danger", () => {
@@ -63,6 +107,31 @@ describe("predictCapsuleState", () => {
 
     expect(prediction.level).toBe("unknown");
     expect(prediction.canReachReset).toBeNull();
+  });
+
+  it("keeps stale metrics frozen at fetchedAt without calling them safe", () => {
+    const fetchedAt = new Date(now.getTime() - 60 * 60_000);
+    const prediction = predictCapsuleState(
+      {
+        provider: "codex",
+        sourceStatus: "stale",
+        fetchedAt,
+        shortWindow: {
+          label: "5h",
+          windowMinutes: 300,
+          usedPercent: 20,
+          remainingPercent: 80,
+          resetsAt: new Date(now.getTime() + 60 * 60_000),
+        },
+      },
+      { now },
+    );
+
+    expect(prediction.level).toBe("unknown");
+    expect(prediction.elapsedPercent).toBe(60);
+    expect(prediction.quotaUsedPercent).toBe(20);
+    expect(prediction.projectedRemainingAtReset).toBeNull();
+    expect(prediction.headline).toContain("过期");
   });
 
   it("marks an exhausted short window as danger instead of unknown", () => {

@@ -154,8 +154,8 @@ Before declaring a beta release candidate, complete this checklist:
 
 1. Confirm current branch and dirty state.
 2. Confirm no P0/P1 blockers remain in `docs/product/bug-triage-and-release-blockers.md` or public GitHub Issues.
-3. Confirm current release scope in `docs/product/development-plan.md`.
-4. Confirm release checklist in `docs/product/release-checklist.md`.
+3. Confirm current release scope in `docs/product/feature-roadmap.md`.
+4. Confirm release blockers in `docs/product/bug-triage-and-release-blockers.md` and acceptance in `docs/product/acceptance-criteria.md`.
 5. Run:
 
 ```text

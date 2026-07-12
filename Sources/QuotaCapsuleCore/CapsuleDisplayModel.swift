@@ -22,7 +22,7 @@ public struct CapsuleDisplayModel: Equatable, Sendable {
             compactDetail: compactDetail(for: prediction),
             metrics: [
                 CapsuleMetric(label: copy.metricElapsed, value: formatPercent(prediction.elapsedPercent, copy: copy), numericValue: prediction.elapsedPercent),
-                CapsuleMetric(label: copy.metricUsed, value: formatPercent(prediction.quotaUsedPercent, copy: copy), numericValue: prediction.quotaUsedPercent),
+                CapsuleMetric(label: copy.metricUsed, value: formatUsedPercent(prediction, copy: copy), numericValue: prediction.quotaUsedPercent),
                 CapsuleMetric(label: copy.metricPace, value: formatBurnRate(prediction, copy: copy), numericValue: nil),
                 CapsuleMetric(label: copy.metricResetBuffer, value: formatPercent(prediction.projectedRemainingAtReset, copy: copy), numericValue: prediction.projectedRemainingAtReset)
             ]
@@ -31,11 +31,7 @@ public struct CapsuleDisplayModel: Equatable, Sendable {
 
     private static func compactText(for prediction: CapsulePrediction, locale: QuotaLocale) -> String {
         if prediction.level == .unknown {
-            switch locale {
-            case .zhHans: return "暂时读不到额度"
-            case .zhHant: return "暫時讀不到額度"
-            case .en: return "Quota unavailable"
-            }
+            return prediction.headline
         }
         if prediction.level == .danger, let estimatedEmptyAt = prediction.estimatedEmptyAt {
             let time = QuotaPredictor.formatTime(estimatedEmptyAt, locale: locale)
@@ -72,10 +68,10 @@ public struct CapsuleDisplayModel: Equatable, Sendable {
     }
 
     private static func compactDetail(for prediction: CapsulePrediction) -> String {
-        guard let usedPercent = prediction.quotaUsedPercent else {
+        guard prediction.quotaUsedPercent != nil else {
             return ""
         }
-        return "\(usedPercent)%"
+        return formatUsedPercent(prediction, copy: QuotaCopy(locale: .en))
     }
 
     private static func formatPercent(_ value: Int?, copy: QuotaCopy) -> String {
@@ -83,12 +79,23 @@ public struct CapsuleDisplayModel: Equatable, Sendable {
         return "\(value)%"
     }
 
+    private static func formatUsedPercent(_ prediction: CapsulePrediction, copy: QuotaCopy) -> String {
+        guard let value = prediction.quotaUsedPercentExact else { return copy.unknownValue }
+        if value < 1 { return "<1%" }
+        if value.rounded() == value { return "\(Int(value))%" }
+        return String(format: "%.1f%%", value)
+    }
+
     private static func formatBurnRate(_ prediction: CapsulePrediction, copy: QuotaCopy) -> String {
         guard let elapsed = prediction.elapsedPercent,
-              let used = prediction.quotaUsedPercent,
+              let used = prediction.quotaUsedPercentExact,
               elapsed > 0 else {
             return copy.unknownValue
         }
-        return String(format: "%.2fx", Double(used) / Double(elapsed))
+        if used == 0 {
+            let upperBound = max(0.01, 1 / Double(elapsed))
+            return String(format: "<%.2fx", upperBound)
+        }
+        return String(format: "%.2fx", used / Double(elapsed))
     }
 }

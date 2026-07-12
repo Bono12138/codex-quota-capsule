@@ -124,6 +124,14 @@ public struct QuotaCopy: Equatable, Sendable {
         }
     }
 
+    public var statusStale: String {
+        switch locale {
+        case .zhHans: "已过期"
+        case .zhHant: "已過期"
+        case .en: "Stale"
+        }
+    }
+
     public var metricElapsed: String {
         switch locale {
         case .zhHans: "时间进度"
@@ -1326,10 +1334,15 @@ public struct QuotaCopy: Equatable, Sendable {
     }
 
     public func compactUsedBadge(_ percent: Int) -> String {
-        switch locale {
-        case .zhHans: "已用 \(percent)%"
-        case .zhHant: "已用 \(percent)%"
-        case .en: "Used \(percent)%"
+        let value = percent == 0 ? "<1%" : "\(percent)%"
+        return compactUsedBadge(value: value)
+    }
+
+    public func compactUsedBadge(value: String) -> String {
+        return switch locale {
+            case .zhHans: "已用 \(value)"
+        case .zhHant: "已用 \(value)"
+        case .en: "Used \(value)"
         }
     }
 }

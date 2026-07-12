@@ -2,11 +2,29 @@ import type { AgentQuotaSnapshot, CapsulePrediction, PredictionOptions, QuotaWin
 
 const DEFAULT_WATCH_REMAINING_THRESHOLD = 10;
 const DEFAULT_JUST_RESET_MINUTES = 3;
+const REPORTING_PRECISION_UPPER_BOUND = 1;
+const CLOCK_SKEW_TOLERANCE_MINUTES = 2 / 60;
 
 export function predictCapsuleState(
   snapshot: AgentQuotaSnapshot,
   options: PredictionOptions,
 ): CapsulePrediction {
+  if (snapshot.sourceStatus === "stale") {
+    if (!snapshot.shortWindow || !isValidWindow(snapshot.shortWindow)) {
+      return unknownPrediction("数据已过期，等待恢复", "Showing the last successful reading; it cannot determine current risk.");
+    }
+    const frozen = predictWindow(snapshot.shortWindow, { ...options, now: snapshot.fetchedAt });
+    return {
+      level: "unknown",
+      canReachReset: null,
+      elapsedPercent: frozen.elapsedPercent,
+      quotaUsedPercent: frozen.quotaUsedPercent,
+      projectedRemainingAtReset: null,
+      estimatedEmptyAt: null,
+      headline: "数据已过期，等待恢复",
+      detail: "正在显示最后成功读数，不能据此判断当前风险。",
+    };
+  }
   if (snapshot.sourceStatus !== "ok") {
     return unknownPrediction("暂时读不到额度数据", snapshot.errorMessage ?? "Source status is not ok.");
   }
@@ -26,6 +44,9 @@ export function predictCapsuleState(
 }
 
 export function predictWindow(window: QuotaWindow, options: PredictionOptions): CapsulePrediction {
+  if (!isValidWindow(window)) {
+    return unknownPrediction("额度窗口数据无效", "The window duration or percentage is outside the safe range.");
+  }
   const now = options.now;
   const windowStart = new Date(window.resetsAt.getTime() - window.windowMinutes * 60_000);
   const elapsedMinutes = (now.getTime() - windowStart.getTime()) / 60_000;
@@ -39,11 +60,55 @@ export function predictWindow(window: QuotaWindow, options: PredictionOptions): 
     return exhaustedPrediction(window, now);
   }
 
-  if (elapsedMinutes <= 0) {
+  if (elapsedMinutes < -CLOCK_SKEW_TOLERANCE_MINUTES) {
     return unknownPrediction("本地时间可能异常", "Current time appears to be before the usage window start.");
   }
 
-  if (elapsedMinutes < (options.justResetMinutes ?? DEFAULT_JUST_RESET_MINUTES)) {
+  const effectiveElapsedMinutes = Math.max(0, elapsedMinutes);
+
+  if (window.usedPercent <= 0) {
+    if (effectiveElapsedMinutes <= (options.justResetMinutes ?? DEFAULT_JUST_RESET_MINUTES)) {
+      return {
+        level: "unknown",
+        canReachReset: null,
+        elapsedPercent: clampPercent((effectiveElapsedMinutes / window.windowMinutes) * 100),
+        quotaUsedPercent: 0,
+        projectedRemainingAtReset: null,
+        estimatedEmptyAt: null,
+        headline: "当前读数低于 1%，先观察一会儿",
+        detail: "Codex 的百分比读数不足以证明没有使用，暂不判断消耗速度。",
+      };
+    }
+
+    const projectedUsedUpperBound =
+      (REPORTING_PRECISION_UPPER_BOUND / effectiveElapsedMinutes) * window.windowMinutes;
+    if (projectedUsedUpperBound >= 100) {
+      return {
+        level: "unknown",
+        canReachReset: null,
+        elapsedPercent: clampPercent((effectiveElapsedMinutes / window.windowMinutes) * 100),
+        quotaUsedPercent: 0,
+        projectedRemainingAtReset: null,
+        estimatedEmptyAt: null,
+        headline: "当前读数低于 1%，先观察一会儿",
+        detail: "Codex 的百分比读数不足以证明没有使用，暂不判断消耗速度。",
+      };
+    }
+
+    const conservativeRemaining = Math.max(0, Math.floor(100 - projectedUsedUpperBound));
+    return {
+      level: conservativeRemaining < (options.watchRemainingThreshold ?? DEFAULT_WATCH_REMAINING_THRESHOLD) ? "watch" : "safe",
+      canReachReset: true,
+      elapsedPercent: clampPercent((effectiveElapsedMinutes / window.windowMinutes) * 100),
+      quotaUsedPercent: 0,
+      projectedRemainingAtReset: conservativeRemaining,
+      estimatedEmptyAt: null,
+      headline: `当前读数低于 1%，保守估计够用到 ${formatTime(window.resetsAt)}`,
+      detail: `按低于 1% 的上限估算，刷新时至少剩 ${conservativeRemaining}%。`,
+    };
+  }
+
+  if (effectiveElapsedMinutes < (options.justResetMinutes ?? DEFAULT_JUST_RESET_MINUTES)) {
     return {
       level: "unknown",
       canReachReset: null,
@@ -56,20 +121,7 @@ export function predictWindow(window: QuotaWindow, options: PredictionOptions): 
     };
   }
 
-  if (window.usedPercent <= 0) {
-    return {
-      level: "safe",
-      canReachReset: true,
-      elapsedPercent: clampPercent((elapsedMinutes / window.windowMinutes) * 100),
-      quotaUsedPercent: 0,
-      projectedRemainingAtReset: 100,
-      estimatedEmptyAt: null,
-      headline: `还没开始消耗，能撑到 ${formatTime(window.resetsAt)} 刷新`,
-      detail: "当前窗口已用为 0。",
-    };
-  }
-
-  const burnRatePerMinute = window.usedPercent / elapsedMinutes;
+  const burnRatePerMinute = window.usedPercent / effectiveElapsedMinutes;
   const projectedUsedAtReset = window.usedPercent + burnRatePerMinute * minutesUntilReset;
   const projectedRemainingAtReset = 100 - projectedUsedAtReset;
   const canReachReset = projectedRemainingAtReset > 0;
@@ -150,6 +202,7 @@ function exhaustedPrediction(window: QuotaWindow, now: Date): CapsulePrediction 
 
 function isUsableExhaustedWindow(window: Partial<QuotaWindow> | undefined, now: Date): window is QuotaWindow {
   return (
+    isValidWindow(window) &&
     typeof window?.label === "string" &&
     typeof window.windowMinutes === "number" &&
     typeof window.usedPercent === "number" &&
@@ -157,5 +210,25 @@ function isUsableExhaustedWindow(window: Partial<QuotaWindow> | undefined, now: 
     window.resetsAt instanceof Date &&
     window.remainingPercent <= 0 &&
     window.resetsAt.getTime() > now.getTime()
+  );
+}
+
+function isValidWindow(window: Partial<QuotaWindow> | undefined): window is QuotaWindow {
+  return (
+    typeof window?.label === "string" &&
+    typeof window.windowMinutes === "number" &&
+    Number.isInteger(window.windowMinutes) &&
+    window.windowMinutes > 0 &&
+    window.windowMinutes <= 525_600 &&
+    typeof window.usedPercent === "number" &&
+    Number.isFinite(window.usedPercent) &&
+    window.usedPercent >= 0 &&
+    window.usedPercent <= 100 &&
+    typeof window.remainingPercent === "number" &&
+    Number.isFinite(window.remainingPercent) &&
+    window.remainingPercent >= 0 &&
+    window.remainingPercent <= 100 &&
+    window.resetsAt instanceof Date &&
+    Number.isFinite(window.resetsAt.getTime())
   );
 }

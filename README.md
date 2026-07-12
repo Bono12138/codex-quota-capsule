@@ -56,7 +56,7 @@ Please install and run Quota Capsule on this Mac:
 5. Do not read, copy, print, or upload auth tokens, cookies, API keys, prompt text, session text, code content, or private file paths.
 6. If Node, npm, Swift, Xcode Command Line Tools, or Codex CLI is missing, tell me before changing the system.
 7. Run npm ci, npm test, npm run build, and swift run QuotaCapsuleCoreSpec.
-8. Run npm run mac:run:internal-test -- --verify.
+8. Run npm run mac:install:internal-test and verify the running process comes from /Applications.
 9. After it launches, tell me how to open it again.
 ```
 
@@ -69,7 +69,7 @@ npm ci
 npm test
 npm run build
 swift run QuotaCapsuleCoreSpec
-npm run mac:run:internal-test -- --verify
+npm run mac:install:internal-test
 ```
 
 ## Privacy Boundary / 隐私边界

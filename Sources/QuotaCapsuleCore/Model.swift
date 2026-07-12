@@ -9,11 +9,11 @@ public enum SourceStatus: Equatable, Sendable {
 public struct QuotaWindow: Equatable, Sendable {
     public let label: String
     public let windowMinutes: Int
-    public let usedPercent: Int
-    public let remainingPercent: Int
+    public let usedPercent: Double
+    public let remainingPercent: Double
     public let resetsAt: Date
 
-    public init(label: String, windowMinutes: Int, usedPercent: Int, remainingPercent: Int, resetsAt: Date) {
+    public init(label: String, windowMinutes: Int, usedPercent: Double, remainingPercent: Double, resetsAt: Date) {
         self.label = label
         self.windowMinutes = windowMinutes
         self.usedPercent = usedPercent
@@ -59,6 +59,7 @@ public struct CapsulePrediction: Equatable, Sendable {
     public let canReachReset: Bool?
     public let elapsedPercent: Int?
     public let quotaUsedPercent: Int?
+    public let quotaUsedPercentExact: Double?
     public let projectedRemainingAtReset: Int?
     public let estimatedEmptyAt: Date?
     public let headline: String
@@ -69,6 +70,7 @@ public struct CapsulePrediction: Equatable, Sendable {
         canReachReset: Bool?,
         elapsedPercent: Int?,
         quotaUsedPercent: Int?,
+        quotaUsedPercentExact: Double? = nil,
         projectedRemainingAtReset: Int?,
         estimatedEmptyAt: Date?,
         headline: String,
@@ -78,10 +80,10 @@ public struct CapsulePrediction: Equatable, Sendable {
         self.canReachReset = canReachReset
         self.elapsedPercent = elapsedPercent
         self.quotaUsedPercent = quotaUsedPercent
+        self.quotaUsedPercentExact = quotaUsedPercentExact ?? quotaUsedPercent.map(Double.init)
         self.projectedRemainingAtReset = projectedRemainingAtReset
         self.estimatedEmptyAt = estimatedEmptyAt
         self.headline = headline
         self.detail = detail
     }
 }
-

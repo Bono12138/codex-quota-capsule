@@ -61,8 +61,8 @@ struct DockedCapsuleView: View {
                 HStack(spacing: 4) {
                     Text(store.visibleStatusText)
                         .font(.system(size: 12, weight: .bold))
-                    if let used = store.compactUsedPercent {
-                        Text("\(used)%")
+                    if let used = store.compactUsedValueText {
+                        Text(used)
                             .font(.system(size: 11, weight: .bold))
                             .monospacedDigit()
                             .foregroundStyle(toneColor(store.displayModel.tone))
@@ -227,8 +227,13 @@ struct CompactPaceBars: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
-            CompactPaceTrack(label: elapsedLabel, percent: elapsedPercent, color: .secondary)
-            CompactPaceTrack(label: usageLabel, percent: usedPercent, color: toneColor(tone))
+            CompactPaceTrack(label: elapsedLabel, percent: elapsedPercent, percentText: "\(elapsedPercent)%", color: .secondary)
+            CompactPaceTrack(
+                label: usageLabel,
+                percent: usedPercent,
+                percentText: usedPercent == 0 ? "<1%" : "\(usedPercent)%",
+                color: toneColor(tone)
+            )
         }
     }
 }
@@ -236,6 +241,7 @@ struct CompactPaceBars: View {
 struct CompactPaceTrack: View {
     let label: String
     let percent: Int
+    let percentText: String
     let color: Color
 
     var body: some View {
@@ -254,7 +260,7 @@ struct CompactPaceTrack: View {
                 }
             }
             .frame(height: 4)
-            Text("\(percent)%")
+            Text(percentText)
                 .font(.system(size: 10, weight: .bold))
                 .monospacedDigit()
                 .foregroundStyle(.primary.opacity(0.72))

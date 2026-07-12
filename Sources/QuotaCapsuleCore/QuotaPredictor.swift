@@ -3,16 +3,22 @@ import Foundation
 public enum QuotaPredictor {
     private static let weeklyForecastEarlyWatchUsedPercent = 5
     private static let weeklyForecastMinimumElapsedPercent = 5.0
+    private static let clockSkewToleranceSeconds = 2.0
+    private static let reportingPrecisionUpperBound = 1.0
 
     public static func predict(snapshot: AgentQuotaSnapshot, now: Date = Date(), locale: QuotaLocale = .zhHans) -> CapsulePrediction {
         let copy = QuotaCopy(locale: locale)
+
+        if snapshot.sourceStatus == .stale {
+            return stale(snapshot: snapshot, locale: locale)
+        }
 
         guard snapshot.sourceStatus == .ok else {
             return unknown(sourceUnavailableHeadline(locale), snapshot.errorMessage ?? sourceUnavailableDetail(locale))
         }
 
         if let exhaustedWindow = [snapshot.shortWindow, snapshot.weeklyWindow].compactMap({ $0 }).first(where: { window in
-            window.remainingPercent <= 0 && window.resetsAt > now
+            isValid(window) && window.remainingPercent <= 0 && window.resetsAt > now
         }) {
             return exhausted(window: exhaustedWindow, now: now, copy: copy)
         }
@@ -32,17 +38,20 @@ public enum QuotaPredictor {
     }
 
     public static func predictWeekly(window: QuotaWindow, now: Date = Date(), locale: QuotaLocale = .zhHans) -> CapsulePrediction {
+        guard isValid(window) else {
+            return unknown(invalidWindowHeadline(locale), invalidWindowDetail(locale))
+        }
         let windowStart = window.resetsAt.addingTimeInterval(TimeInterval(-window.windowMinutes * 60))
         let elapsedMinutes = now.timeIntervalSince(windowStart) / 60
         let minutesUntilReset = window.resetsAt.timeIntervalSince(now) / 60
         let elapsedPercentExact = (elapsedMinutes / Double(window.windowMinutes)) * 100
         let elapsedPercent = clampPercent(Int(elapsedPercentExact.rounded()))
-        let usedPercent = clampPercent(window.usedPercent)
+        let usedPercent = displayPercent(window.usedPercent)
 
         if minutesUntilReset > 0,
            elapsedMinutes > 0,
            window.remainingPercent > 0,
-           usedPercent > 0,
+           window.usedPercent > 0,
            elapsedPercentExact < weeklyForecastMinimumElapsedPercent {
             let level: CapsuleLevel = usedPercent >= weeklyForecastEarlyWatchUsedPercent ? .watch : .unknown
             return CapsulePrediction(
@@ -50,6 +59,7 @@ public enum QuotaPredictor {
                 canReachReset: nil,
                 elapsedPercent: elapsedPercent,
                 quotaUsedPercent: usedPercent,
+                quotaUsedPercentExact: window.usedPercent,
                 projectedRemainingAtReset: nil,
                 estimatedEmptyAt: nil,
                 headline: weeklyWarmupHeadline(usedPercent: usedPercent, locale),
@@ -61,12 +71,16 @@ public enum QuotaPredictor {
     }
 
     public static func predict(window: QuotaWindow, now: Date = Date(), locale: QuotaLocale = .zhHans) -> CapsulePrediction {
+        guard isValid(window) else {
+            return unknown(invalidWindowHeadline(locale), invalidWindowDetail(locale))
+        }
         let copy = QuotaCopy(locale: locale)
         let windowStart = window.resetsAt.addingTimeInterval(TimeInterval(-window.windowMinutes * 60))
         let elapsedMinutes = now.timeIntervalSince(windowStart) / 60
         let minutesUntilReset = window.resetsAt.timeIntervalSince(now) / 60
         let elapsedPercent = clampPercent(Int(((elapsedMinutes / Double(window.windowMinutes)) * 100).rounded()))
-        let usedPercent = clampPercent(window.usedPercent)
+        let usedExact = clampUsage(window.usedPercent)
+        let usedPercent = displayPercent(usedExact)
 
         if minutesUntilReset <= 0 {
             return unknown(expiredResetHeadline(locale), expiredResetDetail(locale))
@@ -76,30 +90,65 @@ public enum QuotaPredictor {
             return exhausted(window: window, now: now, copy: copy)
         }
 
-        if elapsedMinutes <= 0 {
+        if elapsedMinutes < -(clockSkewToleranceSeconds / 60) {
             return unknown(localTimeAbnormalHeadline(locale), localTimeAbnormalDetail(locale))
         }
 
-        if usedPercent <= 0 {
+        let effectiveElapsedMinutes = max(0, elapsedMinutes)
+
+        if usedExact <= 0 {
+            if effectiveElapsedMinutes <= 3 {
+                return CapsulePrediction(
+                    level: .unknown,
+                    canReachReset: nil,
+                    elapsedPercent: elapsedPercent,
+                    quotaUsedPercent: 0,
+                    quotaUsedPercentExact: 0,
+                    projectedRemainingAtReset: nil,
+                    estimatedEmptyAt: nil,
+                    headline: belowPrecisionWarmupHeadline(locale),
+                    detail: belowPrecisionDetail(locale)
+                )
+            }
+
+            let projectedUsedUpperBound = (reportingPrecisionUpperBound / effectiveElapsedMinutes) * Double(window.windowMinutes)
+            guard projectedUsedUpperBound < 100 else {
+                return CapsulePrediction(
+                    level: .unknown,
+                    canReachReset: nil,
+                    elapsedPercent: elapsedPercent,
+                    quotaUsedPercent: 0,
+                    quotaUsedPercentExact: 0,
+                    projectedRemainingAtReset: nil,
+                    estimatedEmptyAt: nil,
+                    headline: belowPrecisionWarmupHeadline(locale),
+                    detail: belowPrecisionDetail(locale)
+                )
+            }
+
+            let projectedRemainingPercent = clampPercent(Int(floor(100 - projectedUsedUpperBound)))
+            let level: CapsuleLevel = projectedRemainingPercent < 10 ? .watch : .safe
             let resetText = formatTime(window.resetsAt, locale: locale)
             return CapsulePrediction(
-                level: .safe,
+                level: level,
                 canReachReset: true,
                 elapsedPercent: elapsedPercent,
                 quotaUsedPercent: 0,
-                projectedRemainingAtReset: 100,
+                quotaUsedPercentExact: 0,
+                projectedRemainingAtReset: projectedRemainingPercent,
                 estimatedEmptyAt: nil,
-                headline: noUsageHeadline(resetText, locale),
-                detail: noUsageDetail(locale)
+                headline: belowPrecisionSafeHeadline(resetText, locale),
+                detail: belowPrecisionProjectionDetail(projectedRemainingPercent, locale)
             )
         }
 
-        if elapsedMinutes < 3 {
+        if effectiveElapsedMinutes < 3 {
             return CapsulePrediction(
                 level: .unknown,
                 canReachReset: nil,
                 elapsedPercent: elapsedPercent,
                 quotaUsedPercent: usedPercent,
+                quotaUsedPercentExact: usedExact,
                 projectedRemainingAtReset: nil,
                 estimatedEmptyAt: nil,
                 headline: justResetHeadline(locale),
@@ -107,12 +156,12 @@ public enum QuotaPredictor {
             )
         }
 
-        let burnRatePerMinute = Double(usedPercent) / elapsedMinutes
-        let projectedUsedAtReset = Double(usedPercent) + burnRatePerMinute * minutesUntilReset
+        let burnRatePerMinute = usedExact / effectiveElapsedMinutes
+        let projectedUsedAtReset = usedExact + burnRatePerMinute * minutesUntilReset
         let projectedRemaining = 100 - projectedUsedAtReset
 
         if projectedRemaining <= 0 {
-            let estimatedEmptyAt = now.addingTimeInterval((Double(window.remainingPercent) / burnRatePerMinute) * 60)
+            let estimatedEmptyAt = now.addingTimeInterval((window.remainingPercent / burnRatePerMinute) * 60)
             let emptyText = formatTime(estimatedEmptyAt, locale: locale)
             let resetText = formatTime(window.resetsAt, locale: locale)
             return CapsulePrediction(
@@ -120,6 +169,7 @@ public enum QuotaPredictor {
                 canReachReset: false,
                 elapsedPercent: elapsedPercent,
                 quotaUsedPercent: usedPercent,
+                quotaUsedPercentExact: usedExact,
                 projectedRemainingAtReset: 0,
                 estimatedEmptyAt: estimatedEmptyAt,
                 headline: projectedExhaustionHeadline(emptyText, locale),
@@ -136,6 +186,7 @@ public enum QuotaPredictor {
             canReachReset: true,
             elapsedPercent: elapsedPercent,
             quotaUsedPercent: usedPercent,
+            quotaUsedPercentExact: usedExact,
             projectedRemainingAtReset: projectedRemainingPercent,
             estimatedEmptyAt: nil,
             headline: level == .watch
@@ -158,17 +209,40 @@ public enum QuotaPredictor {
         )
     }
 
+    private static func stale(snapshot: AgentQuotaSnapshot, locale: QuotaLocale) -> CapsulePrediction {
+        guard let window = snapshot.shortWindow, isValid(window) else {
+            return unknown(staleHeadline(locale), staleDetail(snapshot.fetchedAt, locale: locale))
+        }
+
+        let windowStart = window.resetsAt.addingTimeInterval(TimeInterval(-window.windowMinutes * 60))
+        let elapsedMinutes = snapshot.fetchedAt.timeIntervalSince(windowStart) / 60
+        let elapsedPercent = clampPercent(Int(((max(0, elapsedMinutes) / Double(window.windowMinutes)) * 100).rounded()))
+
+        return CapsulePrediction(
+            level: .unknown,
+            canReachReset: nil,
+            elapsedPercent: elapsedPercent,
+            quotaUsedPercent: displayPercent(window.usedPercent),
+            quotaUsedPercentExact: window.usedPercent,
+            projectedRemainingAtReset: nil,
+            estimatedEmptyAt: nil,
+            headline: staleHeadline(locale),
+            detail: staleDetail(snapshot.fetchedAt, locale: locale)
+        )
+    }
+
     private static func exhausted(window: QuotaWindow, now: Date, copy: QuotaCopy) -> CapsulePrediction {
         let windowStart = window.resetsAt.addingTimeInterval(TimeInterval(-window.windowMinutes * 60))
         let elapsedMinutes = now.timeIntervalSince(windowStart) / 60
         let elapsedPercent = clampPercent(Int(((elapsedMinutes / Double(window.windowMinutes)) * 100).rounded()))
-        let usedPercent = clampPercent(window.usedPercent)
+        let usedPercent = displayPercent(window.usedPercent)
 
         return CapsulePrediction(
             level: .danger,
             canReachReset: false,
             elapsedPercent: elapsedPercent,
             quotaUsedPercent: usedPercent,
+            quotaUsedPercentExact: window.usedPercent,
             projectedRemainingAtReset: 0,
             estimatedEmptyAt: now,
             headline: exhaustedHeadline(copy.locale),
@@ -189,6 +263,24 @@ public enum QuotaPredictor {
 
     private static func clampPercent(_ value: Int) -> Int {
         min(100, max(0, value))
+    }
+
+    private static func clampUsage(_ value: Double) -> Double {
+        min(100, max(0, value))
+    }
+
+    private static func displayPercent(_ value: Double) -> Int {
+        clampPercent(Int(floor(clampUsage(value))))
+    }
+
+    private static func isValid(_ window: QuotaWindow) -> Bool {
+        window.windowMinutes > 0
+            && window.windowMinutes <= 525_600
+            && window.usedPercent.isFinite
+            && (0...100).contains(window.usedPercent)
+            && window.remainingPercent.isFinite
+            && (0...100).contains(window.remainingPercent)
+            && window.resetsAt.timeIntervalSince1970.isFinite
     }
 
     private static func dateLocaleIdentifier(_ locale: QuotaLocale) -> String {
@@ -228,6 +320,22 @@ public enum QuotaPredictor {
         case .zhHans: "数据源没有提供 5 小时额度窗口。"
         case .zhHant: "資料來源沒有提供 5 小時額度週期。"
         case .en: "The source did not provide a 5-hour quota window."
+        }
+    }
+
+    private static func invalidWindowHeadline(_ locale: QuotaLocale) -> String {
+        switch locale {
+        case .zhHans: "额度窗口数据无效"
+        case .zhHant: "額度週期資料無效"
+        case .en: "Quota window data is invalid"
+        }
+    }
+
+    private static func invalidWindowDetail(_ locale: QuotaLocale) -> String {
+        switch locale {
+        case .zhHans: "窗口时长或百分比超出安全范围。"
+        case .zhHant: "週期時長或百分比超出安全範圍。"
+        case .en: "The window duration or percentage is outside the safe range."
         }
     }
 
@@ -287,19 +395,52 @@ public enum QuotaPredictor {
         }
     }
 
-    private static func noUsageHeadline(_ resetText: String, _ locale: QuotaLocale) -> String {
+    private static func belowPrecisionWarmupHeadline(_ locale: QuotaLocale) -> String {
         switch locale {
-        case .zhHans: "还没开始消耗，能撑到 \(resetText) 刷新"
-        case .zhHant: "尚未開始消耗，可撐到 \(resetText) 重設"
-        case .en: "No usage yet; lasts until \(resetText)"
+        case .zhHans: "当前读数低于 1%，先观察一会儿"
+        case .zhHant: "目前讀數低於 1%，先觀察一下"
+        case .en: "Usage is below 1%; watching"
         }
     }
 
-    private static func noUsageDetail(_ locale: QuotaLocale) -> String {
+    private static func belowPrecisionSafeHeadline(_ resetText: String, _ locale: QuotaLocale) -> String {
         switch locale {
-        case .zhHans: "当前窗口已用为 0。"
-        case .zhHant: "目前週期已用為 0。"
-        case .en: "Current window usage is 0."
+        case .zhHans: "当前读数低于 1%，保守估计够用到 \(resetText)"
+        case .zhHant: "目前讀數低於 1%，保守估計可用到 \(resetText)"
+        case .en: "Below 1%; conservative estimate lasts until \(resetText)"
+        }
+    }
+
+    private static func belowPrecisionDetail(_ locale: QuotaLocale) -> String {
+        switch locale {
+        case .zhHans: "Codex 的百分比读数不足以证明没有使用，暂不判断消耗速度。"
+        case .zhHant: "Codex 的百分比讀數不足以證明沒有使用，暫不判斷消耗速度。"
+        case .en: "The percentage reading cannot prove there was no usage, so no burn-rate conclusion is shown yet."
+        }
+    }
+
+    private static func belowPrecisionProjectionDetail(_ percent: Int, _ locale: QuotaLocale) -> String {
+        switch locale {
+        case .zhHans: "按低于 1% 的上限估算，刷新时至少剩 \(percent)% 。".replacingOccurrences(of: "% ", with: "%")
+        case .zhHant: "按低於 1% 的上限估算，重設時至少剩 \(percent)% 。".replacingOccurrences(of: "% ", with: "%")
+        case .en: "Using the under-1% upper bound, at least \(percent)% should remain at reset."
+        }
+    }
+
+    private static func staleHeadline(_ locale: QuotaLocale) -> String {
+        switch locale {
+        case .zhHans: "数据已过期，等待恢复"
+        case .zhHant: "資料已過期，等待恢復"
+        case .en: "Data is stale; waiting to recover"
+        }
+    }
+
+    private static func staleDetail(_ fetchedAt: Date, locale: QuotaLocale) -> String {
+        let time = formatTime(fetchedAt, locale: locale)
+        return switch locale {
+        case .zhHans: "正在显示 \(time) 的最后成功读数，不能据此判断当前风险。"
+        case .zhHant: "正在顯示 \(time) 的最後成功讀數，不能據此判斷目前風險。"
+        case .en: "Showing the last successful reading from \(time); it cannot determine current risk."
         }
     }
 

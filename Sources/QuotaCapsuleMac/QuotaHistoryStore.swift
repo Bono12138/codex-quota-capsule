@@ -54,11 +54,17 @@ struct ProductAnalyticsEvent {
 struct PendingAnalyticsUpload {
     let id: Int64
     let payload: [String: Any]
+
+    var isProductImprovement: Bool {
+        guard let properties = payload["properties"] as? [String: Any] else { return false }
+        return properties["collection_tier"] as? String == "product_improvement"
+    }
 }
 
 @MainActor
 final class QuotaHistoryStore {
-    static let schemaVersion = 1
+    static let historySchemaVersion = 2
+    static let analyticsSchemaVersion = 1
     static let consentVersion = "2026-07-01-v1"
 
     private let databaseURL: URL
@@ -76,7 +82,12 @@ final class QuotaHistoryStore {
             fileManager: fileManager,
             directoryName: configuration.applicationSupportDirectoryName
         )
-        try? fileManager.createDirectory(at: supportURL, withIntermediateDirectories: true)
+        try? fileManager.createDirectory(
+            at: supportURL,
+            withIntermediateDirectories: true,
+            attributes: [.posixPermissions: 0o700]
+        )
+        try? fileManager.setAttributes([.posixPermissions: 0o700], ofItemAtPath: supportURL.path)
         databaseURL = supportURL.appendingPathComponent("QuotaCapsule.sqlite")
 
         let installKey = configuration.userDefaultsKey("analytics.installID")
@@ -91,6 +102,13 @@ final class QuotaHistoryStore {
 
         open()
         migrate()
+        repairLegacyStaleSuccessCaptures()
+        for suffix in ["", "-wal", "-shm"] {
+            let path = databaseURL.path + suffix
+            if fileManager.fileExists(atPath: path) {
+                try? fileManager.setAttributes([.posixPermissions: 0o600], ofItemAtPath: path)
+            }
+        }
     }
 
     deinit {
@@ -115,8 +133,7 @@ final class QuotaHistoryStore {
         guard captureID > 0 else { return }
 
         if let shortWindow = snapshot.shortWindow {
-            let windowPrediction = QuotaPredictor.predict(window: shortWindow, now: snapshot.fetchedAt, locale: locale)
-            insertWindowRecord(captureID: captureID, snapshot: snapshot, window: shortWindow, windowType: "5h", prediction: windowPrediction)
+            insertWindowRecord(captureID: captureID, snapshot: snapshot, window: shortWindow, windowType: "5h", prediction: prediction)
         }
 
         if let weeklyWindow = snapshot.weeklyWindow {
@@ -128,7 +145,11 @@ final class QuotaHistoryStore {
     }
 
     @discardableResult
-    func recordEvent(_ event: ProductAnalyticsEvent, consent: AnalyticsConsent) -> PendingAnalyticsUpload? {
+    func recordEvent(
+        _ event: ProductAnalyticsEvent,
+        consent: AnalyticsConsent,
+        uploadAllowed: Bool? = nil
+    ) -> PendingAnalyticsUpload? {
         guard let payload = makePayload(event: event, consent: consent),
               let payloadData = try? JSONSerialization.data(withJSONObject: payload, options: [.sortedKeys]),
               let payloadJSON = String(data: payloadData, encoding: .utf8) else {
@@ -136,7 +157,8 @@ final class QuotaHistoryStore {
         }
 
         let endpointConfigured = ProductAnalyticsUploader.endpointURL(configuration: configuration) != nil
-        let uploadStatus = consent == .granted && endpointConfigured ? "pending" : "disabled"
+        let mayUpload = uploadAllowed ?? (consent == .granted)
+        let uploadStatus = mayUpload && endpointConfigured ? "pending" : "disabled"
         let queuedForUpload = uploadStatus == "pending" ? 1 : 0
 
         let sql = """
@@ -156,7 +178,7 @@ final class QuotaHistoryStore {
         bindDouble(statement, 2, event.time.timeIntervalSince1970)
         bindText(statement, 3, installIDHash)
         bindText(statement, 4, appVersion())
-        bindInt(statement, 5, Self.schemaVersion)
+        bindInt(statement, 5, Self.analyticsSchemaVersion)
         bindText(statement, 6, event.language.analyticsCode)
         bindInt(statement, 7, ProcessInfo.processInfo.operatingSystemVersion.majorVersion)
         bindText(statement, 8, currentArchitecture())
@@ -216,6 +238,19 @@ final class QuotaHistoryStore {
         execute("UPDATE product_events SET upload_status = 'failed' WHERE id = \(id)")
     }
 
+    func disableUpload(id: Int64) {
+        execute("UPDATE product_events SET upload_status = 'disabled', queued_for_upload = 0 WHERE id = \(id)")
+    }
+
+    func disablePendingProductImprovementUploads() {
+        execute("""
+        UPDATE product_events
+        SET upload_status = 'disabled', queued_for_upload = 0
+        WHERE upload_status = 'pending'
+          AND properties_json LIKE '%\"collection_tier\":\"product_improvement\"%'
+        """)
+    }
+
     func clearAll() {
         execute("DELETE FROM quota_windows")
         execute("DELETE FROM captures")
@@ -267,8 +302,8 @@ final class QuotaHistoryStore {
           capture_id INTEGER NOT NULL REFERENCES captures(id) ON DELETE CASCADE,
           window_type TEXT NOT NULL,
           window_minutes INTEGER NOT NULL,
-          used_percent INTEGER NOT NULL,
-          remaining_percent INTEGER NOT NULL,
+          used_percent REAL NOT NULL,
+          remaining_percent REAL NOT NULL,
           resets_at REAL NOT NULL,
           window_start REAL NOT NULL,
           time_elapsed_percent INTEGER,
@@ -278,7 +313,7 @@ final class QuotaHistoryStore {
           projected_remaining_at_reset INTEGER,
           estimated_empty_at REAL,
           state TEXT NOT NULL,
-          used_delta_percent INTEGER,
+          used_delta_percent REAL,
           delta_minutes REAL,
           delta_percent_per_min REAL,
           reset_detected INTEGER NOT NULL DEFAULT 0
@@ -319,6 +354,23 @@ final class QuotaHistoryStore {
         execute("CREATE INDEX IF NOT EXISTS idx_events_upload ON product_events(upload_status, id)")
     }
 
+    private func repairLegacyStaleSuccessCaptures() {
+        // Builds before schema v2 recorded the cached display snapshot after a
+        // failed refresh, producing old rows labelled as fresh success. Genuine
+        // successful reads are captured within seconds of fetched_at.
+        execute("""
+        DELETE FROM quota_windows
+        WHERE capture_id IN (
+          SELECT id FROM captures
+          WHERE source_status = 'success' AND data_age_seconds > 120
+        )
+        """)
+        execute("""
+        DELETE FROM captures
+        WHERE source_status = 'success' AND data_age_seconds > 120
+        """)
+    }
+
     private func insertCapture(_ snapshot: AgentQuotaSnapshot) -> Int64 {
         let sql = """
         INSERT INTO captures (
@@ -340,7 +392,7 @@ final class QuotaHistoryStore {
         bindDouble(statement, 5, snapshot.fetchedAt.timeIntervalSince1970)
         bindDouble(statement, 6, capturedAt.timeIntervalSince(snapshot.fetchedAt))
         bindText(statement, 7, appVersion())
-        bindInt(statement, 8, Self.schemaVersion)
+        bindInt(statement, 8, Self.historySchemaVersion)
         bindOptionalText(statement, 9, errorType)
         bindOptionalText(statement, 10, errorHash)
 
@@ -362,10 +414,10 @@ final class QuotaHistoryStore {
         let windowStart = window.resetsAt.addingTimeInterval(TimeInterval(-window.windowMinutes * 60))
         let elapsedMinutes = max(0, capturedAt.timeIntervalSince(windowStart) / 60)
         let minutesUntilReset = window.resetsAt.timeIntervalSince(capturedAt) / 60
-        let burnRate = elapsedMinutes > 0 ? Double(window.usedPercent) / elapsedMinutes : nil
+        let burnRate = elapsedMinutes > 0 ? window.usedPercent / elapsedMinutes : nil
         let burnRateVsEvenPace = prediction.elapsedPercent.flatMap { elapsedPercent -> Double? in
             guard elapsedPercent > 0 else { return nil }
-            return Double(window.usedPercent) / Double(elapsedPercent)
+            return window.usedPercent / Double(elapsedPercent)
         }
         let resetDetected = previous.map { abs($0.resetsAt.timeIntervalSince(window.resetsAt)) > 1 } ?? false
         let usedDelta = previous.map { window.usedPercent - $0.usedPercent }
@@ -392,8 +444,8 @@ final class QuotaHistoryStore {
         bindInt64(statement, 1, captureID)
         bindText(statement, 2, windowType)
         bindInt(statement, 3, window.windowMinutes)
-        bindInt(statement, 4, window.usedPercent)
-        bindInt(statement, 5, window.remainingPercent)
+        bindDouble(statement, 4, window.usedPercent)
+        bindDouble(statement, 5, window.remainingPercent)
         bindDouble(statement, 6, window.resetsAt.timeIntervalSince1970)
         bindDouble(statement, 7, windowStart.timeIntervalSince1970)
         bindOptionalInt(statement, 8, prediction.elapsedPercent)
@@ -403,14 +455,14 @@ final class QuotaHistoryStore {
         bindOptionalInt(statement, 12, prediction.projectedRemainingAtReset)
         bindOptionalDouble(statement, 13, prediction.estimatedEmptyAt?.timeIntervalSince1970)
         bindText(statement, 14, prediction.level.analyticsCode)
-        bindOptionalInt(statement, 15, usedDelta)
+        bindOptionalDouble(statement, 15, usedDelta)
         bindOptionalDouble(statement, 16, deltaMinutes)
         bindOptionalDouble(statement, 17, deltaPercentPerMinute)
         bindInt(statement, 18, resetDetected ? 1 : 0)
         _ = sqlite3_step(statement)
     }
 
-    private func latestWindowSample(windowType: String) -> (usedPercent: Int, capturedAt: Date, resetsAt: Date)? {
+    private func latestWindowSample(windowType: String) -> (usedPercent: Double, capturedAt: Date, resetsAt: Date)? {
         let sql = """
         SELECT w.used_percent, c.fetched_at, w.resets_at
         FROM quota_windows w
@@ -425,7 +477,7 @@ final class QuotaHistoryStore {
 
         guard sqlite3_step(statement) == SQLITE_ROW else { return nil }
         return (
-            Int(sqlite3_column_int(statement, 0)),
+            sqlite3_column_double(statement, 0),
             Date(timeIntervalSince1970: sqlite3_column_double(statement, 1)),
             Date(timeIntervalSince1970: sqlite3_column_double(statement, 2))
         )
@@ -439,7 +491,7 @@ final class QuotaHistoryStore {
             "install_id_hash": installIDHash,
             "app_version": appVersion(),
             "release_channel": configuration.channel.rawValue,
-            "schema_version": Self.schemaVersion,
+            "schema_version": Self.analyticsSchemaVersion,
             "locale": event.language.analyticsCode,
             "macos_major_version": ProcessInfo.processInfo.operatingSystemVersion.majorVersion,
             "arch": currentArchitecture(),

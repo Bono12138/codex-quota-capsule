@@ -65,7 +65,7 @@ https://github.com/Bono12138/codex-quota-capsule
 7. 运行 npm test。
 8. 运行 npm run build。
 9. 运行 swift run QuotaCapsuleCoreSpec。
-10. 运行 npm run mac:run:internal-test -- --verify。
+10. 运行 npm run mac:install:internal-test，并确认运行进程来自 /Applications。
 11. 如果启动成功，告诉我如何再次打开 Quota Capsule。
 12. 如果失败，只给我必要的非敏感错误信息和下一步建议。
 ```
@@ -79,7 +79,7 @@ npm ci
 npm test
 npm run build
 swift run QuotaCapsuleCoreSpec
-npm run mac:run:internal-test -- --verify
+npm run mac:install:internal-test
 ```
 
 ## 本机版本通道

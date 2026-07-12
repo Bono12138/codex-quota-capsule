@@ -61,7 +61,7 @@ Please install and run Quota Capsule on this Mac:
 8. Run npm test.
 9. Run npm run build.
 10. Run swift run QuotaCapsuleCoreSpec.
-11. Run npm run mac:run:internal-test -- --verify.
+11. Run npm run mac:install:internal-test and verify that the running process comes from /Applications.
 12. After it launches, tell me how to open it again.
 ```
 
@@ -74,7 +74,7 @@ npm ci
 npm test
 npm run build
 swift run QuotaCapsuleCoreSpec
-npm run mac:run:internal-test -- --verify
+npm run mac:install:internal-test
 ```
 
 ## Local Channels

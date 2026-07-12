@@ -33,6 +33,8 @@ final class QuotaStore: ObservableObject {
     private var expandedStartedAt: Date?
     private var isFlushingAnalytics = false
     private var needsAnalyticsFlush = false
+    private var analyticsUploadTask: Task<Void, Never>?
+    private var analyticsUploadGeneration = 0
     private let configuration: AppConfiguration
     private let userDefaults: UserDefaults
     private let historyStore: QuotaHistoryStore
@@ -111,6 +113,7 @@ final class QuotaStore: ObservableObject {
     deinit {
         refreshTask?.cancel()
         heartbeatTask?.cancel()
+        analyticsUploadTask?.cancel()
         Task { @MainActor [launchedAt, lastSessionDurationKey] in
             let duration = Date().timeIntervalSince(launchedAt)
             UserDefaults.standard.set(duration, forKey: lastSessionDurationKey)
@@ -140,7 +143,7 @@ final class QuotaStore: ObservableObject {
         guard let weeklyWindow = snapshot.weeklyWindow else {
             return copy.unknownValue
         }
-        return "\(weeklyWindow.remainingPercent)%"
+        return Self.formatQuotaPercent(weeklyWindow.remainingPercent)
     }
 
     var weeklyProjection: CapsulePrediction? {
@@ -187,6 +190,12 @@ final class QuotaStore: ObservableObject {
             }
             return copy.sourceSuccess(lastRefreshText)
         }
+        if snapshot.sourceStatus == .stale {
+            return copy.sourceShowingLastSuccess(
+                lastRefreshText: lastRefreshText,
+                error: lastErrorText ?? snapshot.errorMessage ?? copy.unknownError
+            )
+        }
         return copy.sourceUnavailable(lastErrorText ?? snapshot.errorMessage ?? copy.unknownError)
     }
 
@@ -205,10 +214,16 @@ final class QuotaStore: ObservableObject {
             }
             return copy.sourceStatusLive
         }
+        if snapshot.sourceStatus == .stale {
+            return copy.sourceStatusShowingLastSuccess
+        }
         return copy.sourceStatusFailed
     }
 
     var sourceNoteText: String {
+        if snapshot.sourceStatus == .stale, let lastErrorText {
+            return copy.sourceLatestFailure(lastErrorText)
+        }
         if snapshot.sourceStatus == .ok, let lastErrorText {
             return copy.sourceLatestFailure(lastErrorText)
         }
@@ -222,7 +237,7 @@ final class QuotaStore: ObservableObject {
         if isRefreshing && snapshot.sourceStatus != .ok {
             return copy.loadingStatus
         }
-        return displayModel.statusLabel
+        return snapshot.sourceStatus == .stale ? copy.statusStale : displayModel.statusLabel
     }
 
     var visibleCompactText: String {
@@ -247,7 +262,8 @@ final class QuotaStore: ObservableObject {
               let used = prediction.quotaUsedPercent else {
             return copy.unknownValue
         }
-        return "\(copy.compactTimeLabel) \(elapsed)% · \(copy.compactUsageLabel) \(used)%"
+        let usedText = compactUsedValueText ?? "\(used)%"
+        return "\(copy.compactTimeLabel) \(elapsed)% · \(copy.compactUsageLabel) \(usedText)"
     }
 
     var compactElapsedPercent: Int? {
@@ -259,10 +275,14 @@ final class QuotaStore: ObservableObject {
     }
 
     var visibleCompactUsedBadgeText: String? {
-        guard let compactUsedPercent else {
+        guard let compactUsedValueText else {
             return nil
         }
-        return copy.compactUsedBadge(compactUsedPercent)
+        return copy.compactUsedBadge(value: compactUsedValueText)
+    }
+
+    var compactUsedValueText: String? {
+        displayModel.metrics.first { $0.label == copy.metricUsed }?.value
     }
 
     var compactProjectedText: String {
@@ -319,6 +339,14 @@ final class QuotaStore: ObservableObject {
     func setAnalyticsConsent(_ consent: AnalyticsConsent) {
         analyticsConsent = consent
         userDefaults.set(consent.rawValue, forKey: analyticsConsentKey)
+        if consent == .denied {
+            analyticsUploadGeneration += 1
+            analyticsUploadTask?.cancel()
+            analyticsUploadTask = nil
+            isFlushingAnalytics = false
+            needsAnalyticsFlush = false
+            historyStore.disablePendingProductImprovementUploads()
+        }
         recordEvent(
             name: "analytics_consent_changed",
             surface: "onboarding",
@@ -454,8 +482,11 @@ final class QuotaStore: ObservableObject {
         lastRefreshText = reduction.lastRefreshText
         lastAttemptText = reduction.lastAttemptText
         lastErrorText = reduction.lastErrorText
-        historyStore.recordSnapshot(snapshot, prediction: prediction, locale: locale)
-        recordQuotaStateSample()
+        let attemptPrediction = QuotaPredictor.predict(snapshot: newSnapshot, now: newSnapshot.fetchedAt, locale: locale)
+        historyStore.recordSnapshot(reduction.latestAttemptSnapshot, prediction: attemptPrediction, locale: locale)
+        if newSnapshot.sourceStatus == .ok {
+            recordQuotaStateSample()
+        }
         recordEvent(
             name: newSnapshot.sourceStatus == .ok ? "quota_refresh_succeeded" : "quota_refresh_failed",
             surface: "source",
@@ -582,8 +613,8 @@ final class QuotaStore: ObservableObject {
             feedbackTarget: feedbackTarget,
             properties: eventProperties
         )
-        let effectiveConsent: AnalyticsConsent = requiresConsent ? analyticsConsent : .granted
-        _ = historyStore.recordEvent(event, consent: effectiveConsent)
+        let uploadAllowed = requiresConsent ? analyticsConsent == .granted : true
+        _ = historyStore.recordEvent(event, consent: analyticsConsent, uploadAllowed: uploadAllowed)
         flushAnalyticsUploads()
     }
 
@@ -601,16 +632,26 @@ final class QuotaStore: ObservableObject {
         guard !uploads.isEmpty else { return }
 
         isFlushingAnalytics = true
-        Task { @MainActor in
+        analyticsUploadGeneration += 1
+        let uploadGeneration = analyticsUploadGeneration
+        analyticsUploadTask = Task { @MainActor in
             for upload in uploads {
+                guard !Task.isCancelled, uploadGeneration == analyticsUploadGeneration else { break }
+                if upload.isProductImprovement, analyticsConsent != .granted {
+                    historyStore.disableUpload(id: upload.id)
+                    continue
+                }
                 let sent = await ProductAnalyticsUploader.upload(payload: upload.payload, configuration: configuration)
+                guard !Task.isCancelled, uploadGeneration == analyticsUploadGeneration else { break }
                 if sent {
                     historyStore.markUploadSent(id: upload.id)
                 } else {
                     historyStore.markUploadFailed(id: upload.id)
                 }
             }
+            guard uploadGeneration == analyticsUploadGeneration else { return }
             isFlushingAnalytics = false
+            analyticsUploadTask = nil
             if needsAnalyticsFlush {
                 needsAnalyticsFlush = false
                 flushAnalyticsUploads()
@@ -631,6 +672,14 @@ final class QuotaStore: ObservableObject {
         formatter.dateFormat = "HH:mm:ss"
         return formatter
     }
+
+    private static func formatQuotaPercent(_ value: Double) -> String {
+        if value.rounded() == value {
+            return "\(Int(value))%"
+        }
+        return String(format: "%.1f%%", value)
+    }
+
 }
 
 private func widthBucket(_ width: CGFloat) -> String {

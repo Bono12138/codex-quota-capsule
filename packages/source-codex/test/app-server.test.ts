@@ -13,7 +13,7 @@ class FakeTransport implements CodexAppServerTransport {
     this.sent.push(payload);
   }
 
-  async read(): Promise<unknown> {
+  async read(_timeoutMs?: number): Promise<unknown> {
     const next = this.reads.shift();
     if (!next) throw new Error("no fake response queued");
     return next;
@@ -23,9 +23,17 @@ class FakeTransport implements CodexAppServerTransport {
 describe("readCodexRateLimitsFromTransport", () => {
   it("initializes app-server, skips notifications, reads rate limits, and parses the result", async () => {
     const transport = new FakeTransport([
-      { jsonrpc: "2.0", method: "window/logMessage", params: { message: "ready" } },
+      ...Array.from({ length: 75 }, (_, index) => ({
+        jsonrpc: "2.0",
+        method: "window/logMessage",
+        params: { index },
+      })),
       { jsonrpc: "2.0", id: 1, result: { capabilities: {} } },
-      { jsonrpc: "2.0", method: "account/rateLimits/changed", params: {} },
+      ...Array.from({ length: 75 }, (_, index) => ({
+        jsonrpc: "2.0",
+        method: "account/rateLimits/changed",
+        params: { index },
+      })),
       {
         jsonrpc: "2.0",
         id: 2,
@@ -80,5 +88,28 @@ describe("readCodexRateLimitsFromTransport", () => {
 
     expect(snapshot.sourceStatus).toBe("error");
     expect(snapshot.errorMessage).toContain("no fake response queued");
+  });
+
+  it("uses one overall deadline across unrelated notifications", async () => {
+    const notifications = Array.from({ length: 20 }, (_, index) => ({
+      jsonrpc: "2.0",
+      method: "window/logMessage",
+      params: { index },
+    }));
+    const transport: CodexAppServerTransport = {
+      send() {},
+      async read() {
+        await new Promise((resolve) => setTimeout(resolve, 10));
+        return notifications.shift() ?? { jsonrpc: "2.0", id: 2, result: { rateLimits: {} } };
+      },
+    };
+    const startedAt = Date.now();
+    const snapshot = await readCodexRateLimitsFromTransport(transport, {
+      fetchedAt: new Date("2026-07-01T12:00:00+08:00"),
+      timeoutMs: 50,
+    });
+
+    expect(snapshot.sourceStatus).toBe("error");
+    expect(Date.now() - startedAt).toBeLessThan(150);
   });
 });
