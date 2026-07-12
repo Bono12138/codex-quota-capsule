@@ -45,7 +45,7 @@ describe("parseCodexRateLimits", () => {
     expect(parsed.errorMessage).toContain("rateLimits");
   });
 
-  it("parses a weekly-only response but leaves the short window missing", () => {
+  it("treats a weekly-only response as an incomplete retryable snapshot", () => {
     const parsed = parseCodexRateLimits(
       {
         rateLimits: {
@@ -61,10 +61,11 @@ describe("parseCodexRateLimits", () => {
       },
     );
 
-    expect(parsed.sourceStatus).toBe("ok");
+    expect(parsed.sourceStatus).toBe("error");
     expect(parsed.shortWindow).toBeUndefined();
     expect(parsed.weeklyWindow?.label).toBe("weekly");
     expect(parsed.weeklyWindow?.usedPercent).toBe(41);
+    expect(parsed.errorMessage).toContain("5-hour");
   });
 
   it.each([

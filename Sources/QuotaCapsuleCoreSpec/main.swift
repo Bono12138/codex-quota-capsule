@@ -28,6 +28,27 @@ func testParsesCodexRateLimitsByDuration() throws {
     expect(snapshot.weeklyWindow?.usedPercent == 41, "weekly used percent should come from 10080 minute window")
 }
 
+func testTreatsWeeklyOnlyRateLimitsAsIncomplete() {
+    let snapshot = CodexRateLimitParser.parse(
+        result: [
+            "rateLimits": [
+                "primary": [
+                    "usedPercent": 10,
+                    "windowDurationMins": 10_080,
+                    "resetsAt": 1_788_299_735
+                ]
+            ]
+        ],
+        fetchedAt: Date(timeIntervalSince1970: 1_788_270_000)
+    )
+
+    expect(snapshot.sourceStatus == .error, "weekly-only payload is incomplete for the 5-hour capsule")
+    expect(snapshot.shortWindow == nil, "incomplete payload should not invent a short window")
+    expect(snapshot.weeklyWindow?.usedPercent == 10, "valid weekly context should remain available for diagnostics")
+    expect(snapshot.errorMessage?.contains("5 小时") == true, "incomplete payload should explain the missing required window")
+    expect(CodexAppServerClient.shouldRetry(snapshot), "a partial payload should be retried immediately")
+}
+
 func testPredictsBurnRateRunway() {
     let now = Date(timeIntervalSince1970: 1_788_270_000)
     let snapshot = AgentQuotaSnapshot(
@@ -980,6 +1001,59 @@ func testQuotaRefreshReducerMarksLastSuccessStaleAfterFailure() {
     expect(reduction.lastErrorText?.contains("\n") == false, "refresh failure error should be compressed to one line")
 }
 
+func testQuotaRefreshReducerDoesNotOverwriteCompleteSnapshotWithPartialSuccess() {
+    let lastSuccessAt = Date(timeIntervalSince1970: 1_788_270_000)
+    let now = lastSuccessAt.addingTimeInterval(60)
+    let currentSnapshot = AgentQuotaSnapshot(
+        provider: "codex",
+        sourceStatus: .ok,
+        fetchedAt: lastSuccessAt,
+        shortWindow: QuotaWindow(
+            label: "5h",
+            windowMinutes: 300,
+            usedPercent: 20,
+            remainingPercent: 80,
+            resetsAt: lastSuccessAt.addingTimeInterval(120 * 60)
+        ),
+        weeklyWindow: QuotaWindow(
+            label: "weekly",
+            windowMinutes: 10_080,
+            usedPercent: 5,
+            remainingPercent: 95,
+            resetsAt: lastSuccessAt.addingTimeInterval(5_000 * 60)
+        ),
+        errorMessage: nil
+    )
+    let partialSnapshot = AgentQuotaSnapshot(
+        provider: "codex",
+        sourceStatus: .error,
+        fetchedAt: now,
+        shortWindow: nil,
+        weeklyWindow: QuotaWindow(
+            label: "weekly",
+            windowMinutes: 10_080,
+            usedPercent: 10,
+            remainingPercent: 90,
+            resetsAt: lastSuccessAt.addingTimeInterval(5_000 * 60)
+        ),
+        errorMessage: "rateLimits 暂时缺少必需的 5 小时额度窗口"
+    )
+
+    let reduction = QuotaRefreshReducer.reduce(
+        currentSnapshot: currentSnapshot,
+        currentLastRefreshText: "11:59:00",
+        newSnapshot: partialSnapshot,
+        now: now,
+        attemptText: "12:00:00"
+    )
+
+    expect(reduction.snapshot.sourceStatus == .stale, "partial payload should make cached complete data stale")
+    expect(reduction.snapshot.shortWindow == currentSnapshot.shortWindow, "partial payload must not erase the last valid 5-hour window")
+    expect(reduction.snapshot.weeklyWindow == currentSnapshot.weeklyWindow, "one fetchedAt cannot safely mix fresh weekly and stale short windows")
+    expect(reduction.latestAttemptSnapshot == partialSnapshot, "history should retain the incomplete attempt for diagnosis")
+    expect(reduction.prediction.level == .unknown, "cached data after a partial payload must not remain green safe")
+}
+
 func testQuotaRefreshReducerSanitizesNetworkErrors() {
     let cleaned = QuotaRefreshReducer.cleanError(
         "failed to fetch codex rate limits: error sending request for url (https://chatgpt.com/backend-api/wham/usage?token=secret)",
@@ -1071,6 +1145,7 @@ func testCodexAppServerClientRetriesOnlyTransientFailures() {
 
 do {
     try testParsesCodexRateLimitsByDuration()
+    testTreatsWeeklyOnlyRateLimitsAsIncomplete()
     testPredictsBurnRateRunway()
     testFractionalUsageStaysConsistentInDisplayMath()
     testPredictsBelowReportingPrecisionConservatively()
@@ -1108,6 +1183,7 @@ do {
     testCodexExecutableResolverReportsCheckedPaths()
     testQuotaRefreshReducerUpdatesOnSuccessfulRefresh()
     testQuotaRefreshReducerMarksLastSuccessStaleAfterFailure()
+    testQuotaRefreshReducerDoesNotOverwriteCompleteSnapshotWithPartialSuccess()
     testQuotaRefreshReducerSanitizesNetworkErrors()
     testQuotaRefreshReducerUsesErrorWhenNoSuccessExists()
     testCodexAppServerClientDefaultTimeoutIsProductionTolerant()

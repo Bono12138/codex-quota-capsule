@@ -27,6 +27,17 @@ public enum CodexRateLimitParser {
             )
         }
 
+        guard shortWindow != nil else {
+            return AgentQuotaSnapshot(
+                provider: "codex",
+                sourceStatus: .error,
+                fetchedAt: fetchedAt,
+                shortWindow: nil,
+                weeklyWindow: weeklyWindow,
+                errorMessage: missingRequiredShortWindowMessage(locale)
+            )
+        }
+
         return AgentQuotaSnapshot(
             provider: "codex",
             sourceStatus: .ok,
@@ -83,6 +94,14 @@ public enum CodexRateLimitParser {
         case .zhHans: "codex app-server rateLimits 没有包含可用额度窗口。"
         case .zhHant: "codex app-server rateLimits 沒有包含可用額度週期。"
         case .en: "codex app-server rateLimits did not include any usable windows."
+        }
+    }
+
+    private static func missingRequiredShortWindowMessage(_ locale: QuotaLocale) -> String {
+        switch locale {
+        case .zhHans: "codex app-server rateLimits 暂时缺少必需的 5 小时额度窗口。"
+        case .zhHant: "codex app-server rateLimits 暫時缺少必要的 5 小時額度週期。"
+        case .en: "codex app-server rateLimits is temporarily missing the required 5-hour quota window."
         }
     }
 }
