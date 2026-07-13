@@ -157,10 +157,14 @@ export function parseCodexRateLimits(
     .map((key) => parseRateLimitWindow(rateLimits[key]))
     .filter((window): window is QuotaWindow => Boolean(window));
 
-  const shortWindow = windows.find((window) => window.windowMinutes <= 360);
-  const weeklyWindow = windows.find((window) => window.windowMinutes > 360);
+  const weeklyCandidate = windows.find((window) =>
+    Math.abs(window.windowMinutes - 10_080) <= 60
+      && window.resetsAt.getTime() > options.fetchedAt.getTime()
+      && window.resetsAt.getTime() - options.fetchedAt.getTime() <= 8 * 24 * 60 * 60_000,
+  );
+  const weeklyWindow = weeklyCandidate ? { ...weeklyCandidate, label: "weekly" } : undefined;
 
-  if (!shortWindow && !weeklyWindow) {
+  if (!weeklyWindow) {
     return {
       provider: "codex",
       sourceStatus: "error",
@@ -173,7 +177,6 @@ export function parseCodexRateLimits(
     provider: "codex",
     sourceStatus: "ok",
     fetchedAt: options.fetchedAt,
-    shortWindow,
     weeklyWindow,
   };
 }

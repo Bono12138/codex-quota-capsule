@@ -47,7 +47,7 @@ describe("readCodexRateLimitsFromTransport", () => {
     ]);
 
     const snapshot = await readCodexRateLimitsFromTransport(transport, {
-      fetchedAt: new Date("2026-07-01T12:00:00+08:00"),
+      fetchedAt: new Date(1_788_270_000_000),
     });
 
     expect(transport.sent).toEqual([
@@ -64,7 +64,7 @@ describe("readCodexRateLimitsFromTransport", () => {
       { jsonrpc: "2.0", id: 2, method: "account/rateLimits/read", params: {} },
     ]);
     expect(snapshot.sourceStatus).toBe("ok");
-    expect(snapshot.shortWindow?.usedPercent).toBe(62);
+    expect(snapshot).not.toHaveProperty("shortWindow");
     expect(snapshot.weeklyWindow?.usedPercent).toBe(24);
   });
 

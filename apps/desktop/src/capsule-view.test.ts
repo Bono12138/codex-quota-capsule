@@ -1,59 +1,68 @@
 import { describe, expect, it } from "vitest";
-import { createMockSnapshot, predictCapsuleState } from "@quota-capsule/core";
+import type { WeeklyRunwayForecast } from "@quota-capsule/core";
 import { createCapsuleDisplayModel } from "./capsule-view";
 
-const now = new Date("2026-07-01T12:00:00+08:00");
+function forecast(overrides: Partial<WeeklyRunwayForecast> = {}): WeeklyRunwayForecast {
+  return {
+    state: "enough",
+    confidence: "medium",
+    usedPercent: 28,
+    remainingPercent: 72,
+    elapsedPercent: 42,
+    daysUntilReset: 4,
+    sustainableRatePerDay: 12,
+    recentRateBandPerDay: { lower: 6, upper: 8 },
+    cycleRateBandPerDay: { lower: 5, upper: 8 },
+    projectedRemainingBandAtReset: { lower: 16, upper: 23 },
+    next24HourBudget: 12,
+    ...overrides,
+  };
+}
 
 describe("createCapsuleDisplayModel", () => {
-  it("labels a weekly-only live snapshot as waiting instead of unknown", () => {
-    const snapshot = {
-      provider: "codex",
-      sourceStatus: "ok" as const,
-      fetchedAt: now,
-      weeklyWindow: {
-        label: "weekly",
-        windowMinutes: 10080,
-        usedPercent: 0,
-        remainingPercent: 100,
-        resetsAt: new Date(now.getTime() + 7 * 24 * 60 * 60_000),
-      },
-    };
-    const prediction = predictCapsuleState(snapshot, { now });
+  it("renders the same Weekly Only hierarchy as the native app", () => {
+    const model = createCapsuleDisplayModel(forecast());
 
-    const model = createCapsuleDisplayModel(snapshot, prediction);
-
-    expect(model.statusLabel).toBe("待开始");
-    expect(model.defaultText).toContain("等待新的 5 小时窗口");
-    expect(model.detailMetrics.every((metric) => metric.value === "待开始")).toBe(true);
-    expect(model.tone).toBe("unknown");
-  });
-
-  it("keeps the default capsule compact while exposing detail metrics", () => {
-    const snapshot = createMockSnapshot("safe", now);
-    const prediction = predictCapsuleState(snapshot, { now });
-
-    const model = createCapsuleDisplayModel(snapshot, prediction);
-
-    expect(model.statusLabel).toBe("安全");
-    expect(model.defaultText).toContain("够用到");
-    expect(model.defaultText.length).toBeLessThanOrEqual(24);
+    expect(model.statusLabel).toBe("够用");
+    expect(model.defaultText).toContain("刷新时预计剩 16%–23%");
     expect(model.detailMetrics.map((metric) => metric.label)).toEqual([
-      "时间进度",
-      "额度已用",
-      "当前速度",
-      "刷新余量",
+      "本周时间",
+      "本周已用",
+      "最近 24 小时",
+      "未来 24 小时建议",
     ]);
-    expect(model.historyCta).toBe("查看历史");
+    expect(model.detailMetrics.map((metric) => metric.value)).toEqual(["42%", "28%", "6–8%/天", "≤12%"]);
+    expect(model.confidenceText).toBe("预测可信度：中");
+    expect(JSON.stringify(model)).not.toContain("5 小时");
   });
 
-  it("surfaces unknown data without pretending it is safe", () => {
-    const snapshot = createMockSnapshot("error", now);
-    const prediction = predictCapsuleState(snapshot, { now });
+  it("calibration does not make a runway claim", () => {
+    const model = createCapsuleDisplayModel(forecast({
+      state: "calibrating",
+      confidence: "low",
+      recentRateBandPerDay: null,
+      projectedRemainingBandAtReset: null,
+    }));
 
-    const model = createCapsuleDisplayModel(snapshot, prediction);
+    expect(model.statusLabel).toBe("正在校准");
+    expect(model.defaultText).toContain("周速度");
+    expect(model.defaultText).not.toContain("预计剩");
+    expect(model.confidenceText).toBe("");
+  });
 
-    expect(model.statusLabel).toBe("未知");
-    expect(model.defaultText).toBe("暂时读不到额度");
-    expect(model.tone).toBe("unknown");
+  it("sanitizes non-finite and negative display values", () => {
+    const model = createCapsuleDisplayModel(forecast({
+      usedPercent: Number.NaN,
+      remainingPercent: Number.POSITIVE_INFINITY,
+      elapsedPercent: -3,
+      recentRateBandPerDay: { lower: Number.NEGATIVE_INFINITY, upper: Number.NaN },
+      projectedRemainingBandAtReset: { lower: Number.NEGATIVE_INFINITY, upper: Number.POSITIVE_INFINITY },
+      next24HourBudget: -5,
+    }));
+    const rendered = JSON.stringify(model).toLowerCase();
+
+    expect(rendered).not.toContain("nan");
+    expect(rendered).not.toContain("infinity");
+    expect(rendered).not.toContain("-5");
   });
 });
