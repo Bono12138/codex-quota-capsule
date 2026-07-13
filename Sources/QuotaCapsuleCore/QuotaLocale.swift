@@ -76,6 +76,58 @@ public struct QuotaCopy: Equatable, Sendable {
         }
     }
 
+    public func weeklyStatusLabel(_ state: WeeklyRunwayState) -> String {
+        switch (locale, state) {
+        case (.zhHans, .unavailable): "数据暂不可用"
+        case (.zhHans, .exhausted): "已用尽"
+        case (.zhHans, .calibrating): "正在校准"
+        case (.zhHans, .enough): "够用"
+        case (.zhHans, .watch): "偏快"
+        case (.zhHans, .mayRunOut): "可能不够"
+        case (.zhHant, .unavailable): "資料暫不可用"
+        case (.zhHant, .exhausted): "已用盡"
+        case (.zhHant, .calibrating): "正在校準"
+        case (.zhHant, .enough): "夠用"
+        case (.zhHant, .watch): "偏快"
+        case (.zhHant, .mayRunOut): "可能不夠"
+        case (.en, .unavailable): "Unavailable"
+        case (.en, .exhausted): "Exhausted"
+        case (.en, .calibrating): "Calibrating"
+        case (.en, .enough): "Enough"
+        case (.en, .watch): "Running fast"
+        case (.en, .mayRunOut): "May run out"
+        }
+    }
+
+    public var weeklyMetricLabels: [String] {
+        switch locale {
+        case .zhHans: ["本周时间", "本周已用", "最近 24 小时", "未来 24 小时建议"]
+        case .zhHant: ["本週時間", "本週已用", "最近 24 小時", "未來 24 小時建議"]
+        case .en: ["Week elapsed", "Used this week", "Last 24 hours", "Next 24-hour budget"]
+        }
+    }
+
+    public var accumulatingValue: String {
+        switch locale {
+        case .zhHans: "积累中"
+        case .zhHant: "累積中"
+        case .en: "Learning"
+        }
+    }
+
+    public func forecastConfidence(_ confidence: ForecastConfidence) -> String {
+        guard confidence != .low else { return "" }
+        return switch (locale, confidence) {
+        case (.zhHans, .medium): "预测可信度：中"
+        case (.zhHans, .high): "预测可信度：高"
+        case (.zhHant, .medium): "預測可信度：中"
+        case (.zhHant, .high): "預測可信度：高"
+        case (.en, .medium): "Forecast confidence: medium"
+        case (.en, .high): "Forecast confidence: high"
+        default: ""
+        }
+    }
+
     public var loadingStatus: String {
         switch locale {
         case .zhHans: "读取中"

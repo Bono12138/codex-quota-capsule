@@ -87,13 +87,14 @@ final class QuotaStore: ObservableObject {
         let initialPrediction = QuotaPredictor.predict(snapshot: initial, now: now, locale: locale)
         snapshot = initial
         prediction = initialPrediction
-        runwayForecast = WeeklyRunwayPredictor.predict(
+        let initialForecast = WeeklyRunwayPredictor.predict(
             snapshot: initial,
             quality: WeeklyQualityResult(state: .unavailable, observations: [], canonicalResetAt: nil, flags: []),
             now: now,
             locale: locale
         )
-        displayModel = CapsuleDisplayModel.make(prediction: initialPrediction, locale: locale)
+        runwayForecast = initialForecast
+        displayModel = CapsuleDisplayModel.make(forecast: initialForecast, locale: locale)
         lastRefreshText = initialCopy.notRefreshed
         lastAttemptText = initialCopy.notAttempted
 
@@ -157,41 +158,16 @@ final class QuotaStore: ObservableObject {
         return Self.formatQuotaPercent(weeklyWindow.remainingPercent)
     }
 
-    var weeklyProjection: CapsulePrediction? {
-        QuotaPredictor.predictWeekly(snapshot: snapshot, now: snapshot.fetchedAt, locale: locale)
-    }
-
     var weeklyProjectionText: String {
-        guard let weeklyProjection else {
-            return copy.weeklyProjectionUnavailable
-        }
-
-        if weeklyProjection.canReachReset == false, let estimatedEmptyAt = weeklyProjection.estimatedEmptyAt {
-            return copy.weeklyProjectionWillRunOut(
-                emptyTime: QuotaPredictor.formatTime(estimatedEmptyAt, locale: locale)
-            )
-        }
-
-        if let usedPercent = weeklyProjection.quotaUsedPercent,
-           let projectedRemaining = weeklyProjection.projectedRemainingAtReset {
-            return copy.weeklyProjectionWillLast(
-                usedPercent: usedPercent,
-                projectedRemaining: projectedRemaining
-            )
-        }
-
-        return weeklyProjection.headline
+        displayModel.defaultText
     }
 
     var weeklyProjectionTone: CapsuleLevel {
-        weeklyProjection?.level ?? .unknown
+        displayModel.tone
     }
 
     var resetText: String {
-        if prediction.isWaitingForWindow {
-            return copy.waitingValue
-        }
-        guard let resetsAt = snapshot.shortWindow?.resetsAt else {
+        guard let resetsAt = snapshot.weeklyWindow?.resetsAt else {
             return copy.unknownValue
         }
         return QuotaPredictor.formatTime(resetsAt, locale: locale)
@@ -272,26 +248,19 @@ final class QuotaStore: ObservableObject {
     }
 
     var compactPaceText: String {
-        guard let elapsed = prediction.elapsedPercent,
-              let used = prediction.quotaUsedPercent else {
-            return copy.unknownValue
-        }
-        let usedText = compactUsedValueText ?? "\(used)%"
-        return "\(copy.compactTimeLabel) \(elapsed)% · \(copy.compactUsageLabel) \(usedText)"
+        guard displayModel.metrics.count >= 2 else { return copy.unknownValue }
+        return "\(displayModel.metrics[0].label) \(displayModel.metrics[0].value) · \(displayModel.metrics[1].label) \(displayModel.metrics[1].value)"
     }
 
     var compactElapsedPercent: Int? {
-        prediction.elapsedPercent
+        displayModel.metrics.first?.numericValue
     }
 
     var compactUsedPercent: Int? {
-        prediction.quotaUsedPercent
+        displayModel.metrics.dropFirst().first?.numericValue
     }
 
     var visibleCompactUsedBadgeText: String? {
-        guard !prediction.isWaitingForWindow else {
-            return nil
-        }
         guard let compactUsedValueText else {
             return nil
         }
@@ -512,6 +481,7 @@ final class QuotaStore: ObservableObject {
             )
             recordQuotaStateSample()
         }
+        displayModel = CapsuleDisplayModel.make(forecast: runwayForecast, locale: locale)
         recordEvent(
             name: attemptSnapshot.sourceStatus == .ok ? "quota_refresh_succeeded" : "quota_refresh_failed",
             surface: "source",
@@ -604,7 +574,7 @@ final class QuotaStore: ObservableObject {
 
     private func recomputeDisplay(now: Date) {
         prediction = QuotaPredictor.predict(snapshot: snapshot, now: now, locale: locale)
-        displayModel = CapsuleDisplayModel.make(prediction: prediction, locale: locale)
+        displayModel = CapsuleDisplayModel.make(forecast: runwayForecast, locale: locale)
         lastRefreshText = lastRefreshText == QuotaCopy(locale: .zhHans).notRefreshed ? copy.notRefreshed : lastRefreshText
         lastAttemptText = lastAttemptText == QuotaCopy(locale: .zhHans).notAttempted ? copy.notAttempted : lastAttemptText
     }
