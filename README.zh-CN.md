@@ -19,8 +19,8 @@ Codex 是第一个适配对象。项目会保持 agent-extensible：其他 Agent
 
 额度胶囊要做成一个小而常驻的状态物，直接给出六种诚实判断：
 
-- 正在校准：有效历史还不足 6 小时，暂不下结论。
-- 够用：预计能带着至少 5% 余量到刷新。
+- 初步判断：从第一个有效周额度读数开始给出宽区间，并明确标记低置信度。
+- 够用：保守预测区间仍能撑到周额度重置。
 - 偏快：仍可能撑到刷新，但余量区间偏薄。
 - 可能不够：快、慢两种估计都可能在刷新前见底。
 - 已用尽：本周额度已经用完，等待刷新恢复。
@@ -68,7 +68,7 @@ https://github.com/Bono12138/codex-quota-capsule
 7. 运行 npm test。
 8. 运行 npm run build。
 9. 运行 swift run QuotaCapsuleCoreSpec。
-10. 运行 npm run mac:install:internal-test，并确认运行进程来自 /Applications。
+10. 运行 npm run mac:install，并确认只有一个运行进程来自 /Applications。
 11. 如果启动成功，告诉我如何再次打开 Quota Capsule。
 12. 如果失败，只给我必要的非敏感错误信息和下一步建议。
 ```
@@ -82,26 +82,17 @@ npm ci
 npm test
 npm run build
 swift run QuotaCapsuleCoreSpec
-npm run mac:install:internal-test
+npm run mac:install
 ```
 
-## 本机版本通道
+## 唯一应用
 
-| 通道 | App | 用途 |
-| --- | --- | --- |
-| Internal test | `Quota Capsule Beta.app` | 公开内测版，反馈默认进入 public GitHub Issues。 |
-| Development | `Quota Capsule Dev Local.app` | 本机开发版，private issue URL 需要显式配置。 |
+公开仓库只构建一个 `Quota Capsule Beta.app`。开发使用分支、测试和预览，不再安装第二个常驻应用。
 
-运行公开内测版：
+运行公开 Beta：
 
 ```bash
-npm run mac:run:internal-test
-```
-
-运行开发版：
-
-```bash
-QUOTA_CAPSULE_DEV_GITHUB_ISSUES_URL="https://github.com/<owner>/<private-repo>/issues" npm run mac:run:dev
+npm run mac:run
 ```
 
 ## 隐私边界

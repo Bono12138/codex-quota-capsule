@@ -1,5 +1,7 @@
 # Decision 0004: 发布渠道与仓库拆分
 
+Status: Superseded by Decision 0006 on 2026-07-13. Retained as historical context only.
+
 日期：2026-07-01
 
 ## 决策

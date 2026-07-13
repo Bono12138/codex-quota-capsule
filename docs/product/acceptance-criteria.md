@@ -82,11 +82,12 @@
 - `npm run build`
 - `npm run lint`
 - `npm run probe:codex:rate-limits`
-- `npm run mac:run:internal-test -- --verify`
-- `npm run mac:package:internal-test`
-- `codesign --verify --deep --strict --verbose=2 "dist/internal-test/Quota Capsule Beta.app"`
+- `npm run mac:run -- --verify`
+- `npm run mac:package`
+- `npm run audit:repository`
+- `codesign --verify --deep --strict --verbose=2 "dist/beta/Quota Capsule Beta.app"`
 - `PORT=8787 QUOTA_CAPSULE_ANALYTICS_FILE=local-state/analytics/events.ndjson npm run analytics:start` 后，用一条合法事件和一条含敏感字段的事件验证 collector 接收/拒收逻辑。
-- app 端配置 `QUOTA_CAPSULE_PUBLIC_ANALYTICS_ENDPOINT` 后，至少验证内测版的 `app_launched`、`quota_refresh_succeeded`、`quota_state_sampled`、`settings_opened`、`feedback_nudge_shown` 能进入 collector 输出文件；产品改进事件在用户未允许时不能进入远程队列。开发版用 `QUOTA_CAPSULE_DEV_ANALYTICS_ENDPOINT` 验证内部通道。
+- app 端配置 `QUOTA_CAPSULE_PUBLIC_ANALYTICS_ENDPOINT` 后，至少验证 Beta 的 `app_launched`、`quota_refresh_succeeded`、`quota_state_sampled`、`settings_opened`、`feedback_nudge_shown` 能进入 collector 输出文件；产品改进事件在用户未允许时不能进入远程队列。
 
 每次 UI 修改后还必须完成：
 

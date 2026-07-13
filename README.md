@@ -24,8 +24,8 @@ Quota Capsule stays visible on the desktop and in the menu bar, then turns weekl
 
 额度胶囊常驻桌面和菜单栏，把周额度速度转换成六个明确状态和未来 24 小时建议：
 
-- Calibrating / 正在校准：有效历史还不足 6 小时，暂不下结论。
-- On track / 够用：按近期与本周速度，预计能带着至少 5% 余量到刷新。
+- Early estimate / 初步判断：从第一个有效周额度读数开始给出宽区间判断，并明确显示低置信度。
+- On track / 够用：保守预测区间仍能撑到周额度重置。
 - Running fast / 偏快：仍可能撑到刷新，但余量区间已经偏薄。
 - May run out / 可能不够：快、慢两种估计都可能在刷新前见底。
 - Exhausted / 已用尽：本周额度已经用完，等待刷新恢复。
@@ -58,7 +58,7 @@ Please install and run Quota Capsule on this Mac:
 5. Do not read, copy, print, or upload auth tokens, cookies, API keys, prompt text, session text, code content, or private file paths.
 6. If Node, npm, Swift, Xcode Command Line Tools, or Codex CLI is missing, tell me before changing the system.
 7. Run npm ci, npm test, npm run build, and swift run QuotaCapsuleCoreSpec.
-8. Run npm run mac:install:internal-test and verify the running process comes from /Applications.
+8. Run npm run mac:install and verify exactly one running process comes from /Applications.
 9. After it launches, tell me how to open it again.
 ```
 
@@ -71,7 +71,7 @@ npm ci
 npm test
 npm run build
 swift run QuotaCapsuleCoreSpec
-npm run mac:install:internal-test
+npm run mac:install
 ```
 
 ## Privacy Boundary / 隐私边界
@@ -86,12 +86,11 @@ npm run mac:install:internal-test
 - prompt 正文、session 正文、代码内容、私有文件路径、账号凭据、auth token、cookie 留在本机。
 - 缺失或过期数据显示为“数据暂不可用”，过期百分比会被明确标记。
 
-## Local Channels / 本机版本通道
+## One App / 唯一应用
 
-| Channel | App | Purpose |
-| --- | --- | --- |
-| Internal test | `Quota Capsule Beta.app` | Public beta build; feedback goes to public GitHub Issues. |
-| Development | `Quota Capsule Dev Local.app` | Local owner/developer build; private issue URL must be configured explicitly. |
+The public repository builds one `Quota Capsule Beta.app`. Development uses branches, tests, and previews rather than a second persistent app identity. This prevents duplicate capsules and keeps local history in one Beta data directory.
+
+公开仓库只构建一个 `Quota Capsule Beta.app`。开发使用分支、测试和预览，不再安装第二个常驻应用，避免重复胶囊和数据目录分裂。
 
 ## Current Status / 当前状态
 

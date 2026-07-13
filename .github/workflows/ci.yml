@@ -18,6 +18,7 @@ jobs:
       - run: npm run build
       - run: npm run lint
       - run: npm test
+      - run: npm run audit:repository
       - run: npm run audit:weekly-only
       - run: git diff --check
 
@@ -33,10 +34,4 @@ jobs:
       - run: swift test
       - run: swift build --product QuotaCapsuleMac
       - run: swift run QuotaCapsuleCoreSpec
-      - run: npm run public:prepare
-      - run: npm ci
-        working-directory: artifacts/public-repo-staging
-      - run: npm test
-        working-directory: artifacts/public-repo-staging
-      - run: swift test
-        working-directory: artifacts/public-repo-staging
+      - run: npm run audit:repository

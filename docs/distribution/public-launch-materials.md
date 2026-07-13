@@ -136,7 +136,7 @@ https://github.com/Bono12138/codex-quota-capsule
 4. 运行 npm test。
 5. 运行 npm run build。
 6. 运行 swift run QuotaCapsuleCoreSpec。
-7. 运行 npm run mac:run:internal-test -- --verify。
+7. 运行 npm run mac:run -- --verify。
 8. 如果启动成功，告诉我如何再次打开 Quota Capsule。
 9. 如果失败，只给我必要的非敏感错误信息和下一步建议。
 ```
@@ -150,30 +150,18 @@ npm ci
 npm test
 npm run build
 swift run QuotaCapsuleCoreSpec
-npm run mac:run:internal-test -- --verify
+npm run mac:run -- --verify
 ```
 
 ## 发布前安全审查命令
 
-在 private 工作仓库运行：
+发布前直接审查 Git 已跟踪的完整文件树：
 
 ```bash
-npm run public:prepare
+npm run audit:repository
 ```
 
-输出目录：
-
-```text
-artifacts/public-repo-staging/
-```
-
-检查文件：
-
-```text
-artifacts/public-repo-staging/PUBLIC_STAGING_AUDIT.md
-```
-
-只有这个 staging directory 适合推到 public 仓库。不要把 private 工作仓库整体改成公开仓库。
+公开仓库是唯一源码与发布来源；不再生成复制式发布目录。审查必须在 PR 和最终 `main` 提交上分别通过。
 
 ## 当前市场调研引用
 

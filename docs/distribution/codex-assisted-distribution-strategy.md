@@ -161,7 +161,7 @@ Apple Developer Program 不等于支付系统。
 https://github.com/Bono12138/codex-quota-capsule
 ```
 
-公开内测版默认构建 `Quota Capsule Beta.app`，反馈入口默认打开 public GitHub Issues。owner 本机开发版使用 `Quota Capsule Dev Local.app`，需要通过 `QUOTA_CAPSULE_DEV_GITHUB_ISSUES_URL` 接 private issues。
+公开仓库只构建一个 `Quota Capsule Beta.app`，反馈入口默认打开本仓库的 public GitHub Issues。开发和验证使用公开仓库分支、自动化测试、预览与同一 Beta 身份，不安装第二个常驻应用。
 
 推荐文案：
 
@@ -180,7 +180,7 @@ https://github.com/Bono12138/codex-quota-capsule
 9. 运行 npm test。
 10. 运行 npm run build。
 11. 运行 swift run QuotaCapsuleCoreSpec。
-12. 运行 npm run mac:run:internal-test -- --verify。
+12. 运行 npm run mac:run -- --verify。
 13. 启动成功后，告诉我如何再次打开它。
 ```
 
@@ -201,7 +201,7 @@ https://github.com/Bono12138/codex-quota-capsule
 git clone https://github.com/Bono12138/codex-quota-capsule.git
 cd codex-quota-capsule
 npm ci
-npm run mac:run:internal-test -- --verify
+npm run mac:run -- --verify
 ```
 
 ### 第三优先级：未公证内部测试包

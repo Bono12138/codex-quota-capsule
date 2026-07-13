@@ -1,19 +1,7 @@
 import Foundation
 
 enum ReleaseChannel: String {
-    case development
-    case internalTest = "internal-test"
-
-    init(rawValue value: String?) {
-        switch value?.lowercased() {
-        case "development", "dev":
-            self = .development
-        case "internal-test", "internal_test", "beta", "public":
-            self = .internalTest
-        default:
-            self = .internalTest
-        }
-    }
+    case beta
 }
 
 struct AppConfiguration {
@@ -31,97 +19,27 @@ struct AppConfiguration {
         environment: [String: String] = ProcessInfo.processInfo.environment,
         bundle: Bundle = .main
     ) -> AppConfiguration {
-        let plistChannel = bundle.object(forInfoDictionaryKey: "QuotaCapsuleChannel") as? String
-        let channel = ReleaseChannel(rawValue: environment["QUOTA_CAPSULE_CHANNEL"] ?? plistChannel)
         let displayName = bundle.object(forInfoDictionaryKey: "CFBundleDisplayName") as? String
-            ?? defaultDisplayName(for: channel)
-        let bundleIdentifier = bundle.bundleIdentifier ?? defaultBundleIdentifier(for: channel)
+            ?? "Quota Capsule Beta"
+        let bundleIdentifier = bundle.bundleIdentifier ?? "com.bono.quota-capsule.beta"
         let plistIssuesURL = bundle.object(forInfoDictionaryKey: "QuotaCapsuleGitHubIssuesURL") as? String
+        let issuesValue = environment["QUOTA_CAPSULE_PUBLIC_GITHUB_ISSUES_URL"]
+            ?? plistIssuesURL
+            ?? publicGitHubIssuesURL.absoluteString
+        let analyticsValue = environment["QUOTA_CAPSULE_PUBLIC_ANALYTICS_ENDPOINT"]
 
         return AppConfiguration(
-            channel: channel,
+            channel: .beta,
             displayName: displayName,
             bundleIdentifier: bundleIdentifier,
-            githubIssuesURL: githubIssuesURL(
-                channel: channel,
-                environment: environment,
-                plistValue: plistIssuesURL
-            ),
-            analyticsEndpointURL: analyticsEndpointURL(channel: channel, environment: environment),
-            applicationSupportDirectoryName: applicationSupportDirectoryName(for: channel),
-            userDefaultsKeyPrefix: "QuotaCapsule.\(channel.rawValue)"
+            githubIssuesURL: URL(string: issuesValue),
+            analyticsEndpointURL: analyticsValue.flatMap { URL(string: $0) },
+            applicationSupportDirectoryName: "Quota Capsule Beta",
+            userDefaultsKeyPrefix: "QuotaCapsule.beta"
         )
     }
 
     func userDefaultsKey(_ name: String) -> String {
         "\(userDefaultsKeyPrefix).\(name).v1"
-    }
-
-    private static func githubIssuesURL(
-        channel: ReleaseChannel,
-        environment: [String: String],
-        plistValue: String?
-    ) -> URL? {
-        let value: String?
-        switch channel {
-        case .development:
-            value = environment["QUOTA_CAPSULE_DEV_GITHUB_ISSUES_URL"]
-                ?? plistValue
-        case .internalTest:
-            value = environment["QUOTA_CAPSULE_PUBLIC_GITHUB_ISSUES_URL"]
-                ?? plistValue
-                ?? publicGitHubIssuesURL.absoluteString
-        }
-
-        guard let value, !value.isEmpty else {
-            return nil
-        }
-        return URL(string: value)
-    }
-
-    private static func analyticsEndpointURL(
-        channel: ReleaseChannel,
-        environment: [String: String]
-    ) -> URL? {
-        let value: String?
-        switch channel {
-        case .development:
-            value = environment["QUOTA_CAPSULE_DEV_ANALYTICS_ENDPOINT"]
-                ?? environment["QUOTA_CAPSULE_ANALYTICS_ENDPOINT"]
-        case .internalTest:
-            value = environment["QUOTA_CAPSULE_PUBLIC_ANALYTICS_ENDPOINT"]
-        }
-
-        guard let value, !value.isEmpty else {
-            return nil
-        }
-        return URL(string: value)
-    }
-
-    private static func defaultDisplayName(for channel: ReleaseChannel) -> String {
-        switch channel {
-        case .development:
-            return "Quota Capsule Dev Local"
-        case .internalTest:
-            return "Quota Capsule Beta"
-        }
-    }
-
-    private static func defaultBundleIdentifier(for channel: ReleaseChannel) -> String {
-        switch channel {
-        case .development:
-            return "com.bono.quota-capsule.dev"
-        case .internalTest:
-            return "com.bono.quota-capsule.beta"
-        }
-    }
-
-    private static func applicationSupportDirectoryName(for channel: ReleaseChannel) -> String {
-        switch channel {
-        case .development:
-            return "Quota Capsule Dev Local"
-        case .internalTest:
-            return "Quota Capsule Beta"
-        }
     }
 }

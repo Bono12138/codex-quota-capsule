@@ -19,8 +19,8 @@ Heavy Codex users often run several coding tasks at the same time and repeatedly
 
 Quota Capsule stays small, visible, and direct with six honest states:
 
-- Calibrating: fewer than six hours of valid history, so no runway claim yet.
-- On track: the pace should reach reset with at least a 5% reserve.
+- Early estimate: the first valid weekly reading produces a wide, low-confidence range.
+- On track: the conservative forecast band still lasts until weekly reset.
 - Running fast: it may still last, but the forecast margin is thin.
 - May run out: both the fast and slow estimates can exhaust before reset.
 - Exhausted: this week's quota is gone and will recover at reset.
@@ -64,7 +64,7 @@ Please install and run Quota Capsule on this Mac:
 8. Run npm test.
 9. Run npm run build.
 10. Run swift run QuotaCapsuleCoreSpec.
-11. Run npm run mac:install:internal-test and verify that the running process comes from /Applications.
+11. Run npm run mac:install and verify that exactly one running process comes from /Applications.
 12. After it launches, tell me how to open it again.
 ```
 
@@ -77,26 +77,17 @@ npm ci
 npm test
 npm run build
 swift run QuotaCapsuleCoreSpec
-npm run mac:install:internal-test
+npm run mac:install
 ```
 
-## Local Channels
+## One App
 
-| Channel | App | Purpose |
-| --- | --- | --- |
-| Internal test | `Quota Capsule Beta.app` | Public beta build; feedback goes to public GitHub Issues. |
-| Development | `Quota Capsule Dev Local.app` | Local owner/developer build; private issue URL must be configured explicitly. |
+The repository builds one `Quota Capsule Beta.app`. Development uses branches, tests, and previews instead of installing a second persistent application.
 
-Run the native macOS beta:
+Run the native macOS Beta:
 
 ```bash
-npm run mac:run:internal-test
-```
-
-Run the development build:
-
-```bash
-QUOTA_CAPSULE_DEV_GITHUB_ISSUES_URL="https://github.com/<owner>/<private-repo>/issues" npm run mac:run:dev
+npm run mac:run
 ```
 
 ## Privacy Boundary

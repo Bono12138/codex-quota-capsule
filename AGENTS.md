@@ -25,15 +25,15 @@ This repository is for Quota Capsule: a Codex-first, agent-extensible desktop qu
 
 ## Version Management
 
-- Follow the durable release mechanism in `docs/decisions/0005-version-management-and-release-flow.md`.
-- Keep the release model minimal: Development -> Public Beta -> Stable.
-- Treat this private working tree as the implementation source of truth. Treat public `main` as the distribution source of truth, not as the place to make first edits.
+- Follow ADR 0006 and `docs/operations/release-checklist.md`.
+- The public GitHub repository is the only source of truth for source, tests, product decisions, and releases.
+- Keep one installed app identity during beta: `Quota Capsule Beta.app`.
 - Default development branches use the `codex/` prefix. Do not stack ordinary development directly on `main`.
 - Fix P0/P1 bugs before adding release-scope features or visual polish.
-- Start every code, UI, and documentation change in the private working tree. Do not patch only `artifacts/public-repo-sync` and do not patch only an already-built `.app`.
-- Validate shared app changes first in `Quota Capsule Dev Local.app`, then rebuild `Quota Capsule Beta.app` when the change belongs in the current public beta.
-- Sync to the public repository only through `npm run public:prepare`, review `artifacts/public-repo-staging/PUBLIC_STAGING_AUDIT.md`, then copy the reviewed staging output into `artifacts/public-repo-sync`.
-- Before declaring a beta ready, verify feedback targets, analytics endpoints, app names, bundle IDs, data directories, and public/private issue routing for both development and beta channels.
+- Start every code, UI, and documentation change on a short-lived public-repository branch. Never patch only an already-built `.app`.
+- Use test-driven development for behavior changes and run `npm run audit:repository` before opening a pull request.
+- Before declaring a beta ready, verify privacy policy, feedback target, analytics endpoint, app identity, data continuity, signature, version, commit fingerprint, Spotlight count, and running process.
+- Delete merged branches and disposable worktrees after their archive/provenance checks pass.
 - Keep version labels consistent across docs, bundle metadata, package metadata, tags, and release text. Public beta labels use `vMAJOR.MINOR.PATCH-beta.N`; stable labels drop the beta suffix.
 
 ## Development Order

@@ -182,7 +182,7 @@ it("rejects legacy development channel text", () => {
 });
 
 it("rejects a personal absolute path without printing its value", () => {
-  const findings = auditRepository([{ path: "README.md", text: "/Users/private-name/project" }]);
+  const findings = auditRepository([{ path: "README.md", text: "/Users/example/project" }]);
   expect(findings[0]).toMatchObject({ path: "README.md", rule: "personal-path" });
   expect(JSON.stringify(findings)).not.toContain("private-name");
 });
@@ -379,7 +379,7 @@ Commit as `Document the single public repository workflow`.
 
 **Files:**
 - Remote: branch ruleset, merged PR, deleted legacy branches.
-- Local: canonical `/Users/lili/Desktop/codex-quota-capsule` fresh clone.
+- Local: canonical `~/Desktop/codex-quota-capsule` fresh clone.
 
 **Interfaces:**
 - Consumes: Tasks 1-6 complete and green.
@@ -420,7 +420,7 @@ Run `script/retire_legacy_dev.sh --dry-run`, inspect, then `--apply`. Verify no 
 
 - [ ] **Step 6: Replace the old local repository with a fresh public clone**
 
-Move the retired clone into the archive area, clone public `main` to `/Users/lili/Desktop/codex-quota-capsule`, and rerun the complete suite. Do not remove the retired clone until the new clone and Git bundle both pass.
+Move the retired clone into the archive area, clone public `main` to `~/Desktop/codex-quota-capsule`, and rerun the complete suite. Do not remove the retired clone until the new clone and Git bundle both pass.
 
 - [ ] **Step 7: Verify final provenance**
 
