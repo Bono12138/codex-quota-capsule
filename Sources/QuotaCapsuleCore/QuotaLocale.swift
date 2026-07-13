@@ -934,9 +934,9 @@ public struct QuotaCopy: Equatable, Sendable {
 
     public var onboardingSubtitle: String {
         switch locale {
-        case .zhHans: "它会常驻桌面，帮你判断当前 Codex 用量速度能不能撑到下一次刷新。"
-        case .zhHant: "它會常駐桌面，幫你判斷目前 Codex 用量速度能不能撐到下一次重設。"
-        case .en: "It stays on your desktop and shows whether your current Codex pace can last until reset."
+        case .zhHans: "它会常驻桌面，帮你判断 Codex 周额度能否撑到刷新，并给出今天的可持续预算。"
+        case .zhHant: "它會常駐桌面，幫你判斷 Codex 週額度能否撐到重設，並給出今天的可持續預算。"
+        case .en: "It stays on your desktop, shows whether weekly Codex quota can last until reset, and gives you a sustainable budget for today."
         }
     }
 
@@ -1294,17 +1294,17 @@ public struct QuotaCopy: Equatable, Sendable {
 
     public var onboardingDetailStepBody: String {
         switch locale {
-        case .zhHans: "详情面板解释判断来源：时间进度、额度已用、速度、周余量、刷新时间、最近更新和数据来源。"
-        case .zhHant: "詳細面板會解釋判斷來源：時間進度、額度已用、速度、週餘量、重設時間、最近更新和資料來源。"
-        case .en: "Details show elapsed time, used quota, pace, weekly left, reset time, last update, and source."
+        case .zhHans: "详情面板解释本周时间、本周已用、最近 24 小时、未来 24 小时建议、刷新余量、更新时间和数据来源。"
+        case .zhHant: "詳細面板會解釋本週時間、本週已用、最近 24 小時、未來 24 小時建議、重設餘量、更新時間和資料來源。"
+        case .en: "Details show week elapsed, weekly usage, the last 24-hour pace, the next 24-hour budget, reset buffer, update time, and source."
         }
     }
 
     public var onboardingWeeklyStepTitle: String {
         switch locale {
-        case .zhHans: "周预测放在低注意力位置"
-        case .zhHant: "週預測放在低注意力位置"
-        case .en: "Weekly projection stays quiet"
+        case .zhHans: "周速度是主判断"
+        case .zhHant: "週速度是主判斷"
+        case .en: "Weekly pace is the main judgment"
         }
     }
 
@@ -1326,9 +1326,9 @@ public struct QuotaCopy: Equatable, Sendable {
 
     public var onboardingMenuStepBody: String {
         switch locale {
-        case .zhHans: "菜单栏显示短状态和已用比例。展开面板提供刷新、提交反馈和更多操作；找不到菜单栏时，更多操作里也能进入语言、联系作者、关于反馈和退出。"
-        case .zhHant: "選單列顯示短狀態和已用比例。展開面板提供重新整理、送出回饋和更多操作；找不到選單列時，更多操作裡也能進入語言、聯絡作者、關於回饋和退出。"
-        case .en: "The menu bar shows short status and usage. The detail panel provides refresh, send feedback, and More actions; More actions keeps language, contact, about, and quit available when the menu bar is hard to find."
+        case .zhHans: "菜单栏显示周速度状态和本周已用比例。展开面板提供刷新、提交反馈和更多操作；找不到菜单栏时，更多操作里也能进入语言、联系作者、关于反馈和退出。"
+        case .zhHant: "選單列顯示週速度狀態和本週已用比例。展開面板提供重新整理、送出回饋和更多操作；找不到選單列時，更多操作裡也能進入語言、聯絡作者、關於回饋和退出。"
+        case .en: "The menu bar shows weekly pace status and weekly usage. The detail panel provides refresh, send feedback, and More actions; More actions keeps language, contact, about, and quit available when the menu bar is hard to find."
         }
     }
 

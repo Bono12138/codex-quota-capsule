@@ -89,6 +89,17 @@ struct WeeklyDisplayModelTests {
         #expect(models.allSatisfy { !$0.defaultText.contains("5 小时") && !$0.defaultText.contains("5 小時") })
     }
 
+    @Test("onboarding teaches the weekly decision hierarchy")
+    func onboardingTeachesWeeklyHierarchy() {
+        let copy = QuotaCopy(locale: .zhHans)
+
+        #expect(copy.onboardingSubtitle.contains("周额度"))
+        #expect(copy.onboardingDetailStepBody.contains("最近 24 小时"))
+        #expect(copy.onboardingDetailStepBody.contains("未来 24 小时建议"))
+        #expect(copy.onboardingWeeklyStepTitle == "周速度是主判断")
+        #expect(copy.onboardingMenuStepBody.contains("本周已用"))
+    }
+
     @Test("non-finite and negative values never reach display strings")
     func invalidNumbersAreSanitized() {
         let model = CapsuleDisplayModel.make(

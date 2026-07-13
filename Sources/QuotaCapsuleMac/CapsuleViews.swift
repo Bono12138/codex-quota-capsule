@@ -10,7 +10,7 @@ enum CapsuleViewMetrics {
     static let shadowPadding: CGFloat = 16
     static let collapsedContentHeight: CGFloat = 60
     static let collapsedHeight: CGFloat = collapsedContentHeight + shadowPadding * 2
-    static let expandedHeight: CGFloat = 640
+    static let expandedHeight: CGFloat = 560
     static let expandedDetailContentHeight: CGFloat = expandedHeight - shadowPadding * 2 - collapsedContentHeight - 8
     static let dockedContentWidth: CGFloat = 116
     static let dockedContentHeight: CGFloat = 46
@@ -397,9 +397,9 @@ struct DetailPopoverView: View {
             }
 
             HStack(spacing: 8) {
-                Label(store.resetText, systemImage: "clock.arrow.circlepath")
+                Label("\(store.copy.resetTimeTitle) \(store.resetText)", systemImage: "clock.arrow.circlepath")
                 Spacer(minLength: 8)
-                Label(store.lastRefreshText, systemImage: "checkmark.seal")
+                Label("\(store.copy.successUpdateTitle) \(store.lastRefreshText)", systemImage: "checkmark.seal")
             }
             .font(.system(size: 10, weight: .semibold))
             .foregroundStyle(.secondary)
@@ -1674,9 +1674,18 @@ struct OnboardingPreviewCard: View {
 
     private var previewDetail: some View {
         VStack(alignment: .leading, spacing: 8) {
-            previewBar(label: store.copy.metricElapsed, value: store.compactElapsedPercent ?? 24)
-            previewBar(label: store.copy.metricUsed, value: store.compactUsedPercent ?? 5)
-            previewBar(label: store.copy.metricPace, value: 21)
+            previewBar(
+                label: store.displayModel.metrics[0].label,
+                value: store.displayModel.metrics[0].numericValue ?? 24
+            )
+            previewBar(
+                label: store.displayModel.metrics[1].label,
+                value: store.displayModel.metrics[1].numericValue ?? 5
+            )
+            HStack {
+                previewGuidanceMetric(store.displayModel.metrics[2])
+                previewGuidanceMetric(store.displayModel.metrics[3])
+            }
             Text(store.copy.dataSourceTitle)
                 .font(.caption.bold())
                 .foregroundStyle(.secondary)
@@ -1686,18 +1695,31 @@ struct OnboardingPreviewCard: View {
     private var previewWeekly: some View {
         VStack(alignment: .leading, spacing: 8) {
             HStack {
-                Text(store.copy.weeklyRemainingTitle)
+                Text(store.displayModel.statusLabel)
                     .font(.caption.bold())
                 Spacer()
-                Text(store.weeklyText)
-                    .font(.headline.bold())
-                    .monospacedDigit()
+                Text(store.displayModel.confidenceText)
+                    .font(.caption2.bold())
+                    .foregroundStyle(.secondary)
             }
-            Text(store.weeklyProjectionText)
+            Text(store.displayModel.defaultText)
                 .font(.caption)
                 .foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)
+            previewGuidanceMetric(store.displayModel.metrics[3])
         }
+    }
+
+    private func previewGuidanceMetric(_ metric: CapsuleMetric) -> some View {
+        VStack(alignment: .leading, spacing: 2) {
+            Text(metric.label)
+                .font(.caption2.bold())
+                .foregroundStyle(.secondary)
+            Text(metric.value)
+                .font(.caption.bold())
+                .monospacedDigit()
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 
     private var previewMenu: some View {
