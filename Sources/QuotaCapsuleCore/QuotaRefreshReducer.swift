@@ -2,30 +2,10 @@ import Foundation
 
 public struct QuotaRefreshReduction: Equatable, Sendable {
     public let snapshot: AgentQuotaSnapshot
-    public let prediction: CapsulePrediction
-    public let displayModel: CapsuleDisplayModel
     public let lastRefreshText: String
     public let lastAttemptText: String
     public let lastErrorText: String?
     public let latestAttemptSnapshot: AgentQuotaSnapshot
-
-    public init(
-        snapshot: AgentQuotaSnapshot,
-        prediction: CapsulePrediction,
-        displayModel: CapsuleDisplayModel,
-        lastRefreshText: String,
-        lastAttemptText: String,
-        lastErrorText: String?,
-        latestAttemptSnapshot: AgentQuotaSnapshot
-    ) {
-        self.snapshot = snapshot
-        self.prediction = prediction
-        self.displayModel = displayModel
-        self.lastRefreshText = lastRefreshText
-        self.lastAttemptText = lastAttemptText
-        self.lastErrorText = lastErrorText
-        self.latestAttemptSnapshot = latestAttemptSnapshot
-    }
 }
 
 public enum QuotaRefreshReducer {
@@ -56,88 +36,48 @@ public enum QuotaRefreshReducer {
         attemptText: String,
         locale: QuotaLocale = .zhHans
     ) -> QuotaRefreshReduction {
-        let effectiveSnapshot = normalizeWeeklyOnlySnapshot(
-            currentSnapshot: currentSnapshot,
-            newSnapshot: newSnapshot,
-            now: now,
-            locale: locale
-        )
-
-        if effectiveSnapshot.sourceStatus == .ok {
-            return makeReduction(
-                snapshot: effectiveSnapshot,
-                now: now,
+        if newSnapshot.sourceStatus == .ok, newSnapshot.weeklyWindow != nil {
+            return QuotaRefreshReduction(
+                snapshot: newSnapshot,
                 lastRefreshText: attemptText,
                 lastAttemptText: attemptText,
                 lastErrorText: nil,
-                latestAttemptSnapshot: effectiveSnapshot,
-                locale: locale
+                latestAttemptSnapshot: newSnapshot
             )
         }
 
-        let cleanedError = cleanError(effectiveSnapshot.errorMessage, locale: locale)
-
-        if currentSnapshot.sourceStatus == .ok || currentSnapshot.sourceStatus == .stale,
-           currentSnapshot.shortWindow != nil || currentSnapshot.weeklyWindow != nil {
-            let staleSnapshot = AgentQuotaSnapshot(
+        let cleanedError = cleanError(newSnapshot.errorMessage, locale: locale)
+        if (currentSnapshot.sourceStatus == .ok || currentSnapshot.sourceStatus == .stale),
+           currentSnapshot.weeklyWindow != nil {
+            let stale = AgentQuotaSnapshot(
                 provider: currentSnapshot.provider,
                 sourceStatus: .stale,
                 fetchedAt: currentSnapshot.fetchedAt,
-                shortWindow: currentSnapshot.shortWindow,
                 weeklyWindow: currentSnapshot.weeklyWindow,
                 errorMessage: cleanedError
             )
-            return makeReduction(
-                snapshot: staleSnapshot,
-                now: now,
+            return QuotaRefreshReduction(
+                snapshot: stale,
                 lastRefreshText: currentLastRefreshText,
                 lastAttemptText: attemptText,
                 lastErrorText: cleanedError,
-                latestAttemptSnapshot: effectiveSnapshot,
-                locale: locale
+                latestAttemptSnapshot: newSnapshot
             )
         }
 
-        let safeFailureSnapshot = AgentQuotaSnapshot(
-            provider: effectiveSnapshot.provider,
-            sourceStatus: effectiveSnapshot.sourceStatus,
-            fetchedAt: effectiveSnapshot.fetchedAt,
-            shortWindow: effectiveSnapshot.shortWindow,
-            weeklyWindow: effectiveSnapshot.weeklyWindow,
-            errorMessage: cleanedError
-        )
-        return makeReduction(
-            snapshot: safeFailureSnapshot,
-            now: now,
-            lastRefreshText: currentLastRefreshText,
-            lastAttemptText: attemptText,
-            lastErrorText: cleanedError,
-            latestAttemptSnapshot: effectiveSnapshot,
-            locale: locale
-        )
-    }
-
-    private static func normalizeWeeklyOnlySnapshot(
-        currentSnapshot: AgentQuotaSnapshot,
-        newSnapshot: AgentQuotaSnapshot,
-        now: Date,
-        locale: QuotaLocale
-    ) -> AgentQuotaSnapshot {
-        guard newSnapshot.sourceStatus == .ok,
-              newSnapshot.shortWindow == nil,
-              newSnapshot.weeklyWindow != nil,
-              let currentShortWindow = currentSnapshot.shortWindow,
-              currentShortWindow.resetsAt > now else {
-            return newSnapshot
-        }
-
-        return AgentQuotaSnapshot(
+        let failure = AgentQuotaSnapshot(
             provider: newSnapshot.provider,
             sourceStatus: .error,
             fetchedAt: newSnapshot.fetchedAt,
-            shortWindow: nil,
-            weeklyWindow: newSnapshot.weeklyWindow,
-            errorMessage: QuotaCopy(locale: locale).activeShortWindowMissingError
+            weeklyWindow: nil,
+            errorMessage: cleanedError
+        )
+        return QuotaRefreshReduction(
+            snapshot: failure,
+            lastRefreshText: currentLastRefreshText,
+            lastAttemptText: attemptText,
+            lastErrorText: cleanedError,
+            latestAttemptSnapshot: newSnapshot
         )
     }
 
@@ -145,50 +85,21 @@ public enum QuotaRefreshReducer {
         guard let message, !message.isEmpty else {
             return QuotaCopy(locale: locale).unknownError
         }
-
         let normalized = message.lowercased()
         if normalized.contains("error sending request for url")
             || normalized.contains("failed to fetch codex rate limits") {
-            switch locale {
-            case .zhHans: return "Codex 额度服务暂时连接失败，应用会自动重试。"
-            case .zhHant: return "Codex 額度服務暫時連線失敗，App 會自動重試。"
-            case .en: return "Could not connect to the Codex quota service. The app will retry automatically."
+            return switch locale {
+            case .zhHans: "Codex 额度服务暂时连接失败，应用会自动重试。"
+            case .zhHant: "Codex 額度服務暫時連線失敗，App 會自動重試。"
+            case .en: "Could not connect to the Codex quota service. The app will retry automatically."
             }
         }
-
         let firstLine = message
             .replacingOccurrences(of: "\n", with: " ")
             .replacingOccurrences(of: #"\\n"#, with: " ")
             .replacingOccurrences(of: #"(?i)Bearer\s+[^\s]+"#, with: "Bearer [redacted]", options: .regularExpression)
             .replacingOccurrences(of: #"https?://[^\s)]+"#, with: "[remote service]", options: .regularExpression)
             .replacingOccurrences(of: #"/Users/[^/\s]+"#, with: "/Users/[redacted]", options: .regularExpression)
-
-        if firstLine.count <= 320 {
-            return firstLine
-        }
-        return "\(firstLine.prefix(320))..."
-    }
-
-    private static func makeReduction(
-        snapshot: AgentQuotaSnapshot,
-        now: Date,
-        lastRefreshText: String,
-        lastAttemptText: String,
-        lastErrorText: String?,
-        latestAttemptSnapshot: AgentQuotaSnapshot,
-        locale: QuotaLocale
-    ) -> QuotaRefreshReduction {
-        let prediction = QuotaPredictor.predict(snapshot: snapshot, now: now, locale: locale)
-        let displayModel = CapsuleDisplayModel.make(prediction: prediction, locale: locale)
-
-        return QuotaRefreshReduction(
-            snapshot: snapshot,
-            prediction: prediction,
-            displayModel: displayModel,
-            lastRefreshText: lastRefreshText,
-            lastAttemptText: lastAttemptText,
-            lastErrorText: lastErrorText,
-            latestAttemptSnapshot: latestAttemptSnapshot
-        )
+        return firstLine.count <= 320 ? firstLine : "\(firstLine.prefix(320))..."
     }
 }

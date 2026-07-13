@@ -1,251 +1,115 @@
 import { describe, expect, it } from "vitest";
-import { createMockSnapshot, predictCapsuleState } from "../src";
+import {
+  analyzeWeeklyQuality,
+  createMockWeeklyScenario,
+  predictWeeklyRunway,
+  type AgentQuotaSnapshot,
+  type WeeklyQuotaReading,
+} from "../src";
 
 const now = new Date("2026-07-01T12:00:00+08:00");
 
-describe("predictCapsuleState", () => {
-  it("explains that weekly-only data is waiting for the next 5-hour window", () => {
-    const prediction = predictCapsuleState(
-      {
-        provider: "codex",
-        sourceStatus: "ok",
-        fetchedAt: now,
-        weeklyWindow: {
-          label: "weekly",
-          windowMinutes: 10080,
-          usedPercent: 0,
-          remainingPercent: 100,
-          resetsAt: new Date(now.getTime() + 7 * 24 * 60 * 60_000),
-        },
-      },
-      { now },
+function forecastFor(kind: Parameters<typeof createMockWeeklyScenario>[0]) {
+  const scenario = createMockWeeklyScenario(kind, now);
+  const quality = analyzeWeeklyQuality(scenario.readings, now);
+  return predictWeeklyRunway(scenario.snapshot, quality, now);
+}
+
+function readings(values: number[], resetsAt: Date): WeeklyQuotaReading[] {
+  return values.map((usedPercent, index) => ({
+    provider: "codex",
+    sourceStatus: "ok",
+    fetchedAt: new Date(now.getTime() - (values.length - 1 - index) * 12 * 3_600_000),
+    windowMinutes: 10_080,
+    usedPercent,
+    remainingPercent: 100 - usedPercent,
+    resetsAt,
+  }));
+}
+
+describe("Weekly Only runway", () => {
+  it("keeps every public mock scenario in its intended user state", () => {
+    expect(forecastFor("enough").state).toBe("enough");
+    expect(forecastFor("watch").state).toBe("watch");
+    expect(forecastFor("mayRunOut").state).toBe("mayRunOut");
+    expect(forecastFor("calibrating").state).toBe("calibrating");
+    expect(forecastFor("unavailable").state).toBe("unavailable");
+    expect(forecastFor("exhausted").state).toBe("exhausted");
+  });
+
+  it("never promotes stale readings into a runway judgment", () => {
+    const resetsAt = new Date(now.getTime() + 4 * 86_400_000);
+    const staleReadings = readings([20, 25, 30], resetsAt).map((reading) => ({
+      ...reading,
+      fetchedAt: new Date(reading.fetchedAt.getTime() - 10 * 60_000),
+    }));
+    const snapshot: AgentQuotaSnapshot = {
+      provider: "codex",
+      sourceStatus: "ok",
+      fetchedAt: now,
+      weeklyWindow: { label: "weekly", windowMinutes: 10_080, usedPercent: 30, remainingPercent: 70, resetsAt },
+    };
+    const quality = analyzeWeeklyQuality(staleReadings, now);
+    const forecast = predictWeeklyRunway(snapshot, quality, now);
+
+    expect(quality.state).toBe("stale");
+    expect(forecast.state).toBe("unavailable");
+    expect(forecast.projectedRemainingBandAtReset).toBeNull();
+  });
+
+  it("reserves five percentage points instead of promising the full balance", () => {
+    const forecast = forecastFor("enough");
+    expect(forecast.sustainableRatePerDay).toBeCloseTo((65 - 5) / 4, 9);
+    expect(forecast.next24HourBudget).toBeLessThan(forecast.remainingPercent!);
+  });
+
+  it("calibrates when cleaned history disagrees with the live reading", () => {
+    const scenario = createMockWeeklyScenario("enough", now);
+    const quality = analyzeWeeklyQuality(scenario.readings, now);
+    const mismatched: AgentQuotaSnapshot = {
+      ...scenario.snapshot,
+      weeklyWindow: { ...scenario.snapshot.weeklyWindow!, usedPercent: 50, remainingPercent: 50 },
+    };
+
+    expect(predictWeeklyRunway(mismatched, quality, now).state).toBe("calibrating");
+  });
+
+  it("does not improve the judgment when both usage and pace increase", () => {
+    const resetsAt = new Date(now.getTime() + 3 * 86_400_000);
+    const lowerReadings = readings([20, 25, 30], resetsAt);
+    const higherReadings = readings([30, 45, 60], resetsAt);
+    const lower = predictWeeklyRunway(
+      { provider: "codex", sourceStatus: "ok", fetchedAt: now, weeklyWindow: { label: "weekly", windowMinutes: 10_080, usedPercent: 30, remainingPercent: 70, resetsAt } },
+      analyzeWeeklyQuality(lowerReadings, now),
+      now,
     );
-
-    expect(prediction.level).toBe("unknown");
-    expect(prediction.headline).toContain("等待新的 5 小时窗口");
-    expect(prediction.detail).toContain("开始使用 Codex");
-  });
-
-  it("marks a healthy burn rate as safe", () => {
-    const prediction = predictCapsuleState(createMockSnapshot("safe", now), { now });
-
-    expect(prediction.level).toBe("safe");
-    expect(prediction.canReachReset).toBe(true);
-    expect(prediction.quotaUsedPercent).toBe(20);
-    expect(prediction.projectedRemainingAtReset).toBeGreaterThan(10);
-  });
-
-  it("treats a zero report as below one percent and forecasts conservatively", () => {
-    const prediction = predictCapsuleState(
-      {
-        provider: "codex",
-        sourceStatus: "ok",
-        fetchedAt: now,
-        shortWindow: {
-          label: "5h",
-          windowMinutes: 300,
-          usedPercent: 0,
-          remainingPercent: 100,
-          resetsAt: new Date(now.getTime() + 120 * 60_000),
-        },
-        weeklyWindow: {
-          label: "weekly",
-          windowMinutes: 10080,
-          usedPercent: 0,
-          remainingPercent: 100,
-          resetsAt: new Date(now.getTime() + 5_040 * 60_000),
-        },
-      },
-      { now },
+    const higher = predictWeeklyRunway(
+      { provider: "codex", sourceStatus: "ok", fetchedAt: now, weeklyWindow: { label: "weekly", windowMinutes: 10_080, usedPercent: 60, remainingPercent: 40, resetsAt } },
+      analyzeWeeklyQuality(higherReadings, now),
+      now,
     );
+    const severity = { enough: 0, watch: 1, mayRunOut: 2, exhausted: 3, calibrating: -1, unavailable: -1 };
 
-    expect(prediction.level).toBe("safe");
-    expect(prediction.canReachReset).toBe(true);
-    expect(prediction.quotaUsedPercent).toBe(0);
-    expect(prediction.projectedRemainingAtReset).toBe(98);
-    expect(prediction.headline).toContain("低于 1%");
+    expect(severity[higher.state]).toBeGreaterThanOrEqual(severity[lower.state]);
+    expect(higher.next24HourBudget!).toBeLessThan(lower.next24HourBudget!);
   });
 
-  it("does not call a below-precision reading safe immediately after reset", () => {
-    const prediction = predictCapsuleState(
-      {
-        provider: "codex",
-        sourceStatus: "ok",
-        fetchedAt: now,
-        shortWindow: {
-          label: "5h",
-          windowMinutes: 300,
-          usedPercent: 0,
-          remainingPercent: 100,
-          resetsAt: new Date(now.getTime() + 299 * 60_000),
-        },
+  it("rejects non-finite weekly data without leaking NaN or Infinity", () => {
+    const snapshot: AgentQuotaSnapshot = {
+      provider: "codex",
+      sourceStatus: "ok",
+      fetchedAt: now,
+      weeklyWindow: {
+        label: "weekly",
+        windowMinutes: 10_080,
+        usedPercent: Number.NaN,
+        remainingPercent: Number.POSITIVE_INFINITY,
+        resetsAt: new Date(now.getTime() + 4 * 86_400_000),
       },
-      { now },
-    );
+    };
+    const forecast = predictWeeklyRunway(snapshot, { state: "unavailable", observations: [], canonicalResetAt: null, flags: [] }, now);
 
-    expect(prediction.level).toBe("unknown");
-    expect(prediction.canReachReset).toBeNull();
-    expect(prediction.headline).toContain("低于 1%");
-  });
-
-  it("marks low projected reset buffer as watch", () => {
-    const prediction = predictCapsuleState(createMockSnapshot("watch", now), { now });
-
-    expect(prediction.level).toBe("watch");
-    expect(prediction.canReachReset).toBe(true);
-  });
-
-  it("rejects invalid direct windows without producing Infinity or NaN", () => {
-    const prediction = predictCapsuleState(
-      {
-        provider: "codex",
-        sourceStatus: "ok",
-        fetchedAt: now,
-        shortWindow: {
-          label: "broken",
-          windowMinutes: 0,
-          usedPercent: 1,
-          remainingPercent: 99,
-          resetsAt: new Date(now.getTime() + 60_000),
-        },
-      },
-      { now },
-    );
-
-    expect(prediction.level).toBe("unknown");
-    expect(prediction.headline).toContain("无效");
-  });
-
-  it("marks projected pre-reset exhaustion as danger", () => {
-    const prediction = predictCapsuleState(createMockSnapshot("danger", now), { now });
-
-    expect(prediction.level).toBe("danger");
-    expect(prediction.canReachReset).toBe(false);
-    expect(prediction.estimatedEmptyAt).toBeInstanceOf(Date);
-  });
-
-  it("does not pretend source failures are safe", () => {
-    const prediction = predictCapsuleState(createMockSnapshot("error", now), { now });
-
-    expect(prediction.level).toBe("unknown");
-    expect(prediction.canReachReset).toBeNull();
-  });
-
-  it("keeps stale metrics frozen at fetchedAt without calling them safe", () => {
-    const fetchedAt = new Date(now.getTime() - 60 * 60_000);
-    const prediction = predictCapsuleState(
-      {
-        provider: "codex",
-        sourceStatus: "stale",
-        fetchedAt,
-        shortWindow: {
-          label: "5h",
-          windowMinutes: 300,
-          usedPercent: 20,
-          remainingPercent: 80,
-          resetsAt: new Date(now.getTime() + 60 * 60_000),
-        },
-      },
-      { now },
-    );
-
-    expect(prediction.level).toBe("unknown");
-    expect(prediction.elapsedPercent).toBe(60);
-    expect(prediction.quotaUsedPercent).toBe(20);
-    expect(prediction.projectedRemainingAtReset).toBeNull();
-    expect(prediction.headline).toContain("过期");
-  });
-
-  it("marks an exhausted short window as danger instead of unknown", () => {
-    const prediction = predictCapsuleState(
-      {
-        provider: "codex",
-        sourceStatus: "ok",
-        fetchedAt: now,
-        shortWindow: {
-          label: "5h",
-          windowMinutes: 300,
-          usedPercent: 100,
-          remainingPercent: 0,
-          resetsAt: new Date(now.getTime() + 90 * 60_000),
-        },
-      },
-      { now },
-    );
-
-    expect(prediction.level).toBe("danger");
-    expect(prediction.canReachReset).toBe(false);
-    expect(prediction.quotaUsedPercent).toBe(100);
-  });
-
-  it("marks an exhausted weekly window as danger even when the short window looks safe", () => {
-    const prediction = predictCapsuleState(
-      {
-        provider: "codex",
-        sourceStatus: "ok",
-        fetchedAt: now,
-        shortWindow: {
-          label: "5h",
-          windowMinutes: 300,
-          usedPercent: 10,
-          remainingPercent: 90,
-          resetsAt: new Date(now.getTime() + 180 * 60_000),
-        },
-        weeklyWindow: {
-          label: "weekly",
-          windowMinutes: 10080,
-          usedPercent: 100,
-          remainingPercent: 0,
-          resetsAt: new Date(now.getTime() + 24 * 60 * 60_000),
-        },
-      },
-      { now },
-    );
-
-    expect(prediction.level).toBe("danger");
-    expect(prediction.detail).toContain("weekly");
-  });
-
-  it("keeps a non-exhausted weekly-only snapshot risk-unknown while explaining the waiting state", () => {
-    const prediction = predictCapsuleState(
-      {
-        provider: "codex",
-        sourceStatus: "ok",
-        fetchedAt: now,
-        weeklyWindow: {
-          label: "weekly",
-          windowMinutes: 10080,
-          usedPercent: 40,
-          remainingPercent: 60,
-          resetsAt: new Date(now.getTime() + 24 * 60 * 60_000),
-        },
-      },
-      { now },
-    );
-
-    expect(prediction.level).toBe("unknown");
-    expect(prediction.headline).toContain("等待新的 5 小时窗口");
-    expect(prediction.isWaitingForWindow).toBe(true);
-  });
-
-  it("keeps expired reset data unknown even when stale usage is exhausted", () => {
-    const prediction = predictCapsuleState(
-      {
-        provider: "codex",
-        sourceStatus: "ok",
-        fetchedAt: now,
-        shortWindow: {
-          label: "5h",
-          windowMinutes: 300,
-          usedPercent: 100,
-          remainingPercent: 0,
-          resetsAt: new Date(now.getTime() - 60_000),
-        },
-      },
-      { now },
-    );
-
-    expect(prediction.level).toBe("unknown");
-    expect(prediction.headline).toContain("刷新时间已过期");
+    expect(forecast.state).toBe("unavailable");
+    expect(JSON.stringify(forecast)).not.toMatch(/NaN|Infinity/);
   });
 });

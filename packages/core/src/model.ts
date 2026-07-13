@@ -12,31 +12,11 @@ export type AgentQuotaSnapshot = {
   provider: string;
   sourceStatus: SourceStatus;
   fetchedAt: Date;
-  shortWindow?: QuotaWindow;
-  weeklyWindow?: Partial<QuotaWindow>;
-  resetCount?: number;
+  weeklyWindow?: QuotaWindow;
   errorMessage?: string;
 };
 
 export type CapsuleLevel = "safe" | "watch" | "danger" | "unknown";
-
-export type CapsulePrediction = {
-  level: CapsuleLevel;
-  canReachReset: boolean | null;
-  elapsedPercent: number | null;
-  quotaUsedPercent: number | null;
-  projectedRemainingAtReset: number | null;
-  estimatedEmptyAt: Date | null;
-  isWaitingForWindow?: boolean;
-  headline: string;
-  detail: string;
-};
-
-export type PredictionOptions = {
-  now: Date;
-  watchRemainingThreshold?: number;
-  justResetMinutes?: number;
-};
 
 export type WeeklyQuotaReading = {
   provider: string;

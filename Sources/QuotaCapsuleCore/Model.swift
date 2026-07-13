@@ -120,7 +120,6 @@ public struct AgentQuotaSnapshot: Equatable, Sendable {
     public let provider: String
     public let sourceStatus: SourceStatus
     public let fetchedAt: Date
-    public let shortWindow: QuotaWindow?
     public let weeklyWindow: QuotaWindow?
     public let errorMessage: String?
 
@@ -128,34 +127,16 @@ public struct AgentQuotaSnapshot: Equatable, Sendable {
         provider: String,
         sourceStatus: SourceStatus,
         fetchedAt: Date,
-        shortWindow: QuotaWindow?,
         weeklyWindow: QuotaWindow?,
         errorMessage: String?
     ) {
         self.provider = provider
         self.sourceStatus = sourceStatus
         self.fetchedAt = fetchedAt
-        self.shortWindow = shortWindow
         self.weeklyWindow = weeklyWindow
         self.errorMessage = errorMessage
     }
 
-    public init(
-        provider: String,
-        sourceStatus: SourceStatus,
-        fetchedAt: Date,
-        weeklyWindow: QuotaWindow?,
-        errorMessage: String?
-    ) {
-        self.init(
-            provider: provider,
-            sourceStatus: sourceStatus,
-            fetchedAt: fetchedAt,
-            shortWindow: nil,
-            weeklyWindow: weeklyWindow,
-            errorMessage: errorMessage
-        )
-    }
 }
 
 public enum CapsuleLevel: Equatable, Sendable {
@@ -163,41 +144,4 @@ public enum CapsuleLevel: Equatable, Sendable {
     case watch
     case danger
     case unknown
-}
-
-public struct CapsulePrediction: Equatable, Sendable {
-    public let level: CapsuleLevel
-    public let canReachReset: Bool?
-    public let elapsedPercent: Int?
-    public let quotaUsedPercent: Int?
-    public let quotaUsedPercentExact: Double?
-    public let projectedRemainingAtReset: Int?
-    public let estimatedEmptyAt: Date?
-    public let isWaitingForWindow: Bool
-    public let headline: String
-    public let detail: String
-
-    public init(
-        level: CapsuleLevel,
-        canReachReset: Bool?,
-        elapsedPercent: Int?,
-        quotaUsedPercent: Int?,
-        quotaUsedPercentExact: Double? = nil,
-        projectedRemainingAtReset: Int?,
-        estimatedEmptyAt: Date?,
-        isWaitingForWindow: Bool = false,
-        headline: String,
-        detail: String
-    ) {
-        self.level = level
-        self.canReachReset = canReachReset
-        self.elapsedPercent = elapsedPercent
-        self.quotaUsedPercent = quotaUsedPercent
-        self.quotaUsedPercentExact = quotaUsedPercentExact ?? quotaUsedPercent.map(Double.init)
-        self.projectedRemainingAtReset = projectedRemainingAtReset
-        self.estimatedEmptyAt = estimatedEmptyAt
-        self.isWaitingForWindow = isWaitingForWindow
-        self.headline = headline
-        self.detail = detail
-    }
 }

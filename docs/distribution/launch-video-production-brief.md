@@ -119,7 +119,7 @@
 
 口播方向：
 
-> 所以我做了一个小工具，中文叫“额度胶囊”，英文叫 Quota Capsule。它常驻在 Mac 桌面和菜单栏，把 Codex 的 5 小时窗口和周窗口翻译成更直接的状态：安全、注意、危险、未知。我的关注点从百分比变成了一个工作判断：现在能不能继续干活。
+> 所以我做了一个小工具，中文叫“额度胶囊”，英文叫 Quota Capsule。它常驻在 Mac 桌面和菜单栏，把 Codex 的周额度翻译成更直接的状态：够用、注意、可能用完、校准中。我的关注点从百分比变成了两个工作判断：照最近速度能不能撑到刷新，今天还能放心使用多少。
 
 画面：
 
@@ -175,7 +175,7 @@
 >
 > 我想知道的是：按现在这个速度能不能撑到下一次刷新。
 >
-> 所以我做了一个 Mac 桌面小工具，中文叫“额度胶囊”，英文叫 Quota Capsule。它把 Codex 的 5 小时窗口和周窗口变成安全、注意、危险、未知这些直接判断。
+> 所以我做了一个 Mac 桌面小工具，中文叫“额度胶囊”，英文叫 Quota Capsule。它把 Codex 周额度变成够用、注意、可能用完、校准中这些直接判断，并给出今天的可持续预算。
 >
 > 项目已经开源。你可以打开 GitHub，把 README 里的提示词交给自己的 Codex，让它帮你在本机安装运行。欢迎试用、提 issue、提 PR。
 
@@ -199,7 +199,7 @@ Can I keep working at this pace until the next reset?
 3.
 Quota Capsule is a small macOS floating capsule for Codex quota windows.
 
-It turns 5-hour and weekly quota data into direct states:
+It turns weekly quota pace into direct states and a daily budget:
 
 Safe.
 Watch.

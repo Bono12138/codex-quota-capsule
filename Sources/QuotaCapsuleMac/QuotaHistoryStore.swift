@@ -123,27 +123,6 @@ final class QuotaHistoryStore {
         (try? FileManager.default.attributesOfItem(atPath: databaseURL.path)[.size] as? Int64) ?? 0
     }
 
-    func recordSnapshot(_ snapshot: AgentQuotaSnapshot, prediction: CapsulePrediction, locale: QuotaLocale) {
-        guard let database else { return }
-
-        execute("BEGIN IMMEDIATE TRANSACTION")
-        defer { execute("COMMIT") }
-
-        let captureID = insertCapture(snapshot)
-        guard captureID > 0 else { return }
-
-        if let shortWindow = snapshot.shortWindow {
-            insertWindowRecord(captureID: captureID, snapshot: snapshot, window: shortWindow, windowType: "5h", prediction: prediction)
-        }
-
-        if let weeklyWindow = snapshot.weeklyWindow {
-            let windowPrediction = QuotaPredictor.predictWeekly(window: weeklyWindow, now: snapshot.fetchedAt, locale: locale)
-            insertWindowRecord(captureID: captureID, snapshot: snapshot, window: weeklyWindow, windowType: "weekly", prediction: windowPrediction)
-        }
-
-        _ = database
-    }
-
     func recordWeeklySnapshot(_ snapshot: AgentQuotaSnapshot) {
         guard snapshot.sourceStatus == .ok, let weeklyWindow = snapshot.weeklyWindow else { return }
 
@@ -466,66 +445,6 @@ final class QuotaHistoryStore {
         return sqlite3_last_insert_rowid(database)
     }
 
-    private func insertWindowRecord(
-        captureID: Int64,
-        snapshot: AgentQuotaSnapshot,
-        window: QuotaWindow,
-        windowType: String,
-        prediction: CapsulePrediction
-    ) {
-        let previous = latestWindowSample(windowType: windowType)
-        let capturedAt = snapshot.fetchedAt
-        let windowStart = window.resetsAt.addingTimeInterval(TimeInterval(-window.windowMinutes * 60))
-        let elapsedMinutes = max(0, capturedAt.timeIntervalSince(windowStart) / 60)
-        let minutesUntilReset = window.resetsAt.timeIntervalSince(capturedAt) / 60
-        let burnRate = elapsedMinutes > 0 ? window.usedPercent / elapsedMinutes : nil
-        let burnRateVsEvenPace = prediction.elapsedPercent.flatMap { elapsedPercent -> Double? in
-            guard elapsedPercent > 0 else { return nil }
-            return window.usedPercent / Double(elapsedPercent)
-        }
-        let resetDetected = previous.map { abs($0.resetsAt.timeIntervalSince(window.resetsAt)) > 1 } ?? false
-        let usedDelta = previous.map { window.usedPercent - $0.usedPercent }
-        let deltaMinutes = previous.map { capturedAt.timeIntervalSince($0.capturedAt) / 60 }
-        let deltaPercentPerMinute: Double?
-        if let usedDelta, let deltaMinutes, deltaMinutes > 0 {
-            deltaPercentPerMinute = Double(usedDelta) / deltaMinutes
-        } else {
-            deltaPercentPerMinute = nil
-        }
-
-        let sql = """
-        INSERT INTO quota_windows (
-          capture_id, window_type, window_minutes, used_percent, remaining_percent,
-          resets_at, window_start, time_elapsed_percent, minutes_until_reset,
-          burn_rate_percent_per_min, burn_rate_vs_even_pace,
-          projected_remaining_at_reset, estimated_empty_at, state,
-          used_delta_percent, delta_minutes, delta_percent_per_min, reset_detected
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        """
-        guard let statement = prepare(sql) else { return }
-        defer { sqlite3_finalize(statement) }
-
-        bindInt64(statement, 1, captureID)
-        bindText(statement, 2, windowType)
-        bindInt(statement, 3, window.windowMinutes)
-        bindDouble(statement, 4, window.usedPercent)
-        bindDouble(statement, 5, window.remainingPercent)
-        bindDouble(statement, 6, window.resetsAt.timeIntervalSince1970)
-        bindDouble(statement, 7, windowStart.timeIntervalSince1970)
-        bindOptionalInt(statement, 8, prediction.elapsedPercent)
-        bindDouble(statement, 9, minutesUntilReset)
-        bindOptionalDouble(statement, 10, burnRate)
-        bindOptionalDouble(statement, 11, burnRateVsEvenPace)
-        bindOptionalInt(statement, 12, prediction.projectedRemainingAtReset)
-        bindOptionalDouble(statement, 13, prediction.estimatedEmptyAt?.timeIntervalSince1970)
-        bindText(statement, 14, prediction.level.analyticsCode)
-        bindOptionalDouble(statement, 15, usedDelta)
-        bindOptionalDouble(statement, 16, deltaMinutes)
-        bindOptionalDouble(statement, 17, deltaPercentPerMinute)
-        bindInt(statement, 18, resetDetected ? 1 : 0)
-        _ = sqlite3_step(statement)
-    }
-
     private func insertRawWeeklyWindow(
         captureID: Int64,
         snapshot: AgentQuotaSnapshot,
@@ -552,27 +471,6 @@ final class QuotaHistoryStore {
         bindDouble(statement, 6, windowStart.timeIntervalSince1970)
         bindDouble(statement, 7, minutesUntilReset)
         _ = sqlite3_step(statement)
-    }
-
-    private func latestWindowSample(windowType: String) -> (usedPercent: Double, capturedAt: Date, resetsAt: Date)? {
-        let sql = """
-        SELECT w.used_percent, c.fetched_at, w.resets_at
-        FROM quota_windows w
-        JOIN captures c ON c.id = w.capture_id
-        WHERE w.window_type = ?
-        ORDER BY w.id DESC
-        LIMIT 1
-        """
-        guard let statement = prepare(sql) else { return nil }
-        defer { sqlite3_finalize(statement) }
-        bindText(statement, 1, windowType)
-
-        guard sqlite3_step(statement) == SQLITE_ROW else { return nil }
-        return (
-            sqlite3_column_double(statement, 0),
-            Date(timeIntervalSince1970: sqlite3_column_double(statement, 1)),
-            Date(timeIntervalSince1970: sqlite3_column_double(statement, 2))
-        )
     }
 
     private func makePayload(event: ProductAnalyticsEvent, consent: AnalyticsConsent) -> [String: Any]? {

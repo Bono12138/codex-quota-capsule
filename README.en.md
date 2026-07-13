@@ -14,7 +14,7 @@ Heavy Codex users often run several coding tasks at the same time and repeatedly
 
 - Can I keep using Codex right now?
 - Can the current pace last until reset?
-- If it cannot last, when will I run out?
+- If it may not last, what does the risk range look like?
 - If it can last, how much margin should remain at reset?
 
 Quota Capsule stays small, visible, and direct:
@@ -38,7 +38,7 @@ The first local macOS beta is usable. It includes:
 - Native floating desktop capsule.
 - Menu bar status item.
 - Read-only Codex app-server rate-limit adapter.
-- 5-hour and weekly quota prediction.
+- Weekly pace, reset-buffer range, and daily-budget prediction.
 - Local history snapshots.
 - Multilingual UI.
 - Public feedback links.

@@ -25,7 +25,7 @@ struct WeeklySourceTests {
         #expect(snapshot.weeklyWindow?.remainingPercent == 82)
     }
 
-    @Test("a fresh weekly snapshot does not retry for a missing short window")
+    @Test("a fresh weekly snapshot does not retry")
     func freshWeeklySnapshotDoesNotRetry() {
         let snapshot = AgentQuotaSnapshot(
             provider: "codex",
@@ -44,8 +44,8 @@ struct WeeklySourceTests {
         #expect(CodexAppServerClient.shouldRetry(snapshot) == false)
     }
 
-    @Test("short windows are ignored when a weekly window exists")
-    func parserIgnoresShortWindowAndSelectsWeeklyWindow() {
+    @Test("the weekly candidate is selected from mixed source data")
+    func parserSelectsWeeklyCandidate() {
         let snapshot = CodexRateLimitParser.parse(
             result: [
                 "rateLimits": [

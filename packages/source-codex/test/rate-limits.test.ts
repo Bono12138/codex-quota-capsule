@@ -62,7 +62,7 @@ describe("parseCodexRateLimits", () => {
     );
 
     expect(parsed.sourceStatus).toBe("error");
-    expect(parsed.shortWindow).toBeUndefined();
+    expect(parsed).not.toHaveProperty("shortWindow");
     expect(parsed.errorMessage).toContain("rateLimits");
   });
 
@@ -83,7 +83,7 @@ describe("parseCodexRateLimits", () => {
     );
 
     expect(parsed.sourceStatus).toBe("ok");
-    expect(parsed.shortWindow).toBeUndefined();
+    expect(parsed).not.toHaveProperty("shortWindow");
     expect(parsed.weeklyWindow?.label).toBe("weekly");
     expect(parsed.weeklyWindow?.usedPercent).toBe(41);
     expect(parsed.errorMessage).toBeUndefined();
@@ -102,7 +102,7 @@ describe("parseCodexRateLimits", () => {
     );
 
     expect(parsed.sourceStatus).toBe("error");
-    expect(parsed.shortWindow).toBeUndefined();
+    expect(parsed).not.toHaveProperty("shortWindow");
   });
 
   it("preserves fractional usage for prediction math", () => {

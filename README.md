@@ -20,9 +20,9 @@ Heavy Codex users often run multiple tasks, check usage pages repeatedly, and st
 
 很多 Codex 重度用户会同时跑多个任务，也会反复查看 usage 页面。百分比只能提供证据。真正影响工作节奏的是：现在还能不能继续放心用。
 
-Quota Capsule stays visible on the desktop and in the menu bar, then turns 5-hour and weekly quota windows into direct states:
+Quota Capsule stays visible on the desktop and in the menu bar, then turns weekly quota pace into direct states and a safe daily budget:
 
-额度胶囊常驻桌面和菜单栏，把 5 小时窗口和周窗口转换成直接状态：
+额度胶囊常驻桌面和菜单栏，把周额度速度转换成直接状态和今天可持续使用的预算：
 
 - Safe / 安全：当前速度大概率能撑到刷新。
 - Watch / 注意：暂时能用，但余量偏薄。
@@ -97,7 +97,7 @@ The first public beta is a macOS app built from source. It currently includes:
 
 - Native floating desktop capsule and menu bar item.
 - Read-only Codex app-server rate-limit source.
-- 5-hour and weekly quota prediction.
+- Weekly pace, reset-buffer, and daily-budget prediction.
 - Local history snapshots.
 - Multilingual UI.
 - Feedback links for GitHub Issues, email, X, and Douyin.
@@ -106,7 +106,7 @@ The first public beta is a macOS app built from source. It currently includes:
 
 - 原生桌面悬浮胶囊和菜单栏入口。
 - 只读 Codex app-server rate-limit 数据源。
-- 5 小时窗口和周窗口预测。
+- 周速度、刷新余量和今日可用预算预测。
 - 本地历史快照。
 - 多语言界面。
 - GitHub Issues、邮箱、X、抖音反馈入口。

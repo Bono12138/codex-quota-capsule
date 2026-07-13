@@ -1,8 +1,8 @@
 {
   "name": "codex-quota-capsule",
   "private": true,
-  "version": "0.0.0",
-  "description": "Codex-first quota capsule, designed as an extensible desktop quota gauge for agent products.",
+  "version": "0.2.0",
+  "description": "A local-first macOS weekly quota runway assistant for Codex.",
   "license": "MIT",
   "type": "module",
   "workspaces": [
@@ -15,6 +15,7 @@
     "analytics:start": "npm run start -w packages/analytics-collector",
     "dev": "npm run dev -w apps/desktop",
     "lint": "tsc -p tsconfig.base.json --noEmit",
+    "audit:weekly-only": "tsx scripts/audit-weekly-only-surface.ts",
     "mac:package": "./script/package_macos.sh",
     "mac:package:dev": "QUOTA_CAPSULE_CHANNEL=development ./script/package_macos.sh",
     "mac:package:internal-test": "QUOTA_CAPSULE_CHANNEL=internal-test ./script/package_macos.sh",

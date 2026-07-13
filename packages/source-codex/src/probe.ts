@@ -409,7 +409,7 @@ function parseRateLimitWindow(value: unknown): QuotaWindow | null {
   }
 
   return {
-    label: windowMinutes <= 360 ? "5h" : "weekly",
+    label: "candidate",
     windowMinutes,
     usedPercent: clampPercent(usedPercent),
     remainingPercent: clampPercent(100 - usedPercent),

@@ -228,14 +228,6 @@ public struct QuotaCopy: Equatable, Sendable {
         statusWaiting
     }
 
-    public var activeShortWindowMissingError: String {
-        switch locale {
-        case .zhHans: "活动中的 5 小时窗口暂时没有出现在最新响应中，应用会自动重试。"
-        case .zhHant: "進行中的 5 小時週期暫時沒有出現在最新回應中，App 會自動重試。"
-        case .en: "The active 5-hour window is temporarily missing from the latest response. The app will retry automatically."
-        }
-    }
-
     public var metricElapsed: String {
         switch locale {
         case .zhHans: "时间进度"
@@ -357,14 +349,6 @@ public struct QuotaCopy: Equatable, Sendable {
         case .zhHans: "作者 X 主页"
         case .zhHant: "作者 X 個人頁"
         case .en: "Author X profile"
-        }
-    }
-
-    public var shortWindowTitle: String {
-        switch locale {
-        case .zhHans: "Codex · 5 小时窗口"
-        case .zhHant: "Codex · 5 小時週期"
-        case .en: "Codex · 5-hour window"
         }
     }
 
@@ -545,9 +529,9 @@ public struct QuotaCopy: Equatable, Sendable {
 
     public var productIntroBody: String {
         switch locale {
-        case .zhHans: "Quota Capsule 会常驻 Mac 桌面和菜单栏，把 Codex 的 5 小时窗口和周窗口转换成可操作判断：按当前速度，能不能撑到下一次刷新。"
-        case .zhHant: "Quota Capsule 會常駐 Mac 桌面和選單列，把 Codex 的 5 小時週期和週額度轉換成可操作判斷：依目前速度，能不能撐到下一次重設。"
-        case .en: "Quota Capsule stays on your Mac desktop and menu bar, turning Codex 5-hour and weekly quota windows into a practical answer: whether the current pace can last until reset."
+        case .zhHans: "Quota Capsule 会常驻 Mac 桌面和菜单栏，把 Codex 周额度转换成可操作判断：照最近速度能否撑到刷新，以及今天还能放心使用多少。"
+        case .zhHant: "Quota Capsule 會常駐 Mac 桌面和選單列，把 Codex 週額度轉換成可操作判斷：依最近速度能否撐到重設，以及今天還能放心使用多少。"
+        case .en: "Quota Capsule stays on your Mac desktop and menu bar, turning Codex weekly quota into two practical answers: whether your recent pace can last until reset and how much you can safely use today."
         }
     }
 
@@ -579,7 +563,7 @@ public struct QuotaCopy: Equatable, Sendable {
         switch locale {
         case .zhHans:
             [
-                "读取 Codex app-server 的 5 小时窗口和周窗口。",
+                "读取 Codex app-server 的周额度窗口。",
                 "桌面悬浮胶囊、菜单栏短状态和展开详情面板。",
                 "自动刷新、手动刷新和读取失败时保留上次成功数据。",
                 "靠边停靠迷你形态、胶囊宽度调整和三语界面。",
@@ -588,7 +572,7 @@ public struct QuotaCopy: Equatable, Sendable {
             ]
         case .zhHant:
             [
-                "讀取 Codex app-server 的 5 小時週期和週額度。",
+                "讀取 Codex app-server 的週額度週期。",
                 "桌面懸浮膠囊、選單列短狀態和展開詳細面板。",
                 "自動重新整理、手動重新整理，讀取失敗時保留上次成功資料。",
                 "靠邊停靠迷你形態、膠囊寬度調整和三語介面。",
@@ -597,7 +581,7 @@ public struct QuotaCopy: Equatable, Sendable {
             ]
         case .en:
             [
-                "Reads Codex app-server 5-hour and weekly quota windows.",
+                "Reads the Codex app-server weekly quota window.",
                 "Desktop floating capsule, short menu bar status, and detail panel.",
                 "Auto refresh, manual refresh, and last-success fallback after read failures.",
                 "Edge-docked mini state, adjustable capsule width, and three interface languages.",
@@ -998,9 +982,9 @@ public struct QuotaCopy: Equatable, Sendable {
 
     public var onboardingStatus: String {
         switch locale {
-        case .zhHans: "颜色表示当前速度是否安全，百分比表示 5 小时窗口已用。"
-        case .zhHant: "顏色表示目前速度是否安全，百分比表示 5 小時週期已用。"
-        case .en: "Color shows pace risk; the percent is 5-hour usage."
+        case .zhHans: "颜色表示周速度风险，百分比表示本周额度已用。"
+        case .zhHant: "顏色表示週速度風險，百分比表示本週額度已用。"
+        case .en: "Color shows weekly pace risk; the percentage is weekly quota used."
         }
     }
 
@@ -1294,9 +1278,9 @@ public struct QuotaCopy: Equatable, Sendable {
 
     public var onboardingCapsuleStepBody: String {
         switch locale {
-        case .zhHans: "收起态显示状态、5 小时已用比例和时间/用量对比。两侧把手可调整宽度，拖到边缘可进入迷你形态。"
-        case .zhHant: "收起態顯示狀態、5 小時已用比例和時間／用量對比。兩側把手可調整寬度，拖到邊緣可進入迷你形態。"
-        case .en: "Collapsed mode shows status, 5-hour usage, and time-vs-use tracks. Side handles resize it; edge drag enters mini mode."
+        case .zhHans: "收起态显示周速度判断、本周已用比例和周时间/用量对比。两侧把手可调整宽度，拖到边缘可进入迷你形态。"
+        case .zhHant: "收起態顯示週速度判斷、本週已用比例和週時間／用量對比。兩側把手可調整寬度，拖到邊緣可進入迷你形態。"
+        case .en: "Collapsed mode shows the weekly pace judgment, weekly usage, and week time-vs-use tracks. Side handles resize it; edge drag enters mini mode."
         }
     }
 
@@ -1326,9 +1310,9 @@ public struct QuotaCopy: Equatable, Sendable {
 
     public var onboardingWeeklyStepBody: String {
         switch locale {
-        case .zhHans: "5 小时窗口负责当下判断；本周压力只在需要时辅助查看。"
-        case .zhHant: "5 小時週期負責當下判斷；本週壓力只在需要時輔助查看。"
-        case .en: "The 5-hour window drives the current call. Weekly pressure is available when you need it."
+        case .zhHans: "周速度是主判断：看最近速度、刷新余量和今天的可持续预算。"
+        case .zhHant: "週速度是主判斷：看最近速度、重設餘量和今天的可持續預算。"
+        case .en: "Weekly pace is the main judgment: recent pace, projected reset buffer, and today's sustainable budget."
         }
     }
 

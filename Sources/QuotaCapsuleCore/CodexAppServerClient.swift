@@ -62,8 +62,7 @@ public enum CodexAppServerClient {
         timeoutSeconds: TimeInterval = defaultTimeoutSeconds,
         locale: QuotaLocale = .zhHans,
         maxAttempts: Int = 3,
-        retryDelaySeconds: TimeInterval = 1.25,
-        retryWeeklyOnly: Bool = true
+        retryDelaySeconds: TimeInterval = 1.25
     ) async -> AgentQuotaSnapshot {
         let attempts = min(5, max(1, maxAttempts))
         let retryDelay = retryDelaySeconds.isFinite ? min(30, max(0, retryDelaySeconds)) : 0
@@ -74,7 +73,7 @@ public enum CodexAppServerClient {
         }
 
         for attempt in 1..<attempts {
-            guard shouldRetry(latest, retryWeeklyOnly: retryWeeklyOnly) else {
+            guard shouldRetry(latest) else {
                 return latest
             }
             guard !Task.isCancelled else { return latest }
@@ -86,7 +85,7 @@ public enum CodexAppServerClient {
             }
             latest = fetchCurrent(codexPath: codexPath, timeoutSeconds: timeoutSeconds, locale: locale)
             preferred = preferredRetrySnapshot(current: preferred, candidate: latest)
-            if !shouldRetry(latest, retryWeeklyOnly: retryWeeklyOnly) {
+            if !shouldRetry(latest) {
                 return latest
             }
         }
@@ -94,10 +93,7 @@ public enum CodexAppServerClient {
         return preferred
     }
 
-    public static func shouldRetry(
-        _ snapshot: AgentQuotaSnapshot,
-        retryWeeklyOnly: Bool = true
-    ) -> Bool {
+    public static func shouldRetry(_ snapshot: AgentQuotaSnapshot) -> Bool {
         if snapshot.sourceStatus == .ok {
             return false
         }
