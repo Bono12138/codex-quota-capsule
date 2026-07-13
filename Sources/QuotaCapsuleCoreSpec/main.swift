@@ -22,8 +22,7 @@ func testParsesCodexRateLimitsByDuration() throws {
 
     expect(snapshot.provider == "codex", "provider should be codex")
     expect(snapshot.sourceStatus == .ok, "source status should be ok")
-    expect(snapshot.shortWindow?.label == "5h", "short window should be 5h")
-    expect(snapshot.shortWindow?.usedPercent == 17, "short window used percent should come from 300 minute window")
+    expect(snapshot.shortWindow == nil, "short windows should be ignored")
     expect(snapshot.weeklyWindow?.label == "weekly", "weekly window should be weekly")
     expect(snapshot.weeklyWindow?.usedPercent == 41, "weekly used percent should come from 10080 minute window")
 }
@@ -44,7 +43,6 @@ func testParsesZeroAndOneJSONNumbersWithoutMistakingThemForBooleans() throws {
     )
 
     expect(snapshot.sourceStatus == .ok, "JSON numeric zero and one must remain valid quota percentages")
-    expect(snapshot.shortWindow?.usedPercent == 1, "numeric one must not be rejected as boolean true")
     expect(snapshot.weeklyWindow?.usedPercent == 0, "numeric zero must not be rejected as boolean false")
 }
 
@@ -796,7 +794,7 @@ func testCodexAppServerClientReadsRateLimits() throws {
     )
 
     expect(snapshot.sourceStatus == .ok, "app-server snapshot should be ok")
-    expect(snapshot.shortWindow?.usedPercent == 62, "app-server should parse short window")
+    expect(snapshot.shortWindow == nil, "app-server should ignore short windows")
     expect(snapshot.weeklyWindow?.usedPercent == 24, "app-server should parse weekly window")
     expect(transport.sent.map { $0["method"] as? String } == ["initialize", "initialized", "account/rateLimits/read"], "app-server request order should be fixed")
 }
@@ -813,7 +811,7 @@ func testCodexAppServerClientHandlesNotificationBurst() {
         "jsonrpc": "2.0",
         "id": 2,
         "result": ["rateLimits": [
-            "primary": ["usedPercent": 12, "windowDurationMins": 300, "resetsAt": 1_788_271_414]
+            "primary": ["usedPercent": 12, "windowDurationMins": 10080, "resetsAt": 1_788_299_735]
         ]]
     ])
 
@@ -824,7 +822,7 @@ func testCodexAppServerClientHandlesNotificationBurst() {
     )
 
     expect(snapshot.sourceStatus == .ok, "a burst of more than 50 notifications should not cause a false refresh failure")
-    expect(snapshot.shortWindow?.usedPercent == 12, "notification burst should still reach the requested response")
+    expect(snapshot.weeklyWindow?.usedPercent == 12, "notification burst should still reach the requested weekly response")
 }
 
 func testCodexAppServerClientReturnsRpcErrors() {
@@ -857,6 +855,7 @@ func testCodexAppServerClientReturnsTransportErrors() {
 func testCodexAppServerClientHandlesQueuedNotifications() throws {
     let executableURL = URL(fileURLWithPath: NSTemporaryDirectory())
         .appendingPathComponent("quota-capsule-fake-codex-\(UUID().uuidString)")
+    let weeklyReset = Int(Date().addingTimeInterval(6 * 24 * 60 * 60).timeIntervalSince1970)
     let script = #"""
 #!/bin/sh
 IFS= read -r initialize
@@ -864,7 +863,7 @@ printf '%s\n' '{"jsonrpc":"2.0","id":1,"result":{"capabilities":{}}}'
 printf '%s\n' '{"jsonrpc":"2.0","method":"window/logMessage","params":{"message":"ready"}}'
 IFS= read -r initialized
 IFS= read -r rate_limits
-printf '%s\n' '{"jsonrpc":"2.0","id":2,"result":{"rateLimits":{"primary":{"usedPercent":62,"windowDurationMins":300,"resetsAt":1788271414},"secondary":{"usedPercent":24,"windowDurationMins":10080,"resetsAt":1788299735}}}}'
+printf '%s\n' '{"jsonrpc":"2.0","id":2,"result":{"rateLimits":{"primary":{"usedPercent":62,"windowDurationMins":300,"resetsAt":1788271414},"secondary":{"usedPercent":24,"windowDurationMins":10080,"resetsAt":\#(weeklyReset)}}}}'
 """#
     try script.write(to: executableURL, atomically: true, encoding: .utf8)
     try FileManager.default.setAttributes([.posixPermissions: 0o755], ofItemAtPath: executableURL.path)
@@ -876,7 +875,7 @@ printf '%s\n' '{"jsonrpc":"2.0","id":2,"result":{"rateLimits":{"primary":{"usedP
     )
 
     expect(snapshot.sourceStatus == .ok, "app-server should ignore queued notifications and read the following response")
-    expect(snapshot.shortWindow?.usedPercent == 62, "queued notification test should parse short window")
+    expect(snapshot.weeklyWindow?.usedPercent == 24, "queued notification test should parse the weekly window")
 }
 
 func testCodexAppServerClientReportsEarlyProcessExit() throws {
@@ -924,7 +923,7 @@ func testCodexRateLimitParserRejectsMalformedWindows() {
     )
 
     expect(snapshot.sourceStatus == .error, "malformed windows should return error snapshots when no usable window remains")
-    expect(snapshot.shortWindow == nil, "malformed short window should not be parsed")
+    expect(snapshot.weeklyWindow == nil, "malformed weekly window should not be parsed")
     expect(snapshot.errorMessage?.contains("rateLimits") == true, "malformed windows should explain missing usable rateLimits")
 }
 
@@ -951,14 +950,14 @@ func testCodexRateLimitParserPreservesFractionalUsage() {
     let snapshot = CodexRateLimitParser.parse(
         result: [
             "rateLimits": [
-                "primary": ["usedPercent": 0.9, "windowDurationMins": 300, "resetsAt": 1_788_299_735]
+                "primary": ["usedPercent": 0.9, "windowDurationMins": 10080, "resetsAt": 1_788_299_735]
             ]
         ],
         fetchedAt: Date(timeIntervalSince1970: 1_788_270_000)
     )
 
-    expect(snapshot.shortWindow?.usedPercent == 0.9, "fractional usage must remain available to prediction math")
-    expect(snapshot.shortWindow?.remainingPercent == 99.1, "fractional remaining quota must not be rounded early")
+    expect(snapshot.weeklyWindow?.usedPercent == 0.9, "fractional usage must remain available to weekly prediction math")
+    expect(snapshot.weeklyWindow?.remainingPercent == 99.1, "fractional weekly remaining quota must not be rounded early")
 }
 
 func testCodexExecutableResolverFindsUserLocalBin() throws {
@@ -1284,31 +1283,11 @@ func testCodexAppServerClientRetriesOnlyTransientFailures() {
 do {
     try testParsesCodexRateLimitsByDuration()
     try testParsesZeroAndOneJSONNumbersWithoutMistakingThemForBooleans()
-    testTreatsWeeklyOnlyRateLimitsAsWaitingForTheNextShortWindow()
-    testRetryKeepsTheMostCompleteSnapshotAcrossAttempts()
-    testPredictsBurnRateRunway()
-    testFractionalUsageStaysConsistentInDisplayMath()
-    testPredictsBelowReportingPrecisionConservatively()
-    testPredictsBelowReportingPrecisionAsUnknownImmediatelyAfterReset()
-    testWindowStartBoundaryIsWarmupNotClockError()
-    testPredictorRejectsInvalidWindowWithoutTrapping()
-    testPredictsExhaustedShortWindowAsDanger()
-    testPredictsExhaustedWeeklyWindowAsDanger()
-    testPredictsMissingShortWindowAsUnknownWhenWeeklyIsNotExhausted()
-    testWeeklyPredictionUsesWeeklyWindowInputsOnly()
-    testWeeklyPredictionWaitsForEnoughEarlyWindowSignal()
-    testWeeklyPredictionDoesNotEstimateExactRunOutAtFivePercentEarlyWindow()
-    testWeeklyPredictionFlagsFastEarlyBurnWithoutExactRunOutTime()
-    testPredictsExpiredResetAsUnknown()
-    testBuildsCompactDisplayModel()
     testQuotaLocaleResolvesPreferredLanguages()
     testContactCopyIncludesDouyinInAllLocales()
     testRuntimeLocaleCopyCoversMenuOnboardingAndConsent()
     testLocalizedUnknownAndParserDiagnostics()
     testOnboardingCopyAvoidsAccountManagerNegation()
-    testBuildsEnglishDisplayModel()
-    testBuildsTraditionalChineseDisplayModel()
-    testCompactCopyStaysShortAcrossLocales()
     try testCodexAppServerClientReadsRateLimits()
     testCodexAppServerClientHandlesNotificationBurst()
     testCodexAppServerClientReturnsRpcErrors()
@@ -1321,12 +1300,7 @@ do {
     testCodexRateLimitParserPreservesFractionalUsage()
     try testCodexExecutableResolverFindsUserLocalBin()
     testCodexExecutableResolverReportsCheckedPaths()
-    testQuotaRefreshReducerUpdatesOnSuccessfulRefresh()
-    testQuotaRefreshReducerMarksLastSuccessStaleAfterFailure()
-    testQuotaRefreshReducerDoesNotOverwriteAnActiveWindowWithWeeklyOnlyData()
-    testQuotaRefreshReducerAcceptsWeeklyOnlyDataAfterTheShortWindowExpires()
     testQuotaRefreshReducerSanitizesNetworkErrors()
-    testQuotaRefreshReducerUsesErrorWhenNoSuccessExists()
     testCodexAppServerClientDefaultTimeoutIsProductionTolerant()
     testCodexAppServerClientRetriesOnlyTransientFailures()
     print("QuotaCapsuleCoreSpec passed")

@@ -99,7 +99,7 @@ public enum CodexAppServerClient {
         retryWeeklyOnly: Bool = true
     ) -> Bool {
         if snapshot.sourceStatus == .ok {
-            return retryWeeklyOnly && snapshot.shortWindow == nil && snapshot.weeklyWindow != nil
+            return false
         }
         let message = (snapshot.errorMessage ?? "").lowercased()
         if message.contains("not signed in")
@@ -124,11 +124,8 @@ public enum CodexAppServerClient {
     }
 
     private static func completenessScore(_ snapshot: AgentQuotaSnapshot) -> Int {
-        if snapshot.sourceStatus == .ok, snapshot.shortWindow != nil {
-            return 3
-        }
         if snapshot.sourceStatus == .ok, snapshot.weeklyWindow != nil {
-            return 2
+            return 3
         }
         if snapshot.weeklyWindow != nil {
             return 1
@@ -246,7 +243,6 @@ public enum CodexAppServerClient {
             provider: "codex",
             sourceStatus: .error,
             fetchedAt: fetchedAt,
-            shortWindow: nil,
             weeklyWindow: nil,
             errorMessage: message
         )

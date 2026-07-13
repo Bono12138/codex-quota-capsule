@@ -13,15 +13,18 @@ public enum CodexRateLimitParser {
             parseWindow(rateLimits[key])
         }
 
-        let shortWindow = windows.first { $0.windowMinutes <= 360 }
-        let weeklyWindow = windows.first { $0.windowMinutes > 360 }
+        let latestPlausibleReset = fetchedAt.addingTimeInterval(8 * 24 * 60 * 60)
+        let weeklyWindow = windows.first { window in
+            abs(window.windowMinutes - 10_080) <= 60
+                && window.resetsAt > fetchedAt
+                && window.resetsAt <= latestPlausibleReset
+        }
 
-        guard shortWindow != nil || weeklyWindow != nil else {
+        guard let weeklyWindow else {
             return AgentQuotaSnapshot(
                 provider: "codex",
                 sourceStatus: .error,
                 fetchedAt: fetchedAt,
-                shortWindow: nil,
                 weeklyWindow: nil,
                 errorMessage: missingUsableWindowsMessage(locale)
             )
@@ -31,7 +34,6 @@ public enum CodexRateLimitParser {
             provider: "codex",
             sourceStatus: .ok,
             fetchedAt: fetchedAt,
-            shortWindow: shortWindow,
             weeklyWindow: weeklyWindow,
             errorMessage: nil
         )
@@ -57,7 +59,7 @@ public enum CodexRateLimitParser {
         let minutes = Int(windowMinutes.rounded())
 
         return QuotaWindow(
-            label: minutes <= 360 ? "5h" : "weekly",
+            label: "weekly",
             windowMinutes: minutes,
             usedPercent: usedPercent,
             remainingPercent: 100 - usedPercent,

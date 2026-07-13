@@ -45,6 +45,23 @@ public struct AgentQuotaSnapshot: Equatable, Sendable {
         self.weeklyWindow = weeklyWindow
         self.errorMessage = errorMessage
     }
+
+    public init(
+        provider: String,
+        sourceStatus: SourceStatus,
+        fetchedAt: Date,
+        weeklyWindow: QuotaWindow?,
+        errorMessage: String?
+    ) {
+        self.init(
+            provider: provider,
+            sourceStatus: sourceStatus,
+            fetchedAt: fetchedAt,
+            shortWindow: nil,
+            weeklyWindow: weeklyWindow,
+            errorMessage: errorMessage
+        )
+    }
 }
 
 public enum CapsuleLevel: Equatable, Sendable {

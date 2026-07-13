@@ -21,6 +21,10 @@ let package = Package(
         .executableTarget(
             name: "QuotaCapsuleCoreSpec",
             dependencies: ["QuotaCapsuleCore"]
+        ),
+        .testTarget(
+            name: "QuotaCapsuleCoreTests",
+            dependencies: ["QuotaCapsuleCore"]
         )
     ]
 )
