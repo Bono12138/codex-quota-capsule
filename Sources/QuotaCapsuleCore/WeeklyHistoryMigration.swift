@@ -58,9 +58,9 @@ public enum WeeklyHistoryMigration {
             reset_detected = 0
         WHERE window_type = 'weekly'
         """,
-        "DELETE FROM captures WHERE NOT EXISTS (SELECT 1 FROM quota_windows WHERE quota_windows.capture_id = captures.id)",
-        "PRAGMA user_version = 3"
+        "DELETE FROM captures WHERE NOT EXISTS (SELECT 1 FROM quota_windows WHERE quota_windows.capture_id = captures.id)"
     ]
+    public static let versionStatement = "PRAGMA user_version = 3"
 
     public static func reading(from row: StoredQuotaWindowRow) -> WeeklyQuotaReading? {
         guard row.windowType == "weekly",

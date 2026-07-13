@@ -37,6 +37,39 @@ describe("Weekly Only runway", () => {
     expect(forecastFor("exhausted").state).toBe("exhausted");
   });
 
+  it("requires three mutually consistent readings after an alternating stream", () => {
+    const start = new Date(now.getTime() - 7 * 60_000);
+    const resetA = new Date(now.getTime() + 4 * 86_400_000);
+    const resetB = new Date(resetA.getTime() + 70_000);
+    const reading = (minute: number, usedPercent: number, resetsAt: Date): WeeklyQuotaReading => ({
+      provider: "codex",
+      sourceStatus: "ok",
+      fetchedAt: new Date(start.getTime() + minute * 60_000),
+      windowMinutes: 10_080,
+      usedPercent,
+      remainingPercent: 100 - usedPercent,
+      resetsAt,
+    });
+    const alternating = [
+      reading(0, 1, resetA),
+      reading(1, 5, resetB),
+      reading(2, 1, resetA),
+      reading(3, 5, resetB),
+      reading(4, 1, resetA),
+    ];
+    const twoConsistent = [...alternating, reading(5, 5, resetB), reading(6, 5, resetB)];
+    const recovered = [...twoConsistent, reading(7, 5, resetB)];
+
+    const blocked = analyzeWeeklyQuality(twoConsistent, now);
+    const stable = analyzeWeeklyQuality(recovered, now);
+
+    expect(blocked.state).toBe("unstable");
+    expect(blocked.flags).toContain("alternatingStream");
+    expect(stable.state).toBe("stable");
+    expect(stable.flags).toContain("alternatingStream");
+    expect(new Set(stable.observations.map((item) => item.usedPercent))).toEqual(new Set([5]));
+  });
+
   it("never promotes stale readings into a runway judgment", () => {
     const resetsAt = new Date(now.getTime() + 4 * 86_400_000);
     const staleReadings = readings([20, 25, 30], resetsAt).map((reading) => ({

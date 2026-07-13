@@ -35,6 +35,32 @@ struct WeeklyHistoryMigrationTests {
         #expect(WeeklyHistoryMigration.cleanupStatements.contains { $0.contains("window_type = '5h'") })
         #expect(WeeklyHistoryMigration.cleanupStatements.contains { $0.contains("burn_rate_percent_per_min = NULL") })
         #expect(WeeklyHistoryMigration.cleanupStatements.contains { $0.contains("reset_detected = 0") })
+        #expect(WeeklyHistoryMigration.cleanupStatements.allSatisfy { !$0.contains("user_version") })
+        #expect(WeeklyHistoryMigration.versionStatement == "PRAGMA user_version = 3")
+    }
+
+    @Test("history selection keeps a full two-cycle horizon before applying its bound")
+    func historySelectionPreservesLongHorizon() {
+        let now = fetchedAt.addingTimeInterval(15 * 86_400)
+        let readings = (0...(15 * 24 * 60)).map { minute in
+            WeeklyQuotaReading(
+                provider: "codex",
+                sourceStatus: .ok,
+                fetchedAt: fetchedAt.addingTimeInterval(TimeInterval(minute * 60)),
+                windowMinutes: 10_080,
+                usedPercent: 20,
+                remainingPercent: 80,
+                resetsAt: now.addingTimeInterval(86_400),
+                errorMessage: nil
+            )
+        }
+
+        let selected = WeeklyHistorySelection.compact(readings, now: now)
+
+        #expect(selected.count <= WeeklyHistorySelection.defaultLimit)
+        #expect(selected.first?.fetchedAt == fetchedAt)
+        #expect(selected.last?.fetchedAt == now)
+        #expect(selected.count >= 15 * 24 * 4)
     }
 
     @Test("a valid weekly row remains queryable without legacy derivatives")

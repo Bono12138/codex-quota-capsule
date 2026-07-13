@@ -19,7 +19,7 @@ const RECENT_HORIZON_MS = 24 * 60 * 60_000;
 const RESERVE_PERCENT = 5;
 
 export function analyzeWeeklyQuality(readings: WeeklyQuotaReading[], now = new Date()): WeeklyQualityResult {
-  const ordered = readings
+  let ordered = readings
     .filter((reading) => isUsableWeeklyReading(reading, now))
     .slice()
     .sort((left, right) => left.fetchedAt.getTime() - right.fetchedAt.getTime() || left.resetsAt.getTime() - right.resetsAt.getTime());
@@ -33,18 +33,25 @@ export function analyzeWeeklyQuality(readings: WeeklyQuotaReading[], now = new D
       flags: ["staleSource"],
     };
   }
-  if (hasAlternatingTail(ordered)) {
-    const first = ordered[ordered.length - 5];
-    return {
-      state: "unstable",
-      observations: [makeObservation(first, first.resetsAt, 0, 0)],
-      canonicalResetAt: first.resetsAt,
-      flags: ["alternatingStream"],
-    };
+  const inheritedFlags = new Set<WeeklyQualityFlag>();
+  const alternationEnd = lastAlternatingEndIndex(ordered);
+  if (alternationEnd !== null) {
+    const recovery = ordered.slice(alternationEnd);
+    if (!isConfirmedAlternationRecovery(recovery)) {
+      const lastAlternatingReading = ordered[alternationEnd];
+      return {
+        state: "unstable",
+        observations: [makeObservation(lastAlternatingReading, lastAlternatingReading.resetsAt, 0, 0)],
+        canonicalResetAt: lastAlternatingReading.resetsAt,
+        flags: ["alternatingStream"],
+      };
+    }
+    ordered = recovery;
+    inheritedFlags.add("alternatingStream");
   }
 
   let accepted: WeeklyObservation[] = [];
-  const flags = new Set<WeeklyQualityFlag>();
+  const flags = inheritedFlags;
   let activeResetSamples: Date[] = [];
   let activeReset: Date | null = null;
   let cycleID = 0;
@@ -225,10 +232,30 @@ function makeObservation(
   return { fetchedAt: reading.fetchedAt, canonicalResetAt, usedPercent: reading.usedPercent, remainingPercent: reading.remainingPercent, cycleID, segmentID, qualityFlags };
 }
 
-function hasAlternatingTail(readings: WeeklyQuotaReading[]): boolean {
-  if (readings.length < 5) return false;
-  const tail = readings.slice(-5);
-  return sameStream(tail[0], tail[2]) && sameStream(tail[2], tail[4]) && sameStream(tail[1], tail[3]) && !sameStream(tail[0], tail[1]);
+function lastAlternatingEndIndex(readings: WeeklyQuotaReading[]): number | null {
+  for (let endIndex = readings.length - 1; endIndex >= 4; endIndex -= 1) {
+    const tail = readings.slice(endIndex - 4, endIndex + 1);
+    if (sameStream(tail[0], tail[2])
+      && sameStream(tail[2], tail[4])
+      && sameStream(tail[1], tail[3])
+      && !sameStream(tail[0], tail[1])) {
+      return endIndex;
+    }
+  }
+  return null;
+}
+
+function isConfirmedAlternationRecovery(readings: WeeklyQuotaReading[]): boolean {
+  const confirmation = readings.slice(0, 3);
+  if (!isConfirmed(confirmation)) return false;
+  const first = confirmation[0];
+  const resetIsConsistent = confirmation.every((reading) =>
+    Math.abs(reading.resetsAt.getTime() - first.resetsAt.getTime()) <= RESET_CLUSTER_TOLERANCE_MS);
+  const usageIsConsistent = confirmation.slice(1).every((reading, index) => {
+    const previous = confirmation[index];
+    return reading.usedPercent >= previous.usedPercent && reading.usedPercent - previous.usedPercent <= 1.5;
+  });
+  return resetIsConsistent && usageIsConsistent;
 }
 
 function sameStream(left: WeeklyQuotaReading, right: WeeklyQuotaReading): boolean {

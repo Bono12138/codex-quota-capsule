@@ -101,7 +101,10 @@ final class QuotaHistoryStore {
         installIDHash = stableHash(installID)
 
         open()
-        migrate()
+        if !migrate() {
+            sqlite3_close(database)
+            database = nil
+        }
         repairLegacyStaleSuccessCaptures()
         for suffix in ["", "-wal", "-shm"] {
             let path = databaseURL.path + suffix
@@ -134,7 +137,10 @@ final class QuotaHistoryStore {
         insertRawWeeklyWindow(captureID: captureID, snapshot: snapshot, window: weeklyWindow)
     }
 
-    func recentWeeklyReadings(limit: Int = 2_500) -> [WeeklyQuotaReading] {
+    func recentWeeklyReadings(
+        now: Date = Date(),
+        limit: Int = WeeklyHistorySelection.defaultLimit
+    ) -> [WeeklyQuotaReading] {
         let sql = """
         SELECT c.provider, c.source_status, c.fetched_at,
                w.window_type, w.window_minutes, w.used_percent,
@@ -144,13 +150,12 @@ final class QuotaHistoryStore {
                w.reset_detected
         FROM quota_windows w
         JOIN captures c ON c.id = w.capture_id
-        WHERE w.window_type = 'weekly'
-        ORDER BY c.fetched_at DESC, w.id DESC
-        LIMIT ?
+        WHERE w.window_type = 'weekly' AND c.fetched_at >= ?
+        ORDER BY c.fetched_at ASC, w.id ASC
         """
         guard let statement = prepare(sql) else { return [] }
         defer { sqlite3_finalize(statement) }
-        bindInt(statement, 1, max(1, min(limit, 10_000)))
+        bindDouble(statement, 1, now.addingTimeInterval(-WeeklyHistorySelection.horizon).timeIntervalSince1970)
 
         var readings: [WeeklyQuotaReading] = []
         while sqlite3_step(statement) == SQLITE_ROW {
@@ -178,7 +183,7 @@ final class QuotaHistoryStore {
                 readings.append(reading)
             }
         }
-        return readings.reversed()
+        return WeeklyHistorySelection.compact(readings, now: now, limit: limit)
     }
 
     @discardableResult
@@ -312,12 +317,16 @@ final class QuotaHistoryStore {
             database = nil
             return
         }
-        execute("PRAGMA journal_mode = WAL")
-        execute("PRAGMA foreign_keys = ON")
+        guard execute("PRAGMA journal_mode = WAL"),
+              execute("PRAGMA foreign_keys = ON") else {
+            sqlite3_close(database)
+            database = nil
+            return
+        }
     }
 
-    private func migrate() {
-        execute("""
+    private func migrate() -> Bool {
+        guard execute("""
         CREATE TABLE IF NOT EXISTS captures (
           id INTEGER PRIMARY KEY AUTOINCREMENT,
           captured_at REAL NOT NULL,
@@ -331,9 +340,9 @@ final class QuotaHistoryStore {
           error_type TEXT,
           error_message_hash TEXT
         )
-        """)
+        """) else { return false }
 
-        execute("""
+        guard execute("""
         CREATE TABLE IF NOT EXISTS quota_windows (
           id INTEGER PRIMARY KEY AUTOINCREMENT,
           capture_id INTEGER NOT NULL REFERENCES captures(id) ON DELETE CASCADE,
@@ -355,9 +364,9 @@ final class QuotaHistoryStore {
           delta_percent_per_min REAL,
           reset_detected INTEGER NOT NULL DEFAULT 0
         )
-        """)
+        """) else { return false }
 
-        execute("""
+        guard execute("""
         CREATE TABLE IF NOT EXISTS product_events (
           id INTEGER PRIMARY KEY AUTOINCREMENT,
           event_name TEXT NOT NULL,
@@ -383,18 +392,31 @@ final class QuotaHistoryStore {
           queued_for_upload INTEGER NOT NULL,
           upload_status TEXT NOT NULL
         )
-        """)
+        """) else { return false }
 
-        execute("CREATE INDEX IF NOT EXISTS idx_captures_captured_at ON captures(captured_at)")
-        execute("CREATE INDEX IF NOT EXISTS idx_windows_type_time ON quota_windows(window_type, resets_at)")
-        execute("CREATE INDEX IF NOT EXISTS idx_events_name_time ON product_events(event_name, event_time)")
-        execute("CREATE INDEX IF NOT EXISTS idx_events_upload ON product_events(upload_status, id)")
-
-        execute("BEGIN IMMEDIATE TRANSACTION")
-        for statement in WeeklyHistoryMigration.cleanupStatements {
-            execute(statement)
+        guard execute("CREATE INDEX IF NOT EXISTS idx_captures_captured_at ON captures(captured_at)"),
+              execute("CREATE INDEX IF NOT EXISTS idx_windows_type_time ON quota_windows(window_type, resets_at)"),
+              execute("CREATE INDEX IF NOT EXISTS idx_events_name_time ON product_events(event_name, event_time)"),
+              execute("CREATE INDEX IF NOT EXISTS idx_events_upload ON product_events(upload_status, id)") else {
+            return false
         }
-        execute("COMMIT")
+
+        guard execute("BEGIN IMMEDIATE TRANSACTION") else { return false }
+        for statement in WeeklyHistoryMigration.cleanupStatements {
+            guard execute(statement) else {
+                execute("ROLLBACK")
+                return false
+            }
+        }
+        guard execute(WeeklyHistoryMigration.versionStatement) else {
+            execute("ROLLBACK")
+            return false
+        }
+        guard execute("COMMIT") else {
+            execute("ROLLBACK")
+            return false
+        }
+        return true
     }
 
     private func repairLegacyStaleSuccessCaptures() {
@@ -521,9 +543,15 @@ final class QuotaHistoryStore {
         return sqlite3_column_double(statement, column)
     }
 
-    private func execute(_ sql: String) {
-        guard let database else { return }
-        sqlite3_exec(database, sql, nil, nil, nil)
+    @discardableResult
+    private func execute(_ sql: String) -> Bool {
+        guard let database else { return false }
+        var errorMessage: UnsafeMutablePointer<CChar>?
+        let result = sqlite3_exec(database, sql, nil, nil, &errorMessage)
+        if let errorMessage {
+            sqlite3_free(errorMessage)
+        }
+        return result == SQLITE_OK
     }
 }
 

@@ -58,6 +58,33 @@ struct WeeklyQualityEngineTests {
         #expect(result.observations.count < readings.count)
     }
 
+    @Test("alternating streams require three consistent readings before recovery")
+    func alternatingStreamRecoveryRequiresThreeReadings() {
+        let alternating = [
+            reading(minute: 0, used: 1, resetOffset: 500_000),
+            reading(minute: 1, used: 5, resetOffset: 500_070),
+            reading(minute: 2, used: 1, resetOffset: 500_000),
+            reading(minute: 3, used: 5, resetOffset: 500_070),
+            reading(minute: 4, used: 1, resetOffset: 500_000)
+        ]
+        let twoConsistent = alternating + [
+            reading(minute: 5, used: 5, resetOffset: 500_070),
+            reading(minute: 6, used: 5, resetOffset: 500_070)
+        ]
+        let recovered = twoConsistent + [
+            reading(minute: 7, used: 5, resetOffset: 500_070)
+        ]
+
+        let blocked = WeeklyQualityEngine.analyze(twoConsistent, now: origin.addingTimeInterval(370))
+        let stable = WeeklyQualityEngine.analyze(recovered, now: origin.addingTimeInterval(430))
+
+        #expect(blocked.state == .unstable)
+        #expect(blocked.flags.contains(.alternatingStream))
+        #expect(stable.state == .stable)
+        #expect(stable.flags.contains(.alternatingStream))
+        #expect(Set(stable.observations.map(\.usedPercent)) == [5])
+    }
+
     @Test("stale data never produces a stable forecast input")
     func staleLatestReadingIsStale() {
         let result = WeeklyQualityEngine.analyze(

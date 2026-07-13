@@ -11,7 +11,7 @@ public enum WeeklyQualityEngine {
         _ readings: [WeeklyQuotaReading],
         now: Date = Date()
     ) -> WeeklyQualityResult {
-        let ordered = readings
+        var ordered = readings
             .filter { isUsable($0, now: now) }
             .sorted { lhs, rhs in
                 if lhs.fetchedAt == rhs.fetchedAt {
@@ -45,18 +45,29 @@ public enum WeeklyQualityEngine {
             )
         }
 
-        if hasAlternatingTail(ordered) {
-            let first = ordered[ordered.count - 5]
-            return WeeklyQualityResult(
-                state: .unstable,
-                observations: [observation(from: first, canonicalResetAt: first.resetsAt, cycleID: 0, segmentID: 0)],
-                canonicalResetAt: first.resetsAt,
-                flags: [.alternatingStream]
-            )
+        var inheritedFlags: Set<WeeklyQualityFlag> = []
+        if let alternationEnd = lastAlternatingEndIndex(ordered) {
+            let recovery = Array(ordered[alternationEnd...])
+            guard isConfirmedAlternationRecovery(recovery) else {
+                let lastAlternatingReading = ordered[alternationEnd]
+                return WeeklyQualityResult(
+                    state: .unstable,
+                    observations: [observation(
+                        from: lastAlternatingReading,
+                        canonicalResetAt: lastAlternatingReading.resetsAt,
+                        cycleID: 0,
+                        segmentID: 0
+                    )],
+                    canonicalResetAt: lastAlternatingReading.resetsAt,
+                    flags: [.alternatingStream]
+                )
+            }
+            ordered = recovery
+            inheritedFlags.insert(.alternatingStream)
         }
 
         var accepted: [WeeklyObservation] = []
-        var flags: Set<WeeklyQualityFlag> = []
+        var flags = inheritedFlags
         var activeResetSamples: [Date] = []
         var activeReset: Date?
         var cycleID = 0
@@ -220,13 +231,30 @@ public enum WeeklyQualityEngine {
         return last.fetchedAt.timeIntervalSince(first.fetchedAt) >= confirmationSpan
     }
 
-    private static func hasAlternatingTail(_ readings: [WeeklyQuotaReading]) -> Bool {
-        guard readings.count >= 5 else { return false }
-        let tail = Array(readings.suffix(5))
-        let sameA = sameStream(tail[0], tail[2]) && sameStream(tail[2], tail[4])
-        let sameB = sameStream(tail[1], tail[3])
-        let distinct = !sameStream(tail[0], tail[1])
-        return sameA && sameB && distinct
+    private static func lastAlternatingEndIndex(_ readings: [WeeklyQuotaReading]) -> Int? {
+        guard readings.count >= 5 else { return nil }
+        return (4..<readings.count).last { endIndex in
+            let startIndex = endIndex - 4
+            let tail = Array(readings[startIndex...endIndex])
+            let sameA = sameStream(tail[0], tail[2]) && sameStream(tail[2], tail[4])
+            let sameB = sameStream(tail[1], tail[3])
+            let distinct = !sameStream(tail[0], tail[1])
+            return sameA && sameB && distinct
+        }
+    }
+
+    private static func isConfirmedAlternationRecovery(_ readings: [WeeklyQuotaReading]) -> Bool {
+        guard readings.count >= confirmationCount else { return false }
+        let confirmation = Array(readings.prefix(confirmationCount))
+        guard isConfirmed(confirmation), let first = confirmation.first else { return false }
+        let resetIsConsistent = confirmation.allSatisfy {
+            abs($0.resetsAt.timeIntervalSince(first.resetsAt)) <= resetClusterTolerance
+        }
+        let usedValues = confirmation.map(\.usedPercent)
+        let usageIsConsistent = zip(usedValues, usedValues.dropFirst()).allSatisfy { previous, current in
+            current >= previous && current - previous <= 1.5
+        }
+        return resetIsConsistent && usageIsConsistent
     }
 
     private static func sameStream(_ lhs: WeeklyQuotaReading, _ rhs: WeeklyQuotaReading) -> Bool {

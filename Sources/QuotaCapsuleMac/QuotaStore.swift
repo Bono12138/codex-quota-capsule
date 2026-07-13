@@ -461,7 +461,7 @@ final class QuotaStore: ObservableObject {
         let attemptSnapshot = reduction.latestAttemptSnapshot
         if attemptSnapshot.sourceStatus == .ok {
             historyStore.recordWeeklySnapshot(attemptSnapshot)
-            let readings = historyStore.recentWeeklyReadings()
+            let readings = historyStore.recentWeeklyReadings(now: now)
             runwayForecast = QuotaRefreshReducer.reduceForecast(
                 currentForecast: runwayForecast,
                 newSnapshot: reduction.snapshot,
