@@ -15,8 +15,8 @@ jobs:
           node-version: 20
           cache: npm
       - run: npm ci
-      - run: npm run lint
       - run: npm run build
+      - run: npm run lint
       - run: npm test
       - run: npm run audit:weekly-only
       - run: git diff --check
