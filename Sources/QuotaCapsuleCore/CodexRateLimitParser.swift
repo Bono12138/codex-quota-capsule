@@ -66,16 +66,11 @@ public enum CodexRateLimitParser {
     }
 
     private static func readNumber(_ value: Any?) -> Double? {
-        guard !(value is Bool) else {
+        guard let number = value as? NSNumber,
+              CFGetTypeID(number) != CFBooleanGetTypeID() else {
             return nil
         }
-        if let number = value as? Double {
-            return number
-        }
-        if let number = value as? Int {
-            return Double(number)
-        }
-        return nil
+        return number.doubleValue
     }
 
     private static func missingUsableWindowsMessage(_ locale: QuotaLocale) -> String {

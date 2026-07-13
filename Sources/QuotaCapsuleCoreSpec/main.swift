@@ -28,6 +28,26 @@ func testParsesCodexRateLimitsByDuration() throws {
     expect(snapshot.weeklyWindow?.usedPercent == 41, "weekly used percent should come from 10080 minute window")
 }
 
+func testParsesZeroAndOneJSONNumbersWithoutMistakingThemForBooleans() throws {
+    let result = """
+    {
+      "rateLimits": {
+        "primary": { "usedPercent": 0, "windowDurationMins": 10080, "resetsAt": 1788299735 },
+        "secondary": { "usedPercent": 1, "windowDurationMins": 300, "resetsAt": 1788271414 }
+      }
+    }
+    """.data(using: .utf8)!
+
+    let snapshot = try CodexRateLimitParser.parse(
+        resultData: result,
+        fetchedAt: Date(timeIntervalSince1970: 1_788_270_000)
+    )
+
+    expect(snapshot.sourceStatus == .ok, "JSON numeric zero and one must remain valid quota percentages")
+    expect(snapshot.shortWindow?.usedPercent == 1, "numeric one must not be rejected as boolean true")
+    expect(snapshot.weeklyWindow?.usedPercent == 0, "numeric zero must not be rejected as boolean false")
+}
+
 func testTreatsWeeklyOnlyRateLimitsAsWaitingForTheNextShortWindow() {
     let snapshot = CodexRateLimitParser.parse(
         result: [
@@ -1263,6 +1283,7 @@ func testCodexAppServerClientRetriesOnlyTransientFailures() {
 
 do {
     try testParsesCodexRateLimitsByDuration()
+    try testParsesZeroAndOneJSONNumbersWithoutMistakingThemForBooleans()
     testTreatsWeeklyOnlyRateLimitsAsWaitingForTheNextShortWindow()
     testRetryKeepsTheMostCompleteSnapshotAcrossAttempts()
     testPredictsBurnRateRunway()
