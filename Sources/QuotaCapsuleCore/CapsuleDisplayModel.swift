@@ -58,6 +58,46 @@ public struct CapsuleDisplayModel: Equatable, Sendable {
         )
     }
 
+    public static func makeStale(
+        lastSuccessfulForecast: WeeklyRunwayForecast,
+        locale: QuotaLocale = .zhHans
+    ) -> CapsuleDisplayModel {
+        let copy = QuotaCopy(locale: locale)
+        let labels = copy.weeklyMetricLabels
+        let elapsed = safePercent(lastSuccessfulForecast.elapsedPercent)
+        let used = safePercent(lastSuccessfulForecast.usedPercent)
+        let suppressedValue: String
+        let detail: String
+        switch locale {
+        case .zhHans:
+            suppressedValue = "暂不判断"
+            detail = "正在显示上次成功的周额度数据，恢复实时读取前暂不判断周速度。"
+        case .zhHant:
+            suppressedValue = "暫不判斷"
+            detail = "正在顯示上次成功的週額度資料，恢復即時讀取前暫不判斷週速度。"
+        case .en:
+            suppressedValue = "Not judged"
+            detail = "Showing the last successful weekly reading. Pace judgment is paused until live reads recover."
+        }
+        return CapsuleDisplayModel(
+            tone: .unknown,
+            statusLabel: copy.statusStale,
+            defaultText: detail,
+            compactDetail: weeklyCompactDetail(lastSuccessfulForecast, locale: locale),
+            metrics: [
+                CapsuleMetric(label: labels[0], value: formatPercent(elapsed, copy: copy), numericValue: elapsed.map { Int($0.rounded()) }),
+                CapsuleMetric(label: labels[1], value: formatPercent(used, copy: copy), numericValue: used.map { Int($0.rounded()) }),
+                CapsuleMetric(label: labels[2], value: suppressedValue, numericValue: nil),
+                CapsuleMetric(label: labels[3], value: suppressedValue, numericValue: nil)
+            ]
+        )
+    }
+
+    public var usedQuotaText: String? {
+        guard metrics.indices.contains(1) else { return nil }
+        return metrics[1].value
+    }
+
     private static func tone(for state: WeeklyRunwayState) -> CapsuleLevel {
         switch state {
         case .enough: .safe

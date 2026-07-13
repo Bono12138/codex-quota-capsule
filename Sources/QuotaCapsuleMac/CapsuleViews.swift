@@ -349,11 +349,6 @@ struct DetailPopoverView: View {
                     Text(store.copy.weeklyOnlyTitle)
                         .font(.system(size: 11, weight: .bold))
                         .foregroundStyle(.secondary)
-                    Text(store.displayModel.statusLabel)
-                        .font(.system(size: 18, weight: .bold))
-                        .lineLimit(2)
-                        .minimumScaleFactor(0.86)
-                        .fixedSize(horizontal: false, vertical: true)
                 }
                 .layoutPriority(1)
                 Spacer()

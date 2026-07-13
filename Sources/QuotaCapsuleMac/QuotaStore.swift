@@ -260,7 +260,7 @@ final class QuotaStore: ObservableObject {
     }
 
     var compactUsedValueText: String? {
-        displayModel.metrics.first { $0.label == copy.metricUsed }?.value
+        displayModel.usedQuotaText
     }
 
     var compactProjectedText: String {
@@ -469,9 +469,11 @@ final class QuotaStore: ObservableObject {
                 now: now,
                 locale: locale
             )
+        }
+        displayModel = makeDisplayModel()
+        if attemptSnapshot.sourceStatus == .ok {
             recordQuotaStateSample()
         }
-        displayModel = CapsuleDisplayModel.make(forecast: runwayForecast, locale: locale)
         recordEvent(
             name: attemptSnapshot.sourceStatus == .ok ? "quota_refresh_succeeded" : "quota_refresh_failed",
             surface: "source",
@@ -560,9 +562,19 @@ final class QuotaStore: ObservableObject {
     }
 
     private func recomputeDisplay() {
-        displayModel = CapsuleDisplayModel.make(forecast: runwayForecast, locale: locale)
+        displayModel = makeDisplayModel()
         lastRefreshText = lastRefreshText == QuotaCopy(locale: .zhHans).notRefreshed ? copy.notRefreshed : lastRefreshText
         lastAttemptText = lastAttemptText == QuotaCopy(locale: .zhHans).notAttempted ? copy.notAttempted : lastAttemptText
+    }
+
+    private func makeDisplayModel() -> CapsuleDisplayModel {
+        if snapshot.sourceStatus == .stale {
+            return CapsuleDisplayModel.makeStale(
+                lastSuccessfulForecast: runwayForecast,
+                locale: locale
+            )
+        }
+        return CapsuleDisplayModel.make(forecast: runwayForecast, locale: locale)
     }
 
     private func recordEvent(

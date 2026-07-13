@@ -100,6 +100,23 @@ struct WeeklyDisplayModelTests {
         #expect(copy.onboardingMenuStepBody.contains("本周已用"))
     }
 
+    @Test("stale presentation freezes percentages and suppresses runway claims")
+    func stalePresentationIsNonReassuring() {
+        let model = CapsuleDisplayModel.makeStale(
+            lastSuccessfulForecast: forecast(),
+            locale: .zhHans
+        )
+
+        #expect(model.tone == .unknown)
+        #expect(model.statusLabel == "已过期")
+        #expect(model.defaultText.contains("上次成功"))
+        #expect(model.metrics[0].value == "42%")
+        #expect(model.metrics[1].value == "28%")
+        #expect(model.metrics[2].value == "暂不判断")
+        #expect(model.metrics[3].value == "暂不判断")
+        #expect(model.usedQuotaText == "28%")
+    }
+
     @Test("non-finite and negative values never reach display strings")
     func invalidNumbersAreSanitized() {
         let model = CapsuleDisplayModel.make(
