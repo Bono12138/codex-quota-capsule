@@ -63,7 +63,7 @@ struct PendingAnalyticsUpload {
 
 @MainActor
 final class QuotaHistoryStore {
-    static let historySchemaVersion = 2
+    static let historySchemaVersion = WeeklyHistoryMigration.schemaVersion
     static let analyticsSchemaVersion = 1
     static let consentVersion = "2026-07-01-v1"
 
@@ -142,6 +142,64 @@ final class QuotaHistoryStore {
         }
 
         _ = database
+    }
+
+    func recordWeeklySnapshot(_ snapshot: AgentQuotaSnapshot) {
+        guard snapshot.sourceStatus == .ok, let weeklyWindow = snapshot.weeklyWindow else { return }
+
+        execute("BEGIN IMMEDIATE TRANSACTION")
+        defer { execute("COMMIT") }
+
+        let captureID = insertCapture(snapshot)
+        guard captureID > 0 else { return }
+        insertRawWeeklyWindow(captureID: captureID, snapshot: snapshot, window: weeklyWindow)
+    }
+
+    func recentWeeklyReadings(limit: Int = 2_500) -> [WeeklyQuotaReading] {
+        let sql = """
+        SELECT c.provider, c.source_status, c.fetched_at,
+               w.window_type, w.window_minutes, w.used_percent,
+               w.remaining_percent, w.resets_at,
+               w.burn_rate_percent_per_min,
+               w.projected_remaining_at_reset,
+               w.reset_detected
+        FROM quota_windows w
+        JOIN captures c ON c.id = w.capture_id
+        WHERE w.window_type = 'weekly'
+        ORDER BY c.fetched_at DESC, w.id DESC
+        LIMIT ?
+        """
+        guard let statement = prepare(sql) else { return [] }
+        defer { sqlite3_finalize(statement) }
+        bindInt(statement, 1, max(1, min(limit, 10_000)))
+
+        var readings: [WeeklyQuotaReading] = []
+        while sqlite3_step(statement) == SQLITE_ROW {
+            let statusText = sqliteText(statement, column: 1)
+            let status: SourceStatus
+            switch statusText {
+            case "success": status = .ok
+            case "stale": status = .stale
+            default: status = .error
+            }
+            let row = StoredQuotaWindowRow(
+                provider: sqliteText(statement, column: 0),
+                sourceStatus: status,
+                fetchedAt: Date(timeIntervalSince1970: sqlite3_column_double(statement, 2)),
+                windowType: sqliteText(statement, column: 3),
+                windowMinutes: Int(sqlite3_column_int(statement, 4)),
+                usedPercent: sqlite3_column_double(statement, 5),
+                remainingPercent: sqlite3_column_double(statement, 6),
+                resetsAt: Date(timeIntervalSince1970: sqlite3_column_double(statement, 7)),
+                legacyDerivedRate: sqliteOptionalDouble(statement, column: 8),
+                legacyProjectedRemaining: sqliteOptionalDouble(statement, column: 9),
+                legacyResetDetected: sqlite3_column_int(statement, 10) != 0
+            )
+            if let reading = WeeklyHistoryMigration.reading(from: row) {
+                readings.append(reading)
+            }
+        }
+        return readings.reversed()
     }
 
     @discardableResult
@@ -352,6 +410,12 @@ final class QuotaHistoryStore {
         execute("CREATE INDEX IF NOT EXISTS idx_windows_type_time ON quota_windows(window_type, resets_at)")
         execute("CREATE INDEX IF NOT EXISTS idx_events_name_time ON product_events(event_name, event_time)")
         execute("CREATE INDEX IF NOT EXISTS idx_events_upload ON product_events(upload_status, id)")
+
+        execute("BEGIN IMMEDIATE TRANSACTION")
+        for statement in WeeklyHistoryMigration.cleanupStatements {
+            execute(statement)
+        }
+        execute("COMMIT")
     }
 
     private func repairLegacyStaleSuccessCaptures() {
@@ -462,6 +526,34 @@ final class QuotaHistoryStore {
         _ = sqlite3_step(statement)
     }
 
+    private func insertRawWeeklyWindow(
+        captureID: Int64,
+        snapshot: AgentQuotaSnapshot,
+        window: QuotaWindow
+    ) {
+        let windowStart = window.resetsAt.addingTimeInterval(TimeInterval(-window.windowMinutes * 60))
+        let minutesUntilReset = window.resetsAt.timeIntervalSince(snapshot.fetchedAt) / 60
+        let sql = """
+        INSERT INTO quota_windows (
+          capture_id, window_type, window_minutes, used_percent, remaining_percent,
+          resets_at, window_start, time_elapsed_percent, minutes_until_reset,
+          burn_rate_percent_per_min, burn_rate_vs_even_pace,
+          projected_remaining_at_reset, estimated_empty_at, state,
+          used_delta_percent, delta_minutes, delta_percent_per_min, reset_detected
+        ) VALUES (?, 'weekly', ?, ?, ?, ?, ?, NULL, ?, NULL, NULL, NULL, NULL, 'raw', NULL, NULL, NULL, 0)
+        """
+        guard let statement = prepare(sql) else { return }
+        defer { sqlite3_finalize(statement) }
+        bindInt64(statement, 1, captureID)
+        bindInt(statement, 2, window.windowMinutes)
+        bindDouble(statement, 3, window.usedPercent)
+        bindDouble(statement, 4, window.remainingPercent)
+        bindDouble(statement, 5, window.resetsAt.timeIntervalSince1970)
+        bindDouble(statement, 6, windowStart.timeIntervalSince1970)
+        bindDouble(statement, 7, minutesUntilReset)
+        _ = sqlite3_step(statement)
+    }
+
     private func latestWindowSample(windowType: String) -> (usedPercent: Double, capturedAt: Date, resetsAt: Date)? {
         let sql = """
         SELECT w.used_percent, c.fetched_at, w.resets_at
@@ -519,6 +611,16 @@ final class QuotaHistoryStore {
             return nil
         }
         return statement
+    }
+
+    private func sqliteText(_ statement: OpaquePointer, column: Int32) -> String {
+        guard let value = sqlite3_column_text(statement, column) else { return "" }
+        return String(cString: value)
+    }
+
+    private func sqliteOptionalDouble(_ statement: OpaquePointer, column: Int32) -> Double? {
+        guard sqlite3_column_type(statement, column) != SQLITE_NULL else { return nil }
+        return sqlite3_column_double(statement, column)
     }
 
     private func execute(_ sql: String) {

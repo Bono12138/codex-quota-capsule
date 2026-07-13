@@ -1,5 +1,6 @@
 import Foundation
 import QuotaCapsuleCore
+import SQLite3
 
 func expect(_ condition: @autoclosure () -> Bool, _ message: String) {
     if !condition() {
@@ -1280,6 +1281,71 @@ func testCodexAppServerClientRetriesOnlyTransientFailures() {
     expect(!CodexAppServerClient.shouldRetry(missingCLISnapshot), "missing CLI should not be retried")
 }
 
+func testWeeklyHistoryMigrationSQLIsIdempotent() {
+    var database: OpaquePointer?
+    expect(sqlite3_open(":memory:", &database) == SQLITE_OK, "migration spec should open SQLite")
+    defer { sqlite3_close(database) }
+
+    func execute(_ sql: String) {
+        let result = sqlite3_exec(database, sql, nil, nil, nil)
+        expect(result == SQLITE_OK, "migration SQL should execute: \(sql)")
+    }
+
+    func scalarInt(_ sql: String) -> Int {
+        var statement: OpaquePointer?
+        expect(sqlite3_prepare_v2(database, sql, -1, &statement, nil) == SQLITE_OK, "scalar query should prepare")
+        defer { sqlite3_finalize(statement) }
+        expect(sqlite3_step(statement) == SQLITE_ROW, "scalar query should return a row")
+        return Int(sqlite3_column_int(statement, 0))
+    }
+
+    execute("CREATE TABLE captures (id INTEGER PRIMARY KEY)")
+    execute("""
+    CREATE TABLE quota_windows (
+      id INTEGER PRIMARY KEY,
+      capture_id INTEGER NOT NULL,
+      window_type TEXT NOT NULL,
+      time_elapsed_percent INTEGER,
+      burn_rate_percent_per_min REAL,
+      burn_rate_vs_even_pace REAL,
+      projected_remaining_at_reset INTEGER,
+      estimated_empty_at REAL,
+      used_delta_percent REAL,
+      delta_minutes REAL,
+      delta_percent_per_min REAL,
+      reset_detected INTEGER NOT NULL DEFAULT 0
+    )
+    """)
+    execute("INSERT INTO captures (id) VALUES (1), (2)")
+    execute("""
+    INSERT INTO quota_windows (
+      id, capture_id, window_type, time_elapsed_percent,
+      burn_rate_percent_per_min, burn_rate_vs_even_pace,
+      projected_remaining_at_reset, estimated_empty_at,
+      used_delta_percent, delta_minutes, delta_percent_per_min, reset_detected
+    ) VALUES
+      (1, 1, '5h', 25, 1, 2, 3, 4, 5, 6, 7, 1),
+      (2, 2, 'weekly', 25, 1, 2, 3, 4, 5, 6, 7, 1)
+    """)
+
+    for _ in 0..<2 {
+        execute("BEGIN IMMEDIATE TRANSACTION")
+        for statement in WeeklyHistoryMigration.cleanupStatements {
+            execute(statement)
+        }
+        execute("COMMIT")
+    }
+
+    expect(scalarInt("PRAGMA user_version") == 3, "migration should set schema version 3")
+    expect(scalarInt("SELECT COUNT(*) FROM quota_windows WHERE window_type = '5h'") == 0, "migration should purge 5h rows")
+    expect(scalarInt("SELECT COUNT(*) FROM quota_windows WHERE window_type = 'weekly'") == 1, "migration should preserve weekly rows")
+    expect(
+        scalarInt("SELECT COUNT(*) FROM quota_windows WHERE window_type = 'weekly' AND burn_rate_percent_per_min IS NULL AND projected_remaining_at_reset IS NULL AND reset_detected = 0") == 1,
+        "migration should erase legacy weekly derivations"
+    )
+    expect(scalarInt("SELECT COUNT(*) FROM captures") == 1, "migration should remove captures orphaned by short-window deletion")
+}
+
 do {
     try testParsesCodexRateLimitsByDuration()
     try testParsesZeroAndOneJSONNumbersWithoutMistakingThemForBooleans()
@@ -1303,6 +1369,7 @@ do {
     testQuotaRefreshReducerSanitizesNetworkErrors()
     testCodexAppServerClientDefaultTimeoutIsProductionTolerant()
     testCodexAppServerClientRetriesOnlyTransientFailures()
+    testWeeklyHistoryMigrationSQLIsIdempotent()
     print("QuotaCapsuleCoreSpec passed")
 } catch {
     fputs("Spec failed with error: \(error)\n", stderr)

@@ -14,6 +14,7 @@ enum OnboardingFocus {
 final class QuotaStore: ObservableObject {
     @Published private(set) var snapshot: AgentQuotaSnapshot
     @Published private(set) var prediction: CapsulePrediction
+    @Published private(set) var runwayForecast: WeeklyRunwayForecast
     @Published private(set) var displayModel: CapsuleDisplayModel
     @Published private(set) var copy: QuotaCopy
     @Published private(set) var isRefreshing = false
@@ -86,6 +87,12 @@ final class QuotaStore: ObservableObject {
         let initialPrediction = QuotaPredictor.predict(snapshot: initial, now: now, locale: locale)
         snapshot = initial
         prediction = initialPrediction
+        runwayForecast = WeeklyRunwayPredictor.predict(
+            snapshot: initial,
+            quality: WeeklyQualityResult(state: .unavailable, observations: [], canonicalResetAt: nil, flags: []),
+            now: now,
+            locale: locale
+        )
         displayModel = CapsuleDisplayModel.make(prediction: initialPrediction, locale: locale)
         lastRefreshText = initialCopy.notRefreshed
         lastAttemptText = initialCopy.notAttempted
@@ -493,9 +500,16 @@ final class QuotaStore: ObservableObject {
         lastAttemptText = reduction.lastAttemptText
         lastErrorText = reduction.lastErrorText
         let attemptSnapshot = reduction.latestAttemptSnapshot
-        let attemptPrediction = QuotaPredictor.predict(snapshot: attemptSnapshot, now: attemptSnapshot.fetchedAt, locale: locale)
-        historyStore.recordSnapshot(attemptSnapshot, prediction: attemptPrediction, locale: locale)
         if attemptSnapshot.sourceStatus == .ok {
+            historyStore.recordWeeklySnapshot(attemptSnapshot)
+            let readings = historyStore.recentWeeklyReadings()
+            runwayForecast = QuotaRefreshReducer.reduceForecast(
+                currentForecast: runwayForecast,
+                newSnapshot: reduction.snapshot,
+                weeklyReadings: readings,
+                now: now,
+                locale: locale
+            )
             recordQuotaStateSample()
         }
         recordEvent(

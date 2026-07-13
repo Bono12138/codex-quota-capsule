@@ -145,4 +145,61 @@ struct WeeklyRunwayPredictorTests {
         #expect(forecast.projectedRemainingBandAtReset == nil)
         #expect(forecast.confidence == .low)
     }
+
+    @Test("a failed refresh freezes the previous weekly forecast")
+    func failedRefreshFreezesForecast() {
+        let previous = WeeklyRunwayPredictor.predict(
+            snapshot: snapshot(remaining: 65, daysRemaining: 4),
+            quality: quality(values: [25, 35], spacingHours: 24),
+            now: now
+        )
+        let failure = AgentQuotaSnapshot(
+            provider: "codex",
+            sourceStatus: .error,
+            fetchedAt: now.addingTimeInterval(60),
+            weeklyWindow: nil,
+            errorMessage: "network unavailable"
+        )
+
+        let result = QuotaRefreshReducer.reduceForecast(
+            currentForecast: previous,
+            newSnapshot: failure,
+            weeklyReadings: [],
+            now: now.addingTimeInterval(60)
+        )
+
+        #expect(result == previous)
+    }
+
+    @Test("a successful refresh recalculates from cleaned weekly history")
+    func successfulRefreshRecalculatesForecast() {
+        let live = snapshot(remaining: 65, daysRemaining: 4)
+        let history = [25.0, 30.0, 35.0].enumerated().map { index, used in
+            WeeklyQuotaReading(
+                provider: "codex",
+                sourceStatus: .ok,
+                fetchedAt: now.addingTimeInterval(Double(index - 2) * 12 * 3_600),
+                windowMinutes: 10_080,
+                usedPercent: used,
+                remainingPercent: 100 - used,
+                resetsAt: now.addingTimeInterval(4 * 86_400),
+                errorMessage: nil
+            )
+        }
+        let previous = WeeklyRunwayPredictor.predict(
+            snapshot: snapshot(remaining: 99, daysRemaining: 6),
+            quality: quality(values: [1], spacingHours: 1, resetDays: 6),
+            now: now
+        )
+
+        let result = QuotaRefreshReducer.reduceForecast(
+            currentForecast: previous,
+            newSnapshot: live,
+            weeklyReadings: history,
+            now: now
+        )
+
+        #expect(result.state == .enough)
+        #expect(result != previous)
+    }
 }

@@ -29,6 +29,25 @@ public struct QuotaRefreshReduction: Equatable, Sendable {
 }
 
 public enum QuotaRefreshReducer {
+    public static func reduceForecast(
+        currentForecast: WeeklyRunwayForecast,
+        newSnapshot: AgentQuotaSnapshot,
+        weeklyReadings: [WeeklyQuotaReading],
+        now: Date,
+        locale: QuotaLocale = .zhHans
+    ) -> WeeklyRunwayForecast {
+        guard newSnapshot.sourceStatus == .ok, newSnapshot.weeklyWindow != nil else {
+            return currentForecast
+        }
+        let quality = WeeklyQualityEngine.analyze(weeklyReadings, now: now)
+        return WeeklyRunwayPredictor.predict(
+            snapshot: newSnapshot,
+            quality: quality,
+            now: now,
+            locale: locale
+        )
+    }
+
     public static func reduce(
         currentSnapshot: AgentQuotaSnapshot,
         currentLastRefreshText: String,
