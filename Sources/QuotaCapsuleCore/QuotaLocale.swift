@@ -115,6 +115,38 @@ public struct QuotaCopy: Equatable, Sendable {
         }
     }
 
+    public var weeklyOnlyTitle: String {
+        switch locale {
+        case .zhHans: "Codex · 周额度"
+        case .zhHant: "Codex · 週額度"
+        case .en: "Codex · Weekly quota"
+        }
+    }
+
+    public var weeklyPaceTitle: String {
+        switch locale {
+        case .zhHans: "本周节奏"
+        case .zhHant: "本週節奏"
+        case .en: "Weekly pace"
+        }
+    }
+
+    public var weeklyGuidanceTitle: String {
+        switch locale {
+        case .zhHans: "速度与预算"
+        case .zhHant: "速度與預算"
+        case .en: "Pace and budget"
+        }
+    }
+
+    public var dataDiagnosticsTitle: String {
+        switch locale {
+        case .zhHans: "数据诊断"
+        case .zhHant: "資料診斷"
+        case .en: "Data diagnostics"
+        }
+    }
+
     public func forecastConfidence(_ confidence: ForecastConfidence) -> String {
         guard confidence != .low else { return "" }
         return switch (locale, confidence) {

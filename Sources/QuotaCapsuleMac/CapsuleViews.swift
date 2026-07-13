@@ -298,14 +298,14 @@ struct CompactStatusNote: View {
 struct DetailPopoverView: View {
     @ObservedObject var store: QuotaStore
     @State private var assistedFeedbackMessage = ""
+    @State private var diagnosticsExpanded = false
 
-    private var visibleMetrics: [CapsuleMetric] {
-        store.displayModel.metrics.filter {
-            $0.label != store.copy.metricResetBuffer && $0.label != store.copy.metricPace
-        }
+    private var progressMetrics: [CapsuleMetric] {
+        Array(store.displayModel.metrics.prefix(2))
     }
-    private var paceMetric: CapsuleMetric? {
-        store.displayModel.metrics.first { $0.label == store.copy.metricPace }
+
+    private var guidanceMetrics: [CapsuleMetric] {
+        Array(store.displayModel.metrics.dropFirst(2).prefix(2))
     }
 
     var body: some View {
@@ -343,13 +343,13 @@ struct DetailPopoverView: View {
     }
 
     private var detailContent: some View {
-        VStack(alignment: .leading, spacing: 13) {
+        VStack(alignment: .leading, spacing: 14) {
             HStack(alignment: .top) {
                 VStack(alignment: .leading, spacing: 5) {
-                    Text(store.copy.shortWindowTitle)
+                    Text(store.copy.weeklyOnlyTitle)
                         .font(.system(size: 11, weight: .bold))
                         .foregroundStyle(.secondary)
-                    Text(store.prediction.headline)
+                    Text(store.displayModel.statusLabel)
                         .font(.system(size: 18, weight: .bold))
                         .lineLimit(2)
                         .minimumScaleFactor(0.86)
@@ -366,45 +366,69 @@ struct DetailPopoverView: View {
                     .foregroundStyle(.black.opacity(0.82))
             }
 
-            Text(store.prediction.detail)
+            Text(store.displayModel.defaultText)
                 .font(.system(size: 13, weight: .medium))
                 .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
 
-            VStack(spacing: 10) {
-                ForEach(visibleMetrics, id: \.label) { metric in
+            VStack(alignment: .leading, spacing: 9) {
+                Text(store.copy.weeklyPaceTitle)
+                    .font(.system(size: 10, weight: .bold))
+                    .foregroundStyle(.secondary)
+                ForEach(progressMetrics, id: \.label) { metric in
                     MetricRow(metric: metric, tone: store.displayModel.tone)
                 }
             }
 
-            OverviewStatsGrid(
-                paceTitle: store.copy.metricPace,
-                paceValue: paceMetric?.value ?? store.copy.unknownValue,
-                weeklyTitle: store.copy.weeklyRemainingTitle,
-                weeklyValue: store.weeklyText,
-                resetTitle: store.copy.resetTimeTitle,
-                resetValue: store.resetText,
-                updatedTitle: store.copy.successUpdateTitle,
-                updatedValue: store.lastRefreshText,
-                tone: store.displayModel.tone
-            )
+            VStack(alignment: .leading, spacing: 8) {
+                Text(store.copy.weeklyGuidanceTitle)
+                    .font(.system(size: 10, weight: .bold))
+                    .foregroundStyle(.secondary)
+                HStack(spacing: 10) {
+                    ForEach(Array(guidanceMetrics.enumerated()), id: \.element.label) { index, metric in
+                        OverviewStatTile(
+                            title: metric.label,
+                            value: metric.value,
+                            tone: store.displayModel.tone,
+                            systemImage: index == 0 ? "speedometer" : "calendar.badge.clock"
+                        )
+                    }
+                }
+            }
 
-            WeeklyProjectionView(store: store)
+            HStack(spacing: 8) {
+                Label(store.resetText, systemImage: "clock.arrow.circlepath")
+                Spacer(minLength: 8)
+                Label(store.lastRefreshText, systemImage: "checkmark.seal")
+            }
+            .font(.system(size: 10, weight: .semibold))
+            .foregroundStyle(.secondary)
+
+            if !store.displayModel.confidenceText.isEmpty {
+                Text(store.displayModel.confidenceText)
+                    .font(.system(size: 10, weight: .semibold))
+                    .foregroundStyle(.secondary)
+            }
 
             PanelQuickActionsView(store: store, assistedFeedbackMessage: $assistedFeedbackMessage)
 
-            VStack(alignment: .leading, spacing: 7) {
-                Text(store.copy.dataSourceTitle)
+            DisclosureGroup(isExpanded: $diagnosticsExpanded) {
+                VStack(alignment: .leading, spacing: 7) {
+                    HStack(spacing: 8) {
+                        SourcePill(title: store.copy.sourceTitle, value: store.sourceNameText)
+                        SourcePill(title: store.copy.endpointTitle, value: store.sourceEndpointText)
+                        SourcePill(title: store.copy.statusTitle, value: store.sourceStatusText)
+                    }
+                    Text(store.sourceNoteText)
+                        .font(.system(size: 10, weight: .medium))
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                .padding(.top, 8)
+            } label: {
+                Label(store.copy.dataDiagnosticsTitle, systemImage: "stethoscope")
                     .font(.system(size: 10, weight: .bold))
                     .foregroundStyle(.secondary)
-                HStack(spacing: 8) {
-                    SourcePill(title: store.copy.sourceTitle, value: store.sourceNameText)
-                    SourcePill(title: store.copy.endpointTitle, value: store.sourceEndpointText)
-                    SourcePill(title: store.copy.statusTitle, value: store.sourceStatusText)
-                }
-                Text(store.sourceNoteText)
-                    .font(.system(size: 10, weight: .medium))
-                    .foregroundStyle(.secondary)
-                    .lineLimit(2)
             }
         }
     }
