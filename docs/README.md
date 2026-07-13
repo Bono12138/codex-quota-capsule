@@ -5,6 +5,7 @@ This index maps maintained product knowledge. Code and current documents must ag
 ## Current
 
 - `product/brief.md` — product promise and target user.
+- `product/forecast-methodology.md` — authoritative adaptive forecast math, evidence, confidence, and change control.
 - `product/mvp-scope.md` — current scope and explicit non-goals.
 - `product/acceptance-criteria.md` — automated and human release acceptance.
 - `product/feature-roadmap.md` — accepted, deferred, and rejected direction.

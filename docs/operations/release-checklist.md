@@ -9,7 +9,7 @@
 
 ## Privacy And Documentation
 
-- [ ] `npm run audit:repository` passes over all tracked files.
+- [ ] `npm run audit:repository` passes over all tracked and non-ignored working-tree files.
 - [ ] No local database, raw authenticated response, secret, personal path, or private repository address is tracked.
 - [ ] README, install guide, docs index, decisions, product contract, acceptance criteria, changelog, and release notes match shipped behavior.
 - [ ] Analytics schema and consent boundary are unchanged or explicitly reviewed.
@@ -38,6 +38,7 @@ git diff --check
 - [ ] Spotlight finds one supported Quota Capsule app and one `QuotaCapsuleBeta` process runs from `/Applications`.
 - [ ] A live read and read-only history query agree with visible percentages and timestamps.
 - [ ] Real use or a meaningful idle interval changes the forecast as expected before completion is claimed.
+- [ ] The first live weekly reading produces an early estimate immediately; weekly reset and data-read timing are both visible and distinct.
 
 ## Publication
 

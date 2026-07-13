@@ -27,8 +27,12 @@ final class QuotaStore: ObservableObject {
     @Published private(set) var lastRefreshText = ""
     @Published private(set) var lastAttemptText = ""
     @Published private(set) var lastErrorText: String?
+    @Published private(set) var lastSuccessfulReadAt: Date?
+    @Published private(set) var nextAutomaticReadAt: Date?
+    @Published private(set) var currentTime = Date()
 
     private var refreshTask: Task<Void, Never>?
+    private var clockTask: Task<Void, Never>?
     private var heartbeatTask: Task<Void, Never>?
     private var expandedStartedAt: Date?
     private var isFlushingAnalytics = false
@@ -50,6 +54,7 @@ final class QuotaStore: ObservableObject {
     private let minCapsuleWidth: CGFloat = 340
     private let maxCapsuleWidth: CGFloat = 560
     private let feedbackNudgeExpansionThreshold = 6
+    private let automaticRefreshInterval: TimeInterval = 60
 
     init(configuration: AppConfiguration = .current(), userDefaults: UserDefaults = .standard) {
         self.configuration = configuration
@@ -75,6 +80,7 @@ final class QuotaStore: ObservableObject {
         let storedWidth = userDefaults.double(forKey: capsuleWidthKey)
         capsuleWidth = storedWidth > 0 ? min(max(CGFloat(storedWidth), minCapsuleWidth), maxCapsuleWidth) : 420
         let now = Date()
+        currentTime = now
         let initial = AgentQuotaSnapshot(
             provider: "codex",
             sourceStatus: .error,
@@ -96,11 +102,22 @@ final class QuotaStore: ObservableObject {
 
         recordEvent(name: "app_launched", surface: "app", requiresConsent: false)
         refresh()
+        nextAutomaticReadAt = now.addingTimeInterval(automaticRefreshInterval)
         refreshTask = Task { [weak self] in
             while !Task.isCancelled {
                 try? await Task.sleep(nanoseconds: 60_000_000_000)
                 await MainActor.run {
+                    let now = Date()
                     self?.refresh()
+                    self?.nextAutomaticReadAt = now.addingTimeInterval(self?.automaticRefreshInterval ?? 60)
+                }
+            }
+        }
+        clockTask = Task { [weak self] in
+            while !Task.isCancelled {
+                try? await Task.sleep(nanoseconds: 1_000_000_000)
+                await MainActor.run {
+                    self?.currentTime = Date()
                 }
             }
         }
@@ -116,6 +133,7 @@ final class QuotaStore: ObservableObject {
 
     deinit {
         refreshTask?.cancel()
+        clockTask?.cancel()
         heartbeatTask?.cancel()
         analyticsUploadTask?.cancel()
         Task { @MainActor [launchedAt, lastSessionDurationKey] in
@@ -163,6 +181,28 @@ final class QuotaStore: ObservableObject {
             return copy.unknownValue
         }
         return QuotaStore.timeFormatter(for: locale).string(from: resetsAt)
+    }
+
+    var quotaResetDescription: String {
+        guard let resetsAt = snapshot.weeklyWindow?.resetsAt else {
+            return "\(copy.resetTimeTitle)：\(copy.unknownValue)"
+        }
+        return copy.quotaResetDescription(resetsAt: resetsAt, now: currentTime)
+    }
+
+    var dataRefreshDescription: String {
+        copy.dataRefreshDescription(
+            lastSuccess: lastSuccessfulReadAt,
+            nextAttempt: nextAutomaticReadAt,
+            now: currentTime
+        )
+    }
+
+    var paceComparisonText: String {
+        copy.paceComparison(
+            observed: runwayForecast.recentRateBandPerDay ?? runwayForecast.cycleRateBandPerDay,
+            sustainablePerDay: runwayForecast.sustainableRatePerDay
+        )
     }
 
     var sourceText: String {
@@ -460,6 +500,7 @@ final class QuotaStore: ObservableObject {
         lastErrorText = reduction.lastErrorText
         let attemptSnapshot = reduction.latestAttemptSnapshot
         if attemptSnapshot.sourceStatus == .ok {
+            lastSuccessfulReadAt = now
             historyStore.recordWeeklySnapshot(attemptSnapshot)
             let readings = historyStore.recentWeeklyReadings(now: now)
             runwayForecast = QuotaRefreshReducer.reduceForecast(

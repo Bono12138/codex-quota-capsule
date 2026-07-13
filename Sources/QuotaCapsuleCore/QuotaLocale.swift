@@ -81,18 +81,21 @@ public struct QuotaCopy: Equatable, Sendable {
         case (.zhHans, .unavailable): "数据暂不可用"
         case (.zhHans, .exhausted): "已用尽"
         case (.zhHans, .calibrating): "正在校准"
+        case (.zhHans, .earlyEstimate): "初步估算"
         case (.zhHans, .enough): "够用"
         case (.zhHans, .watch): "偏快"
         case (.zhHans, .mayRunOut): "可能不够"
         case (.zhHant, .unavailable): "資料暫不可用"
         case (.zhHant, .exhausted): "已用盡"
         case (.zhHant, .calibrating): "正在校準"
+        case (.zhHant, .earlyEstimate): "初步估算"
         case (.zhHant, .enough): "夠用"
         case (.zhHant, .watch): "偏快"
         case (.zhHant, .mayRunOut): "可能不夠"
         case (.en, .unavailable): "Data unavailable"
         case (.en, .exhausted): "Exhausted"
         case (.en, .calibrating): "Calibrating"
+        case (.en, .earlyEstimate): "Early estimate"
         case (.en, .enough): "On track"
         case (.en, .watch): "Running fast"
         case (.en, .mayRunOut): "May run out"
@@ -101,9 +104,28 @@ public struct QuotaCopy: Equatable, Sendable {
 
     public var weeklyMetricLabels: [String] {
         switch locale {
-        case .zhHans: ["本周时间", "本周已用", "最近 24 小时", "未来 24 小时建议"]
-        case .zhHant: ["本週時間", "本週已用", "最近 24 小時", "未來 24 小時建議"]
-        case .en: ["Week elapsed", "Used this week", "Last 24 hours", "Next 24-hour budget"]
+        case .zhHans: ["本周时间", "本周已用", "未来 24 小时建议", "最近 24 小时"]
+        case .zhHant: ["本週時間", "本週已用", "未來 24 小時建議", "最近 24 小時"]
+        case .en: ["Week elapsed", "Used this week", "Next 24-hour budget", "Last 24 hours"]
+        }
+    }
+
+    public func paceComparison(observed: PaceBand?, sustainablePerDay: Double?) -> String {
+        guard let observed,
+              observed.lower.isFinite,
+              observed.upper.isFinite,
+              let sustainablePerDay,
+              sustainablePerDay.isFinite,
+              sustainablePerDay >= 0 else {
+            return ""
+        }
+        let lower = Self.shortNumber(max(0, observed.lower))
+        let upper = Self.shortNumber(max(0, observed.upper))
+        let sustainable = Self.shortNumber(sustainablePerDay)
+        return switch locale {
+        case .zhHans: "观察速度 \(lower)–\(upper)%/天 · 可持续上限 \(sustainable)%/天"
+        case .zhHant: "觀察速度 \(lower)–\(upper)%/天 · 可持續上限 \(sustainable)%/天"
+        case .en: "Observed \(lower)–\(upper)%/day · sustainable up to \(sustainable)%/day"
         }
     }
 
@@ -149,15 +171,15 @@ public struct QuotaCopy: Equatable, Sendable {
 
     public var sustainableLineTitle: String {
         switch locale {
-        case .zhHans: "可持续线（刷新时保留 5%）"
-        case .zhHant: "可持續線（重設時保留 5%）"
-        case .en: "Sustainable line (5% reserve at reset)"
+        case .zhHans: "可持续线（按剩余额度均分）"
+        case .zhHant: "可持續線（按剩餘額度均分）"
+        case .en: "Sustainable line (remaining quota spread evenly)"
         }
     }
 
     public var forecastResetBandTitle: String {
         switch locale {
-        case .zhHans: "预测刷新余量"
+        case .zhHans: "预测重置余量"
         case .zhHant: "預測重設餘量"
         case .en: "Forecast balance at reset"
         }
@@ -198,6 +220,121 @@ public struct QuotaCopy: Equatable, Sendable {
         case (.en, .high): "Forecast confidence: high"
         default: ""
         }
+    }
+
+    public func confidenceReason(_ forecast: WeeklyRunwayForecast) -> String {
+        let transitions = forecast.paceEvidence.map(\.transitionCount).max() ?? 0
+        if forecast.confidenceReason == "cycle-only" || forecast.state == .earlyEstimate {
+            return switch locale {
+            case .zhHans: "初步判断：仅依据当前周期平均速度"
+            case .zhHant: "初步判斷：僅依據目前週期平均速度"
+            case .en: "Early estimate: based only on the current-cycle average"
+            }
+        }
+        if forecast.confidence == .high {
+            return switch locale {
+            case .zhHans: "可信度高：周期、最近 24 小时和活动节奏一致"
+            case .zhHant: "可信度高：週期、最近 24 小時和活動節奏一致"
+            case .en: "High confidence: cycle, recent, and activity pace agree"
+            }
+        }
+        if forecast.confidence == .medium, transitions > 0 {
+            return switch locale {
+            case .zhHans: "可信度中：已观察到 \(transitions) 次实际增长"
+            case .zhHant: "可信度中：已觀察到 \(transitions) 次實際增長"
+            case .en: "Medium confidence: \(transitions) real increase\(transitions == 1 ? "" : "s") observed"
+            }
+        }
+        return ""
+    }
+
+    public func quotaResetDescription(
+        resetsAt: Date,
+        now: Date,
+        timeZone: TimeZone = .current
+    ) -> String {
+        let timestamp = dateFormatter(dateOnly: false, timeZone: timeZone).string(from: resetsAt)
+        let countdown = relativeCountdown(to: resetsAt, now: now)
+        return switch locale {
+        case .zhHans: "周额度将在 \(timestamp) 重置（\(countdown)）"
+        case .zhHant: "週額度將在 \(timestamp) 重設（\(countdown)）"
+        case .en: "Weekly quota resets at \(timestamp) (\(countdown))"
+        }
+    }
+
+    public func dataRefreshDescription(
+        lastSuccess: Date?,
+        nextAttempt: Date?,
+        now: Date,
+        timeZone: TimeZone = .current
+    ) -> String {
+        let successText = lastSuccess.map { timeFormatter(timeZone: timeZone).string(from: $0) }
+        let nextText: String?
+        if let nextAttempt {
+            let seconds = max(0, Int(ceil(nextAttempt.timeIntervalSince(now))))
+            nextText = seconds == 0 ? nil : "\(seconds)"
+        } else {
+            nextText = nil
+        }
+
+        return switch (locale, successText, nextText) {
+        case (.zhHans, let success?, let next?): "数据更新于 \(success)，下次自动读取约 \(next) 秒后"
+        case (.zhHans, let success?, nil): "数据更新于 \(success)，即将自动读取"
+        case (.zhHans, nil, let next?): "尚未成功读取，下次自动读取约 \(next) 秒后"
+        case (.zhHans, nil, nil): "尚未成功读取，即将自动读取"
+        case (.zhHant, let success?, let next?): "資料更新於 \(success)，下次自動讀取約 \(next) 秒後"
+        case (.zhHant, let success?, nil): "資料更新於 \(success)，即將自動讀取"
+        case (.zhHant, nil, let next?): "尚未成功讀取，下次自動讀取約 \(next) 秒後"
+        case (.zhHant, nil, nil): "尚未成功讀取，即將自動讀取"
+        case (.en, let success?, let next?): "Data updated at \(success); next automatic read in about \(next)s"
+        case (.en, let success?, nil): "Data updated at \(success); automatic read due now"
+        case (.en, nil, let next?): "No successful read yet; next automatic read in about \(next)s"
+        case (.en, nil, nil): "No successful read yet; automatic read due now"
+        }
+    }
+
+    private func relativeCountdown(to date: Date, now: Date) -> String {
+        let seconds = max(0, Int(date.timeIntervalSince(now)))
+        let days = seconds / 86_400
+        let hours = seconds % 86_400 / 3_600
+        let minutes = seconds % 3_600 / 60
+        return switch locale {
+        case .zhHans:
+            days > 0 ? "\(days)天\(hours)小时后" : hours > 0 ? "\(hours)小时\(minutes)分钟后" : "\(max(1, minutes))分钟后"
+        case .zhHant:
+            days > 0 ? "\(days)天\(hours)小時後" : hours > 0 ? "\(hours)小時\(minutes)分鐘後" : "\(max(1, minutes))分鐘後"
+        case .en:
+            days > 0 ? "in \(days)d \(hours)h" : hours > 0 ? "in \(hours)h \(minutes)m" : "in \(max(1, minutes))m"
+        }
+    }
+
+    private func dateFormatter(dateOnly: Bool, timeZone: TimeZone) -> DateFormatter {
+        let formatter = DateFormatter()
+        formatter.timeZone = timeZone
+        switch locale {
+        case .zhHans:
+            formatter.locale = Locale(identifier: "zh_CN")
+            formatter.dateFormat = dateOnly ? "M月d日" : "M月d日 HH:mm"
+        case .zhHant:
+            formatter.locale = Locale(identifier: "zh_TW")
+            formatter.dateFormat = dateOnly ? "M月d日" : "M月d日 HH:mm"
+        case .en:
+            formatter.locale = Locale(identifier: "en_US_POSIX")
+            formatter.dateFormat = dateOnly ? "MMM d" : "MMM d, HH:mm"
+        }
+        return formatter
+    }
+
+    private func timeFormatter(timeZone: TimeZone) -> DateFormatter {
+        let formatter = DateFormatter()
+        formatter.timeZone = timeZone
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        formatter.dateFormat = "HH:mm:ss"
+        return formatter
+    }
+
+    private static func shortNumber(_ value: Double) -> String {
+        abs(value.rounded() - value) < 0.05 ? "\(Int(value.rounded()))" : String(format: "%.1f", value)
     }
 
     public var loadingStatus: String {
@@ -334,13 +471,13 @@ public struct QuotaCopy: Equatable, Sendable {
     public func weeklyProjectionWillLast(usedPercent: Int, projectedRemaining: Int) -> String {
         if usedPercent == 0 {
             return switch locale {
-            case .zhHans: "本周读数低于 1%，按上限估算周刷新时至少剩 \(projectedRemaining)%"
+            case .zhHans: "本周读数低于 1%，按上限估算周重置时至少剩 \(projectedRemaining)%"
             case .zhHant: "本週讀數低於 1%，按上限估算週重設時至少剩 \(projectedRemaining)%"
             case .en: "Weekly usage is below 1%; the upper-bound estimate leaves at least \(projectedRemaining)% at reset"
             }
         }
         return switch locale {
-        case .zhHans: "本周已用 \(usedPercent)%，按当前速度预计周刷新时剩 \(projectedRemaining)%"
+        case .zhHans: "本周已用 \(usedPercent)%，按当前速度预计周重置时剩 \(projectedRemaining)%"
         case .zhHant: "本週已用 \(usedPercent)%，依目前速度預計週重設時剩 \(projectedRemaining)%"
         case .en: "Weekly used \(usedPercent)%; projected \(projectedRemaining)% left at reset"
         }
@@ -356,17 +493,17 @@ public struct QuotaCopy: Equatable, Sendable {
 
     public var resetTimeTitle: String {
         switch locale {
-        case .zhHans: "刷新时间"
-        case .zhHant: "重設時間"
-        case .en: "Reset time"
+        case .zhHans: "周额度重置"
+        case .zhHant: "週額度重設"
+        case .en: "Weekly quota reset"
         }
     }
 
     public var successUpdateTitle: String {
         switch locale {
-        case .zhHans: "成功更新"
-        case .zhHant: "成功更新"
-        case .en: "Last success"
+        case .zhHans: "数据更新"
+        case .zhHant: "資料更新"
+        case .en: "Data updated"
         }
     }
 
@@ -484,9 +621,9 @@ public struct QuotaCopy: Equatable, Sendable {
 
     public var productIntroBody: String {
         switch locale {
-        case .zhHans: "Quota Capsule 会常驻 Mac 桌面和菜单栏，把 Codex 周额度转换成可操作判断：照最近速度能否撑到刷新，以及未来 24 小时建议不超过多少。"
+        case .zhHans: "Quota Capsule 会常驻 Mac 桌面和菜单栏，把 Codex 周额度转换成可操作判断：照有证据支持的速度能否撑到重置，以及未来 24 小时建议不超过多少。"
         case .zhHant: "Quota Capsule 會常駐 Mac 桌面和選單列，把 Codex 週額度轉換成可操作判斷：依最近速度能否撐到重設，以及未來 24 小時建議不超過多少。"
-        case .en: "Quota Capsule stays on your Mac desktop and menu bar, showing whether recent pace can last until reset and a safe budget for the next 24 hours."
+        case .en: "Quota Capsule stays on your Mac desktop and menu bar, showing whether the evidence-supported pace can last until reset and a sustainable budget for the next 24 hours."
         }
     }
 
@@ -889,7 +1026,7 @@ public struct QuotaCopy: Equatable, Sendable {
 
     public var onboardingSubtitle: String {
         switch locale {
-        case .zhHans: "它会常驻桌面，帮你判断 Codex 周额度能否撑到刷新，并给出未来 24 小时建议。"
+        case .zhHans: "它会常驻桌面，帮你判断 Codex 周额度能否撑到重置，并给出未来 24 小时建议。"
         case .zhHant: "它會常駐桌面，幫你判斷 Codex 週額度能否撐到重設，並給出未來 24 小時建議。"
         case .en: "It stays on your desktop, shows whether weekly Codex quota can last until reset, and gives a budget for the next 24 hours."
         }
@@ -1249,9 +1386,9 @@ public struct QuotaCopy: Equatable, Sendable {
 
     public var onboardingDetailStepBody: String {
         switch locale {
-        case .zhHans: "详情面板解释本周时间、本周已用、最近 24 小时、未来 24 小时建议、刷新余量、更新时间和数据来源。"
-        case .zhHant: "詳細面板會解釋本週時間、本週已用、最近 24 小時、未來 24 小時建議、重設餘量、更新時間和資料來源。"
-        case .en: "Details show week elapsed, weekly usage, the last 24-hour pace, the next 24-hour budget, reset buffer, update time, and source."
+        case .zhHans: "详情面板解释本周时间、本周已用、未来 24 小时建议、最近 24 小时、重置余量、置信原因、重置时间和数据读取时间。"
+        case .zhHant: "詳細面板會解釋本週時間、本週已用、未來 24 小時建議、最近 24 小時、重設餘量、可信原因、重設時間和資料讀取時間。"
+        case .en: "Details show week elapsed, weekly usage, the next-24-hour budget, last-24-hour usage, reset balance, confidence, reset time, and data-read time."
         }
     }
 
@@ -1265,9 +1402,9 @@ public struct QuotaCopy: Equatable, Sendable {
 
     public var onboardingWeeklyStepBody: String {
         switch locale {
-        case .zhHans: "周速度是主判断：看最近 24 小时实际用量、刷新余量和未来 24 小时建议。"
+        case .zhHans: "周速度是主判断：先看未来 24 小时建议，再看最近 24 小时、重置余量和置信原因。"
         case .zhHant: "週速度是主判斷：看最近 24 小時實際用量、重設餘量和未來 24 小時建議。"
-        case .en: "Weekly pace is the main judgment: actual last-24-hour usage, projected reset buffer, and the next-24-hour budget."
+        case .en: "Weekly pace is the main judgment: start with the next-24-hour budget, then recent usage, projected reset balance, and confidence."
         }
     }
 

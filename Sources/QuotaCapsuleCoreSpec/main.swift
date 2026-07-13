@@ -94,7 +94,7 @@ func testBuildsWeeklyDisplayModel() {
     expect(model.defaultText.contains("8%–17%"), "display should expose a projection band")
     expect(model.metrics.count == 4, "weekly display should keep four decision metrics")
     expect(
-        model.metrics.map(\.label) == ["本周时间", "本周已用", "最近 24 小时", "未来 24 小时建议"],
+        model.metrics.map(\.label) == ["本周时间", "本周已用", "未来 24 小时建议", "最近 24 小时"],
         "metric hierarchy should be weekly-only"
     )
 }

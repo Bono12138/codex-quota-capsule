@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { auditRepository, type RepositoryFile } from "./repository-policy";
+import { auditForecastDocumentation, auditRepository, type RepositoryFile } from "./repository-policy";
 
 describe("repository policy", () => {
   it("rejects legacy development channel text", () => {
@@ -35,6 +35,28 @@ describe("repository policy", () => {
     ])).toContainEqual(expect.objectContaining({
       path: "config/private-key.pem",
       rule: "credential-file",
+    }));
+  });
+
+  it("rejects fixed six-hour calibration and hidden five-percent reserve rules", () => {
+    const findings = auditRepository([
+      textFile("docs/product/brief.md", "积累 6 小时有效数据后给出判断，并在重置时保留 5%"),
+    ]);
+
+    expect(findings.map((item) => item.rule)).toEqual(expect.arrayContaining([
+      "fixed-calibration-gate",
+      "hidden-budget-reserve",
+    ]));
+  });
+
+  it("requires the maintained methodology to document the full adaptive contract", () => {
+    const findings = auditForecastDocumentation([
+      textFile("docs/product/forecast-methodology.md", "Weekly forecast"),
+    ]);
+
+    expect(findings).toContainEqual(expect.objectContaining({
+      path: "docs/product/forecast-methodology.md",
+      rule: "forecast-documentation",
     }));
   });
 });

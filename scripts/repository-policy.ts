@@ -42,6 +42,19 @@ const legacyDevPatterns = [
   /case\s+development/,
 ];
 
+const fixedCalibrationPatterns = [
+  /积累\s*6\s*小时有效数据后/,
+  /累積\s*6\s*小時有效資料後/,
+  /minimumCoverage\s*=\s*6/i,
+  /(?:collect|wait)[^\n]{0,40}6[- ]?hours?[^\n]{0,40}(?:before|until)/i,
+];
+
+const hiddenReservePatterns = [
+  /保留\s*5%/,
+  /5%\s+reserve\s+at\s+reset/i,
+  /reservePercent\s*=\s*5/i,
+];
+
 const binaryExtensions = new Set([
   ".gif", ".icns", ".jpeg", ".jpg", ".pdf", ".png", ".sqlite", ".zip",
 ]);
@@ -85,8 +98,39 @@ export function auditRepository(files: RepositoryFile[]): PolicyFinding[] {
       && /(?:public[- ]repo[- ](?:staging|sync)|public staging|private working tree)/i.test(text)) {
       findings.push(finding(normalizedPath, "split-repository-workflow", "copy-based repository split text is not allowed in active files"));
     }
+    if (!allowsLegacyHistory(normalizedPath)
+      && !allowsPolicyFixtures(normalizedPath)
+      && fixedCalibrationPatterns.some((pattern) => pattern.test(text))) {
+      findings.push(finding(normalizedPath, "fixed-calibration-gate", "a fixed six-hour forecast gate is not allowed"));
+    }
+    if (!allowsLegacyHistory(normalizedPath)
+      && !allowsPolicyFixtures(normalizedPath)
+      && hiddenReservePatterns.some((pattern) => pattern.test(text))) {
+      findings.push(finding(normalizedPath, "hidden-budget-reserve", "a hidden five-percent budget reserve is not allowed"));
+    }
   }
   return findings;
+}
+
+export function auditForecastDocumentation(files: RepositoryFile[]): PolicyFinding[] {
+  const path = "docs/product/forecast-methodology.md";
+  const document = files.find((file) => file.path.replaceAll("\\", "/") === path)?.text;
+  const requiredConcepts = [
+    /first valid reading/i,
+    /±0\.5/,
+    /cycle evidence/i,
+    /recent evidence/i,
+    /activity evidence/i,
+    /historical prior/i,
+    /confidence/i,
+    /remaining\s*\/\s*hours to reset/i,
+    /stale/i,
+    /quota reset[^\n]{0,80}data read/i,
+  ];
+  if (document === null || document === undefined || requiredConcepts.some((pattern) => !pattern.test(document))) {
+    return [finding(path, "forecast-documentation", "adaptive forecast methodology is missing required product contracts")];
+  }
+  return [];
 }
 
 function allowsPolicyFixtures(path: string): boolean {
@@ -96,7 +140,7 @@ function allowsPolicyFixtures(path: string): boolean {
 }
 
 export function trackedRepositoryFiles(root = process.cwd()): RepositoryFile[] {
-  const output = execFileSync("git", ["ls-files", "-z"], {
+  const output = execFileSync("git", ["ls-files", "-z", "--cached", "--others", "--exclude-standard"], {
     cwd: root,
     encoding: "utf8",
   });
@@ -124,7 +168,8 @@ function finding(path: string, rule: string, message: string): PolicyFinding {
 }
 
 function runCLI(): void {
-  const findings = auditRepository(trackedRepositoryFiles());
+  const files = trackedRepositoryFiles();
+  const findings = [...auditRepository(files), ...auditForecastDocumentation(files)];
   if (findings.length === 0) {
     console.log("Repository policy audit passed.");
     return;

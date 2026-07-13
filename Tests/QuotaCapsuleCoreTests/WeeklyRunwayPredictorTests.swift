@@ -47,16 +47,16 @@ struct WeeklyRunwayPredictorTests {
         )
     }
 
-    @Test("the sustainable rate preserves a five-point reset reserve")
-    func sustainableRateLeavesFivePercentReserve() {
+    @Test("the sustainable rate uses the full remaining allowance without a hidden reserve")
+    func sustainableRateUsesFullRemainingAllowance() {
         let forecast = WeeklyRunwayPredictor.predict(
             snapshot: snapshot(remaining: 65, daysRemaining: 4),
             quality: quality(values: [25, 30, 35], spacingHours: 12),
             now: now
         )
 
-        #expect(forecast.sustainableRatePerDay == 15)
-        #expect(forecast.next24HourBudget == 15)
+        #expect(forecast.sustainableRatePerDay == 16.25)
+        #expect(forecast.next24HourBudget == 16.25)
     }
 
     @Test("the last-24-hour metric is actual consumption rather than a daily rate")
@@ -80,8 +80,9 @@ struct WeeklyRunwayPredictorTests {
             now: now
         )
 
-        #expect(forecast.state == .calibrating)
-        #expect(forecast.recentRateBandPerDay == nil)
+        #expect(forecast.state == .earlyEstimate)
+        #expect(forecast.cycleRateBandPerDay != nil)
+        #expect(forecast.paceEvidence.map(\.kind) == [.cycle])
         #expect(forecast.confidence == .low)
     }
 
@@ -112,8 +113,8 @@ struct WeeklyRunwayPredictorTests {
         #expect(forecast.projectedRemainingBandAtReset?.upper ?? -1 >= 0)
     }
 
-    @Test("a pessimistic reset reserve of five percent is enough")
-    func pessimisticFivePercentReserveIsEnough() {
+    @Test("a conservative projection above zero is enough")
+    func conservativeProjectionAboveZeroIsEnough() {
         let forecast = WeeklyRunwayPredictor.predict(
             snapshot: snapshot(remaining: 65, daysRemaining: 4),
             quality: quality(values: [25, 35], spacingHours: 24),
@@ -121,7 +122,7 @@ struct WeeklyRunwayPredictorTests {
         )
 
         #expect(forecast.state == .enough)
-        #expect(forecast.projectedRemainingBandAtReset?.lower ?? 0 >= 5)
+        #expect(forecast.projectedRemainingBandAtReset?.lower ?? 0 > 0)
     }
 
     @Test("exhaustion takes precedence over low-confidence evidence")
@@ -148,16 +149,17 @@ struct WeeklyRunwayPredictorTests {
         #expect(forecast.projectedRemainingBandAtReset == nil)
     }
 
-    @Test("history that disagrees with the live reading cannot drive a forecast")
-    func mismatchedHistoryCalibrates() {
+    @Test("history that disagrees with the live reading falls back to current-cycle evidence")
+    func mismatchedHistoryFallsBackToEarlyEstimate() {
         let forecast = WeeklyRunwayPredictor.predict(
             snapshot: snapshot(remaining: 40, daysRemaining: 4),
             quality: quality(values: [20, 30], spacingHours: 24),
             now: now
         )
 
-        #expect(forecast.state == .calibrating)
-        #expect(forecast.projectedRemainingBandAtReset == nil)
+        #expect(forecast.state == .earlyEstimate)
+        #expect(forecast.projectedRemainingBandAtReset != nil)
+        #expect(forecast.paceEvidence.map(\.kind) == [.cycle])
         #expect(forecast.confidence == .low)
     }
 

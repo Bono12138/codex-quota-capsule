@@ -366,6 +366,13 @@ struct DetailPopoverView: View {
                 .foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)
 
+            if !store.displayModel.confidenceText.isEmpty {
+                Label(store.displayModel.confidenceText, systemImage: "scope")
+                    .font(.system(size: 10.5, weight: .semibold))
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+
             VStack(alignment: .leading, spacing: 9) {
                 Text(store.copy.weeklyPaceTitle)
                     .font(.system(size: 10, weight: .bold))
@@ -385,27 +392,28 @@ struct DetailPopoverView: View {
                             title: metric.label,
                             value: metric.value,
                             tone: store.displayModel.tone,
-                            systemImage: index == 0 ? "speedometer" : "calendar.badge.clock"
+                            systemImage: index == 0 ? "calendar.badge.clock" : "speedometer"
                         )
                     }
                 }
             }
 
+            if !store.paceComparisonText.isEmpty {
+                Label(store.paceComparisonText, systemImage: "gauge.with.dots.needle.33percent")
+                    .font(.system(size: 10.5, weight: .semibold))
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .padding(.horizontal, 2)
+            }
+
             WeeklyTrendChartView(store: store)
 
-            HStack(spacing: 8) {
-                Label("\(store.copy.resetTimeTitle) \(store.resetText)", systemImage: "clock.arrow.circlepath")
-                Spacer(minLength: 8)
-                Label("\(store.copy.successUpdateTitle) \(store.lastRefreshText)", systemImage: "checkmark.seal")
+            VStack(alignment: .leading, spacing: 6) {
+                Label(store.quotaResetDescription, systemImage: "calendar.badge.clock")
+                Label(store.dataRefreshDescription, systemImage: "arrow.triangle.2.circlepath")
             }
             .font(.system(size: 10, weight: .semibold))
             .foregroundStyle(.secondary)
-
-            if !store.displayModel.confidenceText.isEmpty {
-                Text(store.displayModel.confidenceText)
-                    .font(.system(size: 10, weight: .semibold))
-                    .foregroundStyle(.secondary)
-            }
 
             PanelQuickActionsView(store: store, assistedFeedbackMessage: $assistedFeedbackMessage)
 
@@ -488,7 +496,7 @@ struct WeeklyTrendChartView: View {
 
             var sustainable = Path()
             sustainable.move(to: CGPoint(x: inset, y: inset + height))
-            sustainable.addLine(to: CGPoint(x: inset + width, y: inset + height * 0.05))
+            sustainable.addLine(to: CGPoint(x: inset + width, y: inset))
             context.stroke(
                 sustainable,
                 with: .color(.secondary.opacity(0.55)),

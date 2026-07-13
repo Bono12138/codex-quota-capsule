@@ -1,7 +1,7 @@
 {
   "name": "codex-quota-capsule",
   "private": true,
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "A local-first macOS weekly quota runway assistant for Codex.",
   "license": "MIT",
   "type": "module",
