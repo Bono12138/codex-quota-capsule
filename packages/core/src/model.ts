@@ -27,6 +27,7 @@ export type CapsulePrediction = {
   quotaUsedPercent: number | null;
   projectedRemainingAtReset: number | null;
   estimatedEmptyAt: Date | null;
+  isWaitingForWindow?: boolean;
   headline: string;
   detail: string;
 };

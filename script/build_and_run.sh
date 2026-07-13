@@ -5,7 +5,7 @@ MODE="${1:-run}"
 PRODUCT_NAME="QuotaCapsuleMac"
 CHANNEL="${QUOTA_CAPSULE_CHANNEL:-internal-test}"
 MIN_SYSTEM_VERSION="14.0"
-APP_VERSION="${QUOTA_CAPSULE_VERSION:-0.1.2}"
+APP_VERSION="${QUOTA_CAPSULE_VERSION:-0.1.3}"
 APP_BUILD="${QUOTA_CAPSULE_BUILD:-$(date -u +%Y%m%d%H%M)}"
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"

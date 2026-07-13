@@ -62,17 +62,19 @@ public enum CodexAppServerClient {
         timeoutSeconds: TimeInterval = defaultTimeoutSeconds,
         locale: QuotaLocale = .zhHans,
         maxAttempts: Int = 3,
-        retryDelaySeconds: TimeInterval = 1.25
+        retryDelaySeconds: TimeInterval = 1.25,
+        retryWeeklyOnly: Bool = true
     ) async -> AgentQuotaSnapshot {
         let attempts = min(5, max(1, maxAttempts))
         let retryDelay = retryDelaySeconds.isFinite ? min(30, max(0, retryDelaySeconds)) : 0
         var latest = fetchCurrent(codexPath: codexPath, timeoutSeconds: timeoutSeconds, locale: locale)
+        var preferred = latest
         guard attempts > 1 else {
             return latest
         }
 
         for attempt in 1..<attempts {
-            guard shouldRetry(latest) else {
+            guard shouldRetry(latest, retryWeeklyOnly: retryWeeklyOnly) else {
                 return latest
             }
             guard !Task.isCancelled else { return latest }
@@ -83,17 +85,21 @@ public enum CodexAppServerClient {
                 return latest
             }
             latest = fetchCurrent(codexPath: codexPath, timeoutSeconds: timeoutSeconds, locale: locale)
-            if latest.sourceStatus == .ok {
+            preferred = preferredRetrySnapshot(current: preferred, candidate: latest)
+            if !shouldRetry(latest, retryWeeklyOnly: retryWeeklyOnly) {
                 return latest
             }
         }
 
-        return latest
+        return preferred
     }
 
-    public static func shouldRetry(_ snapshot: AgentQuotaSnapshot) -> Bool {
-        guard snapshot.sourceStatus != .ok else {
-            return false
+    public static func shouldRetry(
+        _ snapshot: AgentQuotaSnapshot,
+        retryWeeklyOnly: Bool = true
+    ) -> Bool {
+        if snapshot.sourceStatus == .ok {
+            return retryWeeklyOnly && snapshot.shortWindow == nil && snapshot.weeklyWindow != nil
         }
         let message = (snapshot.errorMessage ?? "").lowercased()
         if message.contains("not signed in")
@@ -104,12 +110,30 @@ public enum CodexAppServerClient {
             || message.contains("method not found")
             || message.contains("invalid params")
             || message.contains("回应缺少 result")
-            || message.contains("response is missing result")
-            || message.contains("没有包含可用额度窗口")
-            || message.contains("did not include any usable windows") {
+            || message.contains("response is missing result") {
             return false
         }
         return true
+    }
+
+    public static func preferredRetrySnapshot(
+        current: AgentQuotaSnapshot,
+        candidate: AgentQuotaSnapshot
+    ) -> AgentQuotaSnapshot {
+        completenessScore(candidate) >= completenessScore(current) ? candidate : current
+    }
+
+    private static func completenessScore(_ snapshot: AgentQuotaSnapshot) -> Int {
+        if snapshot.sourceStatus == .ok, snapshot.shortWindow != nil {
+            return 3
+        }
+        if snapshot.sourceStatus == .ok, snapshot.weeklyWindow != nil {
+            return 2
+        }
+        if snapshot.weeklyWindow != nil {
+            return 1
+        }
+        return 0
     }
 
     public static func fetchSnapshot(

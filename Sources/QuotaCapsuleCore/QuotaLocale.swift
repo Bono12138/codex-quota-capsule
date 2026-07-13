@@ -132,6 +132,26 @@ public struct QuotaCopy: Equatable, Sendable {
         }
     }
 
+    public var statusWaiting: String {
+        switch locale {
+        case .zhHans: "待开始"
+        case .zhHant: "待開始"
+        case .en: "Waiting"
+        }
+    }
+
+    public var waitingValue: String {
+        statusWaiting
+    }
+
+    public var activeShortWindowMissingError: String {
+        switch locale {
+        case .zhHans: "活动中的 5 小时窗口暂时没有出现在最新响应中，应用会自动重试。"
+        case .zhHant: "進行中的 5 小時週期暫時沒有出現在最新回應中，App 會自動重試。"
+        case .en: "The active 5-hour window is temporarily missing from the latest response. The app will retry automatically."
+        }
+    }
+
     public var metricElapsed: String {
         switch locale {
         case .zhHans: "时间进度"
@@ -289,7 +309,14 @@ public struct QuotaCopy: Equatable, Sendable {
     }
 
     public func weeklyProjectionWillLast(usedPercent: Int, projectedRemaining: Int) -> String {
-        switch locale {
+        if usedPercent == 0 {
+            return switch locale {
+            case .zhHans: "本周读数低于 1%，按上限估算周刷新时至少剩 \(projectedRemaining)%"
+            case .zhHant: "本週讀數低於 1%，按上限估算週重設時至少剩 \(projectedRemaining)%"
+            case .en: "Weekly usage is below 1%; the upper-bound estimate leaves at least \(projectedRemaining)% at reset"
+            }
+        }
+        return switch locale {
         case .zhHans: "本周已用 \(usedPercent)%，按当前速度预计周刷新时剩 \(projectedRemaining)%"
         case .zhHant: "本週已用 \(usedPercent)%，依目前速度預計週重設時剩 \(projectedRemaining)%"
         case .en: "Weekly used \(usedPercent)%; projected \(projectedRemaining)% left at reset"

@@ -4,6 +4,28 @@ import { createMockSnapshot, predictCapsuleState } from "../src";
 const now = new Date("2026-07-01T12:00:00+08:00");
 
 describe("predictCapsuleState", () => {
+  it("explains that weekly-only data is waiting for the next 5-hour window", () => {
+    const prediction = predictCapsuleState(
+      {
+        provider: "codex",
+        sourceStatus: "ok",
+        fetchedAt: now,
+        weeklyWindow: {
+          label: "weekly",
+          windowMinutes: 10080,
+          usedPercent: 0,
+          remainingPercent: 100,
+          resetsAt: new Date(now.getTime() + 7 * 24 * 60 * 60_000),
+        },
+      },
+      { now },
+    );
+
+    expect(prediction.level).toBe("unknown");
+    expect(prediction.headline).toContain("等待新的 5 小时窗口");
+    expect(prediction.detail).toContain("开始使用 Codex");
+  });
+
   it("marks a healthy burn rate as safe", () => {
     const prediction = predictCapsuleState(createMockSnapshot("safe", now), { now });
 
@@ -184,7 +206,7 @@ describe("predictCapsuleState", () => {
     expect(prediction.detail).toContain("weekly");
   });
 
-  it("keeps a non-exhausted weekly-only snapshot unknown because the short window is missing", () => {
+  it("keeps a non-exhausted weekly-only snapshot risk-unknown while explaining the waiting state", () => {
     const prediction = predictCapsuleState(
       {
         provider: "codex",
@@ -202,7 +224,8 @@ describe("predictCapsuleState", () => {
     );
 
     expect(prediction.level).toBe("unknown");
-    expect(prediction.headline).toContain("缺少短窗口");
+    expect(prediction.headline).toContain("等待新的 5 小时窗口");
+    expect(prediction.isWaitingForWindow).toBe(true);
   });
 
   it("keeps expired reset data unknown even when stale usage is exhausted", () => {

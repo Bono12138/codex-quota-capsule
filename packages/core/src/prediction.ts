@@ -37,7 +37,13 @@ export function predictCapsuleState(
   }
 
   if (!snapshot.shortWindow) {
-    return unknownPrediction("缺少短窗口额度数据", "The source adapter did not provide a short usage window.");
+    return {
+      ...unknownPrediction(
+        "等待新的 5 小时窗口",
+        "当前没有活动中的 5 小时窗口。开始使用 Codex 后会自动显示进度；如果你已经开始使用，应用会继续自动刷新。",
+      ),
+      isWaitingForWindow: true,
+    };
   }
 
   return predictWindow(snapshot.shortWindow, options);

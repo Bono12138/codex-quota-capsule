@@ -28,7 +28,7 @@ func testParsesCodexRateLimitsByDuration() throws {
     expect(snapshot.weeklyWindow?.usedPercent == 41, "weekly used percent should come from 10080 minute window")
 }
 
-func testTreatsWeeklyOnlyRateLimitsAsIncomplete() {
+func testTreatsWeeklyOnlyRateLimitsAsWaitingForTheNextShortWindow() {
     let snapshot = CodexRateLimitParser.parse(
         result: [
             "rateLimits": [
@@ -42,11 +42,74 @@ func testTreatsWeeklyOnlyRateLimitsAsIncomplete() {
         fetchedAt: Date(timeIntervalSince1970: 1_788_270_000)
     )
 
-    expect(snapshot.sourceStatus == .error, "weekly-only payload is incomplete for the 5-hour capsule")
-    expect(snapshot.shortWindow == nil, "incomplete payload should not invent a short window")
-    expect(snapshot.weeklyWindow?.usedPercent == 10, "valid weekly context should remain available for diagnostics")
-    expect(snapshot.errorMessage?.contains("5 小时") == true, "incomplete payload should explain the missing required window")
-    expect(CodexAppServerClient.shouldRetry(snapshot), "a partial payload should be retried immediately")
+    expect(snapshot.sourceStatus == .ok, "weekly-only payload can be the valid idle state between 5-hour windows")
+    expect(snapshot.shortWindow == nil, "idle payload should not invent a short window")
+    expect(snapshot.weeklyWindow?.usedPercent == 10, "current weekly context should remain visible while idle")
+    expect(snapshot.errorMessage == nil, "a valid idle payload should not carry a source error")
+    expect(CodexAppServerClient.shouldRetry(snapshot), "weekly-only payload should still be retried before accepting idle")
+    expect(!CodexAppServerClient.shouldRetry(snapshot, retryWeeklyOnly: false), "an idle caller should accept weekly-only data without extra probes")
+
+    let prediction = QuotaPredictor.predict(snapshot: snapshot, now: snapshot.fetchedAt)
+    let display = CapsuleDisplayModel.make(prediction: prediction)
+    expect(prediction.level == .unknown, "idle state should not make a risk claim")
+    expect(prediction.headline.contains("等待新的 5 小时窗口"), "idle state should explicitly say it is waiting for a new window")
+    expect(prediction.detail.contains("开始使用 Codex"), "idle state should explain what makes the window appear")
+    expect(display.statusLabel == "待开始", "idle state should not be labelled unknown or stale")
+    expect(display.metrics.allSatisfy { $0.value == "待开始" }, "inactive 5-hour metrics should say waiting instead of unknown")
+    expect(
+        QuotaCopy(locale: .zhHans).weeklyProjectionWillLast(usedPercent: 0, projectedRemaining: 79).contains("低于 1%"),
+        "weekly zero reports should use below-precision wording instead of claiming exact zero usage"
+    )
+}
+
+func testRetryKeepsTheMostCompleteSnapshotAcrossAttempts() {
+    let now = Date(timeIntervalSince1970: 1_788_270_000)
+    let weeklyOnly = AgentQuotaSnapshot(
+        provider: "codex",
+        sourceStatus: .ok,
+        fetchedAt: now,
+        shortWindow: nil,
+        weeklyWindow: QuotaWindow(
+            label: "weekly",
+            windowMinutes: 10_080,
+            usedPercent: 0,
+            remainingPercent: 100,
+            resetsAt: now.addingTimeInterval(10_000 * 60)
+        ),
+        errorMessage: nil
+    )
+    let emptyFailure = AgentQuotaSnapshot(
+        provider: "codex",
+        sourceStatus: .error,
+        fetchedAt: now.addingTimeInterval(1),
+        shortWindow: nil,
+        weeklyWindow: nil,
+        errorMessage: "rateLimits did not include any usable windows"
+    )
+    let full = AgentQuotaSnapshot(
+        provider: "codex",
+        sourceStatus: .ok,
+        fetchedAt: now.addingTimeInterval(2),
+        shortWindow: QuotaWindow(
+            label: "5h",
+            windowMinutes: 300,
+            usedPercent: 1,
+            remainingPercent: 99,
+            resetsAt: now.addingTimeInterval(300 * 60)
+        ),
+        weeklyWindow: weeklyOnly.weeklyWindow,
+        errorMessage: nil
+    )
+
+    expect(CodexAppServerClient.shouldRetry(emptyFailure), "an empty rateLimits response can be transient and should be retried")
+    expect(
+        CodexAppServerClient.preferredRetrySnapshot(current: weeklyOnly, candidate: emptyFailure) == weeklyOnly,
+        "a trailing empty response must not erase a valid weekly-only retry result"
+    )
+    expect(
+        CodexAppServerClient.preferredRetrySnapshot(current: weeklyOnly, candidate: full) == full,
+        "a complete short-window response should replace weekly-only data"
+    )
 }
 
 func testPredictsBurnRateRunway() {
@@ -1001,7 +1064,7 @@ func testQuotaRefreshReducerMarksLastSuccessStaleAfterFailure() {
     expect(reduction.lastErrorText?.contains("\n") == false, "refresh failure error should be compressed to one line")
 }
 
-func testQuotaRefreshReducerDoesNotOverwriteCompleteSnapshotWithPartialSuccess() {
+func testQuotaRefreshReducerDoesNotOverwriteAnActiveWindowWithWeeklyOnlyData() {
     let lastSuccessAt = Date(timeIntervalSince1970: 1_788_270_000)
     let now = lastSuccessAt.addingTimeInterval(60)
     let currentSnapshot = AgentQuotaSnapshot(
@@ -1026,7 +1089,7 @@ func testQuotaRefreshReducerDoesNotOverwriteCompleteSnapshotWithPartialSuccess()
     )
     let partialSnapshot = AgentQuotaSnapshot(
         provider: "codex",
-        sourceStatus: .error,
+        sourceStatus: .ok,
         fetchedAt: now,
         shortWindow: nil,
         weeklyWindow: QuotaWindow(
@@ -1036,7 +1099,7 @@ func testQuotaRefreshReducerDoesNotOverwriteCompleteSnapshotWithPartialSuccess()
             remainingPercent: 90,
             resetsAt: lastSuccessAt.addingTimeInterval(5_000 * 60)
         ),
-        errorMessage: "rateLimits 暂时缺少必需的 5 小时额度窗口"
+        errorMessage: nil
     )
 
     let reduction = QuotaRefreshReducer.reduce(
@@ -1050,8 +1113,63 @@ func testQuotaRefreshReducerDoesNotOverwriteCompleteSnapshotWithPartialSuccess()
     expect(reduction.snapshot.sourceStatus == .stale, "partial payload should make cached complete data stale")
     expect(reduction.snapshot.shortWindow == currentSnapshot.shortWindow, "partial payload must not erase the last valid 5-hour window")
     expect(reduction.snapshot.weeklyWindow == currentSnapshot.weeklyWindow, "one fetchedAt cannot safely mix fresh weekly and stale short windows")
-    expect(reduction.latestAttemptSnapshot == partialSnapshot, "history should retain the incomplete attempt for diagnosis")
+    expect(reduction.latestAttemptSnapshot.sourceStatus == .error, "history should retain an active-window omission as a failed attempt")
+    expect(reduction.latestAttemptSnapshot.weeklyWindow == partialSnapshot.weeklyWindow, "failed attempt should retain current weekly diagnostics")
     expect(reduction.prediction.level == .unknown, "cached data after a partial payload must not remain green safe")
+}
+
+func testQuotaRefreshReducerAcceptsWeeklyOnlyDataAfterTheShortWindowExpires() {
+    let previousFetch = Date(timeIntervalSince1970: 1_788_270_000)
+    let now = previousFetch.addingTimeInterval(180 * 60)
+    let currentSnapshot = AgentQuotaSnapshot(
+        provider: "codex",
+        sourceStatus: .stale,
+        fetchedAt: previousFetch,
+        shortWindow: QuotaWindow(
+            label: "5h",
+            windowMinutes: 300,
+            usedPercent: 7,
+            remainingPercent: 93,
+            resetsAt: previousFetch.addingTimeInterval(120 * 60)
+        ),
+        weeklyWindow: QuotaWindow(
+            label: "weekly",
+            windowMinutes: 10_080,
+            usedPercent: 11,
+            remainingPercent: 89,
+            resetsAt: previousFetch.addingTimeInterval(5_000 * 60)
+        ),
+        errorMessage: "missing short window"
+    )
+    let weeklyOnlySnapshot = AgentQuotaSnapshot(
+        provider: "codex",
+        sourceStatus: .ok,
+        fetchedAt: now,
+        shortWindow: nil,
+        weeklyWindow: QuotaWindow(
+            label: "weekly",
+            windowMinutes: 10_080,
+            usedPercent: 0,
+            remainingPercent: 100,
+            resetsAt: now.addingTimeInterval(10_000 * 60)
+        ),
+        errorMessage: nil
+    )
+
+    let reduction = QuotaRefreshReducer.reduce(
+        currentSnapshot: currentSnapshot,
+        currentLastRefreshText: "02:22:20",
+        newSnapshot: weeklyOnlySnapshot,
+        now: now,
+        attemptText: "08:22:20"
+    )
+
+    expect(reduction.snapshot == weeklyOnlySnapshot, "expired short data should be replaced by the current idle snapshot")
+    expect(reduction.snapshot.sourceStatus == .ok, "waiting for a new short window is a live source state")
+    expect(reduction.snapshot.weeklyWindow?.remainingPercent == 100, "idle state should display the latest weekly quota")
+    expect(reduction.lastRefreshText == "08:22:20", "accepted idle data should update the last success time")
+    expect(reduction.lastErrorText == nil, "accepted idle data should clear the old partial-response error")
+    expect(reduction.prediction.headline.contains("等待新的 5 小时窗口"), "expired short window should transition to explicit waiting copy")
 }
 
 func testQuotaRefreshReducerSanitizesNetworkErrors() {
@@ -1145,7 +1263,8 @@ func testCodexAppServerClientRetriesOnlyTransientFailures() {
 
 do {
     try testParsesCodexRateLimitsByDuration()
-    testTreatsWeeklyOnlyRateLimitsAsIncomplete()
+    testTreatsWeeklyOnlyRateLimitsAsWaitingForTheNextShortWindow()
+    testRetryKeepsTheMostCompleteSnapshotAcrossAttempts()
     testPredictsBurnRateRunway()
     testFractionalUsageStaysConsistentInDisplayMath()
     testPredictsBelowReportingPrecisionConservatively()
@@ -1183,7 +1302,8 @@ do {
     testCodexExecutableResolverReportsCheckedPaths()
     testQuotaRefreshReducerUpdatesOnSuccessfulRefresh()
     testQuotaRefreshReducerMarksLastSuccessStaleAfterFailure()
-    testQuotaRefreshReducerDoesNotOverwriteCompleteSnapshotWithPartialSuccess()
+    testQuotaRefreshReducerDoesNotOverwriteAnActiveWindowWithWeeklyOnlyData()
+    testQuotaRefreshReducerAcceptsWeeklyOnlyDataAfterTheShortWindowExpires()
     testQuotaRefreshReducerSanitizesNetworkErrors()
     testQuotaRefreshReducerUsesErrorWhenNoSuccessExists()
     testCodexAppServerClientDefaultTimeoutIsProductionTolerant()

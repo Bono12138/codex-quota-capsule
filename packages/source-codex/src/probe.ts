@@ -169,16 +169,6 @@ export function parseCodexRateLimits(
     };
   }
 
-  if (!shortWindow) {
-    return {
-      provider: "codex",
-      sourceStatus: "error",
-      fetchedAt: options.fetchedAt,
-      weeklyWindow,
-      errorMessage: "codex app-server rateLimits is temporarily missing the required 5-hour quota window.",
-    };
-  }
-
   return {
     provider: "codex",
     sourceStatus: "ok",

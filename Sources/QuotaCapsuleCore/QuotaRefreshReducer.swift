@@ -37,19 +37,26 @@ public enum QuotaRefreshReducer {
         attemptText: String,
         locale: QuotaLocale = .zhHans
     ) -> QuotaRefreshReduction {
-        if newSnapshot.sourceStatus == .ok {
+        let effectiveSnapshot = normalizeWeeklyOnlySnapshot(
+            currentSnapshot: currentSnapshot,
+            newSnapshot: newSnapshot,
+            now: now,
+            locale: locale
+        )
+
+        if effectiveSnapshot.sourceStatus == .ok {
             return makeReduction(
-                snapshot: newSnapshot,
+                snapshot: effectiveSnapshot,
                 now: now,
                 lastRefreshText: attemptText,
                 lastAttemptText: attemptText,
                 lastErrorText: nil,
-                latestAttemptSnapshot: newSnapshot,
+                latestAttemptSnapshot: effectiveSnapshot,
                 locale: locale
             )
         }
 
-        let cleanedError = cleanError(newSnapshot.errorMessage, locale: locale)
+        let cleanedError = cleanError(effectiveSnapshot.errorMessage, locale: locale)
 
         if currentSnapshot.sourceStatus == .ok || currentSnapshot.sourceStatus == .stale,
            currentSnapshot.shortWindow != nil || currentSnapshot.weeklyWindow != nil {
@@ -67,17 +74,17 @@ public enum QuotaRefreshReducer {
                 lastRefreshText: currentLastRefreshText,
                 lastAttemptText: attemptText,
                 lastErrorText: cleanedError,
-                latestAttemptSnapshot: newSnapshot,
+                latestAttemptSnapshot: effectiveSnapshot,
                 locale: locale
             )
         }
 
         let safeFailureSnapshot = AgentQuotaSnapshot(
-            provider: newSnapshot.provider,
-            sourceStatus: newSnapshot.sourceStatus,
-            fetchedAt: newSnapshot.fetchedAt,
-            shortWindow: newSnapshot.shortWindow,
-            weeklyWindow: newSnapshot.weeklyWindow,
+            provider: effectiveSnapshot.provider,
+            sourceStatus: effectiveSnapshot.sourceStatus,
+            fetchedAt: effectiveSnapshot.fetchedAt,
+            shortWindow: effectiveSnapshot.shortWindow,
+            weeklyWindow: effectiveSnapshot.weeklyWindow,
             errorMessage: cleanedError
         )
         return makeReduction(
@@ -86,8 +93,32 @@ public enum QuotaRefreshReducer {
             lastRefreshText: currentLastRefreshText,
             lastAttemptText: attemptText,
             lastErrorText: cleanedError,
-            latestAttemptSnapshot: newSnapshot,
+            latestAttemptSnapshot: effectiveSnapshot,
             locale: locale
+        )
+    }
+
+    private static func normalizeWeeklyOnlySnapshot(
+        currentSnapshot: AgentQuotaSnapshot,
+        newSnapshot: AgentQuotaSnapshot,
+        now: Date,
+        locale: QuotaLocale
+    ) -> AgentQuotaSnapshot {
+        guard newSnapshot.sourceStatus == .ok,
+              newSnapshot.shortWindow == nil,
+              newSnapshot.weeklyWindow != nil,
+              let currentShortWindow = currentSnapshot.shortWindow,
+              currentShortWindow.resetsAt > now else {
+            return newSnapshot
+        }
+
+        return AgentQuotaSnapshot(
+            provider: newSnapshot.provider,
+            sourceStatus: .error,
+            fetchedAt: newSnapshot.fetchedAt,
+            shortWindow: nil,
+            weeklyWindow: newSnapshot.weeklyWindow,
+            errorMessage: QuotaCopy(locale: locale).activeShortWindowMissingError
         )
     }
 

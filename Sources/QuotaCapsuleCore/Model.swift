@@ -62,6 +62,7 @@ public struct CapsulePrediction: Equatable, Sendable {
     public let quotaUsedPercentExact: Double?
     public let projectedRemainingAtReset: Int?
     public let estimatedEmptyAt: Date?
+    public let isWaitingForWindow: Bool
     public let headline: String
     public let detail: String
 
@@ -73,6 +74,7 @@ public struct CapsulePrediction: Equatable, Sendable {
         quotaUsedPercentExact: Double? = nil,
         projectedRemainingAtReset: Int?,
         estimatedEmptyAt: Date?,
+        isWaitingForWindow: Bool = false,
         headline: String,
         detail: String
     ) {
@@ -83,6 +85,7 @@ public struct CapsulePrediction: Equatable, Sendable {
         self.quotaUsedPercentExact = quotaUsedPercentExact ?? quotaUsedPercent.map(Double.init)
         self.projectedRemainingAtReset = projectedRemainingAtReset
         self.estimatedEmptyAt = estimatedEmptyAt
+        self.isWaitingForWindow = isWaitingForWindow
         self.headline = headline
         self.detail = detail
     }

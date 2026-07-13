@@ -15,21 +15,25 @@ public struct CapsuleDisplayModel: Equatable, Sendable {
 
     public static func make(prediction: CapsulePrediction, locale: QuotaLocale = .zhHans) -> CapsuleDisplayModel {
         let copy = QuotaCopy(locale: locale)
+        let waiting = prediction.isWaitingForWindow
         return CapsuleDisplayModel(
             tone: prediction.level,
-            statusLabel: copy.statusLabel(for: prediction.level),
+            statusLabel: waiting ? copy.statusWaiting : copy.statusLabel(for: prediction.level),
             defaultText: compactText(for: prediction, locale: locale),
             compactDetail: compactDetail(for: prediction),
             metrics: [
-                CapsuleMetric(label: copy.metricElapsed, value: formatPercent(prediction.elapsedPercent, copy: copy), numericValue: prediction.elapsedPercent),
-                CapsuleMetric(label: copy.metricUsed, value: formatUsedPercent(prediction, copy: copy), numericValue: prediction.quotaUsedPercent),
-                CapsuleMetric(label: copy.metricPace, value: formatBurnRate(prediction, copy: copy), numericValue: nil),
-                CapsuleMetric(label: copy.metricResetBuffer, value: formatPercent(prediction.projectedRemainingAtReset, copy: copy), numericValue: prediction.projectedRemainingAtReset)
+                CapsuleMetric(label: copy.metricElapsed, value: waiting ? copy.waitingValue : formatPercent(prediction.elapsedPercent, copy: copy), numericValue: prediction.elapsedPercent),
+                CapsuleMetric(label: copy.metricUsed, value: waiting ? copy.waitingValue : formatUsedPercent(prediction, copy: copy), numericValue: prediction.quotaUsedPercent),
+                CapsuleMetric(label: copy.metricPace, value: waiting ? copy.waitingValue : formatBurnRate(prediction, copy: copy), numericValue: nil),
+                CapsuleMetric(label: copy.metricResetBuffer, value: waiting ? copy.waitingValue : formatPercent(prediction.projectedRemainingAtReset, copy: copy), numericValue: prediction.projectedRemainingAtReset)
             ]
         )
     }
 
     private static func compactText(for prediction: CapsulePrediction, locale: QuotaLocale) -> String {
+        if prediction.isWaitingForWindow {
+            return prediction.headline
+        }
         if prediction.level == .unknown {
             return prediction.headline
         }

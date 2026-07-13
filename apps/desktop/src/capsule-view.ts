@@ -19,16 +19,17 @@ export function createCapsuleDisplayModel(
   prediction: CapsulePrediction,
 ): CapsuleDisplayModel {
   const projected = prediction.projectedRemainingAtReset;
+  const waiting = prediction.isWaitingForWindow === true;
 
   return {
     tone: prediction.level,
-    statusLabel: STATUS_LABELS[prediction.level],
+    statusLabel: waiting ? "待开始" : STATUS_LABELS[prediction.level],
     defaultText: compactText(prediction),
     detailMetrics: [
-      { label: "时间进度", value: formatPercent(prediction.elapsedPercent), numericValue: prediction.elapsedPercent },
-      { label: "额度已用", value: formatPercent(prediction.quotaUsedPercent), numericValue: prediction.quotaUsedPercent },
-      { label: "当前速度", value: formatBurnRate(prediction), numericValue: null },
-      { label: "刷新余量", value: projected === null ? "未知" : `${Math.round(projected)}%`, numericValue: projected },
+      { label: "时间进度", value: waiting ? "待开始" : formatPercent(prediction.elapsedPercent), numericValue: prediction.elapsedPercent },
+      { label: "额度已用", value: waiting ? "待开始" : formatPercent(prediction.quotaUsedPercent), numericValue: prediction.quotaUsedPercent },
+      { label: "当前速度", value: waiting ? "待开始" : formatBurnRate(prediction), numericValue: null },
+      { label: "刷新余量", value: waiting ? "待开始" : projected === null ? "未知" : `${Math.round(projected)}%`, numericValue: projected },
     ],
     historyCta: "查看历史",
   };
@@ -42,6 +43,7 @@ const STATUS_LABELS: Record<CapsuleLevel, string> = {
 };
 
 function compactText(prediction: CapsulePrediction): string {
+  if (prediction.isWaitingForWindow) return prediction.headline;
   if (prediction.level === "unknown") return "暂时读不到额度";
   if (prediction.level === "danger" && prediction.estimatedEmptyAt) {
     return `预计 ${formatTime(prediction.estimatedEmptyAt)} 见底`;

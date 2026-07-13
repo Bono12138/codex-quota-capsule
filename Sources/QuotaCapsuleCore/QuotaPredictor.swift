@@ -24,7 +24,7 @@ public enum QuotaPredictor {
         }
 
         guard let window = snapshot.shortWindow else {
-            return unknown(missingShortWindowHeadline(locale), missingShortWindowDetail(locale))
+            return waitingForShortWindow(locale)
         }
 
         return predict(window: window, now: now, locale: locale)
@@ -209,6 +209,20 @@ public enum QuotaPredictor {
         )
     }
 
+    private static func waitingForShortWindow(_ locale: QuotaLocale) -> CapsulePrediction {
+        CapsulePrediction(
+            level: .unknown,
+            canReachReset: nil,
+            elapsedPercent: nil,
+            quotaUsedPercent: nil,
+            projectedRemainingAtReset: nil,
+            estimatedEmptyAt: nil,
+            isWaitingForWindow: true,
+            headline: waitingForShortWindowHeadline(locale),
+            detail: waitingForShortWindowDetail(locale)
+        )
+    }
+
     private static func stale(snapshot: AgentQuotaSnapshot, locale: QuotaLocale) -> CapsulePrediction {
         guard let window = snapshot.shortWindow, isValid(window) else {
             return unknown(staleHeadline(locale), staleDetail(snapshot.fetchedAt, locale: locale))
@@ -299,11 +313,11 @@ public enum QuotaPredictor {
         }
     }
 
-    private static func missingShortWindowHeadline(_ locale: QuotaLocale) -> String {
+    private static func waitingForShortWindowHeadline(_ locale: QuotaLocale) -> String {
         switch locale {
-        case .zhHans: "缺少短窗口额度数据"
-        case .zhHant: "缺少短週期額度資料"
-        case .en: "Short quota window is missing"
+        case .zhHans: "等待新的 5 小时窗口"
+        case .zhHant: "等待新的 5 小時週期"
+        case .en: "Waiting for the next 5-hour window"
         }
     }
 
@@ -315,11 +329,11 @@ public enum QuotaPredictor {
         }
     }
 
-    private static func missingShortWindowDetail(_ locale: QuotaLocale) -> String {
+    private static func waitingForShortWindowDetail(_ locale: QuotaLocale) -> String {
         switch locale {
-        case .zhHans: "数据源没有提供 5 小时额度窗口。"
-        case .zhHant: "資料來源沒有提供 5 小時額度週期。"
-        case .en: "The source did not provide a 5-hour quota window."
+        case .zhHans: "当前没有活动中的 5 小时窗口。开始使用 Codex 后会自动显示进度；如果你已经开始使用，应用会继续自动刷新。"
+        case .zhHant: "目前沒有進行中的 5 小時週期。開始使用 Codex 後會自動顯示進度；如果你已經開始使用，App 會繼續自動重新整理。"
+        case .en: "There is no active 5-hour window. It appears automatically after you start using Codex; if you already started, the app will keep refreshing."
         }
     }
 

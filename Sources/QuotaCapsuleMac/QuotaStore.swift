@@ -128,8 +128,12 @@ final class QuotaStore: ObservableObject {
         isRefreshing = true
         recordEvent(name: "quota_refresh_started", surface: "menu_bar", requiresConsent: false)
         let locale = self.locale
+        let retryWeeklyOnly = snapshot.shortWindow.map { $0.resetsAt > Date() } ?? false
         Task.detached(priority: .utility) {
-            let snapshot = await CodexAppServerClient.fetchCurrentWithRetry(locale: locale)
+            let snapshot = await CodexAppServerClient.fetchCurrentWithRetry(
+                locale: locale,
+                retryWeeklyOnly: retryWeeklyOnly
+            )
             let now = Date()
 
             await MainActor.run {
@@ -177,6 +181,9 @@ final class QuotaStore: ObservableObject {
     }
 
     var resetText: String {
+        if prediction.isWaitingForWindow {
+            return copy.waitingValue
+        }
         guard let resetsAt = snapshot.shortWindow?.resetsAt else {
             return copy.unknownValue
         }
@@ -275,6 +282,9 @@ final class QuotaStore: ObservableObject {
     }
 
     var visibleCompactUsedBadgeText: String? {
+        guard !prediction.isWaitingForWindow else {
+            return nil
+        }
         guard let compactUsedValueText else {
             return nil
         }
@@ -482,16 +492,17 @@ final class QuotaStore: ObservableObject {
         lastRefreshText = reduction.lastRefreshText
         lastAttemptText = reduction.lastAttemptText
         lastErrorText = reduction.lastErrorText
-        let attemptPrediction = QuotaPredictor.predict(snapshot: newSnapshot, now: newSnapshot.fetchedAt, locale: locale)
-        historyStore.recordSnapshot(reduction.latestAttemptSnapshot, prediction: attemptPrediction, locale: locale)
-        if newSnapshot.sourceStatus == .ok {
+        let attemptSnapshot = reduction.latestAttemptSnapshot
+        let attemptPrediction = QuotaPredictor.predict(snapshot: attemptSnapshot, now: attemptSnapshot.fetchedAt, locale: locale)
+        historyStore.recordSnapshot(attemptSnapshot, prediction: attemptPrediction, locale: locale)
+        if attemptSnapshot.sourceStatus == .ok {
             recordQuotaStateSample()
         }
         recordEvent(
-            name: newSnapshot.sourceStatus == .ok ? "quota_refresh_succeeded" : "quota_refresh_failed",
+            name: attemptSnapshot.sourceStatus == .ok ? "quota_refresh_succeeded" : "quota_refresh_failed",
             surface: "source",
-            sourceStatus: newSnapshot.sourceStatus,
-            errorType: newSnapshot.sourceStatus == .ok ? nil : "source_error",
+            sourceStatus: attemptSnapshot.sourceStatus,
+            errorType: attemptSnapshot.sourceStatus == .ok ? nil : "source_error",
             requiresConsent: false
         )
     }
