@@ -148,7 +148,10 @@ struct CompactCapsuleView: View {
                 .frame(width: compactMeterWidth, alignment: .leading)
                 .layoutPriority(2)
             } else {
-                CompactStatusNote(text: store.sourceStatusText)
+                CompactStatusNote(
+                    text: store.sourceStatusText,
+                    isSuccess: store.snapshot.sourceStatus == .ok
+                )
                     .frame(width: compactMeterWidth, alignment: .leading)
                     .layoutPriority(2)
             }
@@ -272,12 +275,13 @@ struct CompactPaceTrack: View {
 
 struct CompactStatusNote: View {
     let text: String
+    let isSuccess: Bool
 
     var body: some View {
         HStack(spacing: 6) {
-            Image(systemName: "exclamationmark.triangle.fill")
+            Image(systemName: isSuccess ? "checkmark.circle.fill" : "exclamationmark.triangle.fill")
                 .font(.system(size: 10, weight: .semibold))
-                .foregroundStyle(.secondary)
+                .foregroundStyle(isSuccess ? toneColor(.safe) : .secondary)
             Text(text)
                 .font(.system(size: 10, weight: .bold))
                 .foregroundStyle(.primary.opacity(0.72))
