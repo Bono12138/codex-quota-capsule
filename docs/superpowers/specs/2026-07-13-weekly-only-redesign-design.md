@@ -1,7 +1,7 @@
 # Quota Capsule Weekly Only Redesign
 
-Date: 2026-07-13  
-Target release: `v0.2.0-beta.1`  
+Date: 2026-07-13
+Target release: `v0.2.0-beta.1`
 Status: Product direction approved; written specification awaiting owner review
 
 ## 1. Decision
@@ -649,4 +649,3 @@ The following are explicitly deferred and do not block `v0.2.0-beta.1`:
 - whether to let users choose a reserve other than 5%;
 - whether to add proactive notifications;
 - whether to restore any short-window feature if OpenAI brings it back.
-
