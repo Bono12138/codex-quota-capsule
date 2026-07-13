@@ -73,10 +73,10 @@ Quota Capsule 的视觉应该靠近现代 Mac 状态控件，远离后台 dashbo
 
 状态表达：
 
-- Safe：低饱和绿色。
-- Watch：琥珀色。
-- Danger：低饱和红色。
-- Unknown：灰色。
+- 够用：低饱和绿色。
+- 偏快：琥珀色。
+- 可能不够 / 已用尽：低饱和红色。
+- 正在校准 / 数据暂不可用：灰色。
 
 不要在默认胶囊里放：
 
@@ -101,7 +101,7 @@ Quota Capsule 的视觉应该靠近现代 Mac 状态控件，远离后台 dashbo
 - 本周时间进度 vs 本周额度已用。
 - 最近速度区间与可持续速度。
 - 刷新时预计余量区间或可能提前用完的风险。
-- 今日可持续预算。
+- 未来 24 小时建议。
 - 数据源状态和最后更新时间。
 - 历史入口。
 
@@ -189,10 +189,10 @@ Quota Capsule 的视觉应该靠近现代 Mac 状态控件，远离后台 dashbo
 
 状态色：
 
-- Safe：teal / green，低饱和。
-- Watch：amber。
-- Danger：coral / red。
-- Unknown：neutral gray。
+- 够用：teal / green，低饱和。
+- 偏快：amber。
+- 可能不够 / 已用尽：coral / red。
+- 正在校准 / 数据暂不可用：neutral gray。
 
 ### 字体
 

@@ -41,7 +41,7 @@ public struct CapsuleDisplayModel: Equatable, Sendable {
         let labels = copy.weeklyMetricLabels
         let elapsed = safePercent(forecast.elapsedPercent)
         let used = safePercent(forecast.usedPercent)
-        let recent = formatRateBand(forecast.recentRateBandPerDay, copy: copy, locale: locale)
+        let recent = formatUsageBand(forecast.last24HourUsageBand, copy: copy)
         let budget = formatBudget(forecast.next24HourBudget, copy: copy)
         return CapsuleDisplayModel(
             tone: tone(for: forecast.state),
@@ -174,20 +174,9 @@ public struct CapsuleDisplayModel: Equatable, Sendable {
         }
     }
 
-    private static func formatRateBand(
-        _ band: PaceBand?,
-        copy: QuotaCopy,
-        locale: QuotaLocale
-    ) -> String {
-        guard let band,
-              band.lower.isFinite,
-              band.upper.isFinite,
-              band.lower >= 0,
-              band.upper >= band.lower else {
-            return copy.accumulatingValue
-        }
-        let suffix = locale == .en ? "%/day" : "%/天"
-        return "\(formatNumber(band.lower))–\(formatNumber(band.upper))\(suffix)"
+    private static func formatUsageBand(_ band: PercentageBand?, copy: QuotaCopy) -> String {
+        guard let band = safeProjectedRange(band) else { return copy.accumulatingValue }
+        return "\(formatNumber(band.lower))–\(formatNumber(band.upper))%"
     }
 
     private static func formatBudget(_ value: Double?, copy: QuotaCopy) -> String {

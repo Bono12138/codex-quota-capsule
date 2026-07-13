@@ -1,4 +1,4 @@
-import type { CapsuleLevel, PaceBand, PercentageBand, WeeklyRunwayForecast, WeeklyRunwayState } from "@quota-capsule/core";
+import type { CapsuleLevel, PercentageBand, WeeklyRunwayForecast, WeeklyRunwayState } from "@quota-capsule/core";
 
 export type CapsuleDisplayMetric = {
   label: string;
@@ -35,7 +35,7 @@ export function createCapsuleDisplayModel(forecast: WeeklyRunwayForecast): Capsu
     detailMetrics: [
       { label: "本周时间", value: formatPercent(elapsed), numericValue: elapsed },
       { label: "本周已用", value: formatPercent(used), numericValue: used },
-      { label: "最近 24 小时", value: formatRateBand(forecast.recentRateBandPerDay), numericValue: null },
+      { label: "最近 24 小时", value: formatUsageBand(forecast.last24HourUsageBand), numericValue: null },
       { label: "未来 24 小时建议", value: formatBudget(forecast.next24HourBudget), numericValue: null },
     ],
     confidenceText: forecast.confidence === "high" ? "预测可信度：高" : forecast.confidence === "medium" ? "预测可信度：中" : "",
@@ -64,9 +64,9 @@ function formatPercent(value: number | null): string {
   return value === null ? "未知" : `${formatNumber(value)}%`;
 }
 
-function formatRateBand(band: PaceBand | null): string {
+function formatUsageBand(band: PercentageBand | null): string {
   if (!band || !Number.isFinite(band.lower) || !Number.isFinite(band.upper) || band.lower < 0 || band.upper < band.lower) return "积累中";
-  return `${formatNumber(band.lower)}–${formatNumber(band.upper)}%/天`;
+  return `${formatNumber(band.lower)}–${formatNumber(band.upper)}%`;
 }
 
 function formatBudget(value: number | null): string {

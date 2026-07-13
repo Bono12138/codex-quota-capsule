@@ -8,7 +8,7 @@
 - 只读 Codex 本地 source probe。
 - `codex app-server` rate-limit 读取方案验证。
 - Mac 桌面悬浮小胶囊原型：先用 mock 数据把真实常驻体验做顺。
-- 详情层：解释本周时间进度、额度已用、最近速度区间、今日预算和刷新时预计余量区间。
+- 详情层：解释本周时间进度、额度已用、最近 24 小时实际用量、未来 24 小时建议和刷新时预计余量区间。
 - 本地 snapshot 数据模型：先定义字段和隐私边界。
 - Chrome 独立版 scaffold：只搭 mock-first 骨架，不阻塞 Mac 主体验。
 - Privacy README 和 adapter contribution rules。

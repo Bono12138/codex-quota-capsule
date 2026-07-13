@@ -51,6 +51,8 @@ export type WeeklyQualityResult = {
 
 export type PaceBand = { lower: number; upper: number };
 export type PercentageBand = { lower: number; upper: number };
+export type ExhaustionDateRange = { earliest: Date; latest: Date | null };
+export type WeeklyTrendPoint = { at: Date; usedPercent: number };
 export type WeeklyRunwayState = "unavailable" | "exhausted" | "calibrating" | "enough" | "watch" | "mayRunOut";
 export type ForecastConfidence = "low" | "medium" | "high";
 
@@ -64,6 +66,9 @@ export type WeeklyRunwayForecast = {
   sustainableRatePerDay: number | null;
   recentRateBandPerDay: PaceBand | null;
   cycleRateBandPerDay: PaceBand | null;
+  last24HourUsageBand: PercentageBand | null;
   projectedRemainingBandAtReset: PercentageBand | null;
+  estimatedEmptyAtRange: ExhaustionDateRange | null;
   next24HourBudget: number | null;
+  currentCycleTrend: WeeklyTrendPoint[];
 };

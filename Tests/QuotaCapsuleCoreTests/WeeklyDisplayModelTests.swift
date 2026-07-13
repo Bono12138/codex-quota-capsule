@@ -11,6 +11,7 @@ struct WeeklyDisplayModelTests {
         remaining: Double? = 72,
         elapsed: Double? = 42,
         recent: PaceBand? = PaceBand(lower: 6, upper: 8),
+        last24: PercentageBand? = PercentageBand(lower: 4, upper: 6),
         projected: PercentageBand? = PercentageBand(lower: 16, upper: 23),
         budget: Double? = 12
     ) -> WeeklyRunwayForecast {
@@ -24,6 +25,7 @@ struct WeeklyDisplayModelTests {
             sustainableRatePerDay: 12,
             recentRateBandPerDay: recent,
             cycleRateBandPerDay: recent,
+            last24HourUsageBand: last24,
             projectedRemainingBandAtReset: projected,
             estimatedEmptyAtRange: nil,
             next24HourBudget: budget
@@ -38,14 +40,15 @@ struct WeeklyDisplayModelTests {
         #expect(model.defaultText.contains("刷新时预计剩"))
         #expect(!model.defaultText.contains("5 小时"))
         #expect(model.metrics.map(\.label) == ["本周时间", "本周已用", "最近 24 小时", "未来 24 小时建议"])
-        #expect(model.metrics.map(\.value) == ["42%", "28%", "6–8%/天", "≤12%"])
+        #expect(model.metrics[2].value == "4–6%")
+        #expect(model.metrics.map(\.value) == ["42%", "28%", "4–6%", "≤12%"])
         #expect(model.confidenceText == "预测可信度：中")
     }
 
     @Test("calibration copy makes no runway claim")
     func calibrationIsHonest() {
         let model = CapsuleDisplayModel.make(
-            forecast: forecast(state: .calibrating, confidence: .low, recent: nil, projected: nil),
+            forecast: forecast(state: .calibrating, confidence: .low, recent: nil, last24: nil, projected: nil),
             locale: .zhHans
         )
 
@@ -98,6 +101,9 @@ struct WeeklyDisplayModelTests {
         #expect(copy.onboardingDetailStepBody.contains("未来 24 小时建议"))
         #expect(copy.onboardingWeeklyStepTitle == "周速度是主判断")
         #expect(copy.onboardingMenuStepBody.contains("本周已用"))
+        #expect(copy.weeklyTrendTitle == "本周趋势")
+        #expect(copy.sustainableLineTitle.contains("5%"))
+        #expect(copy.forecastResetBandTitle.contains("刷新余量"))
     }
 
     @Test("stale presentation freezes percentages and suppresses runway claims")

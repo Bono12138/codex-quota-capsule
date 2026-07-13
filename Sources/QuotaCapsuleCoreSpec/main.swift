@@ -84,6 +84,7 @@ func testBuildsWeeklyDisplayModel() {
         sustainableRatePerDay: 15,
         recentRateBandPerDay: PaceBand(lower: 16, upper: 19),
         cycleRateBandPerDay: PaceBand(lower: 14, upper: 18),
+        last24HourUsageBand: PercentageBand(lower: 15, upper: 17),
         projectedRemainingBandAtReset: PercentageBand(lower: 8, upper: 17),
         estimatedEmptyAtRange: nil,
         next24HourBudget: 15
@@ -244,6 +245,7 @@ func testWeeklyHistoryMigrationSQLIsIdempotent() {
     for _ in 0..<2 {
         execute("BEGIN IMMEDIATE TRANSACTION")
         WeeklyHistoryMigration.cleanupStatements.forEach(execute)
+        execute(WeeklyHistoryMigration.versionStatement)
         execute("COMMIT")
     }
 

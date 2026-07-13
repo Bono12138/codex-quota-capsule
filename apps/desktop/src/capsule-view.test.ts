@@ -13,8 +13,11 @@ function forecast(overrides: Partial<WeeklyRunwayForecast> = {}): WeeklyRunwayFo
     sustainableRatePerDay: 12,
     recentRateBandPerDay: { lower: 6, upper: 8 },
     cycleRateBandPerDay: { lower: 5, upper: 8 },
+    last24HourUsageBand: { lower: 4, upper: 6 },
     projectedRemainingBandAtReset: { lower: 16, upper: 23 },
+    estimatedEmptyAtRange: null,
     next24HourBudget: 12,
+    currentCycleTrend: [],
     ...overrides,
   };
 }
@@ -31,7 +34,7 @@ describe("createCapsuleDisplayModel", () => {
       "最近 24 小时",
       "未来 24 小时建议",
     ]);
-    expect(model.detailMetrics.map((metric) => metric.value)).toEqual(["42%", "28%", "6–8%/天", "≤12%"]);
+    expect(model.detailMetrics.map((metric) => metric.value)).toEqual(["42%", "28%", "4–6%", "≤12%"]);
     expect(model.confidenceText).toBe("预测可信度：中");
     expect(JSON.stringify(model)).not.toContain("5 小时");
   });
@@ -41,6 +44,7 @@ describe("createCapsuleDisplayModel", () => {
       state: "calibrating",
       confidence: "low",
       recentRateBandPerDay: null,
+      last24HourUsageBand: null,
       projectedRemainingBandAtReset: null,
     }));
 
@@ -55,7 +59,7 @@ describe("createCapsuleDisplayModel", () => {
       usedPercent: Number.NaN,
       remainingPercent: Number.POSITIVE_INFINITY,
       elapsedPercent: -3,
-      recentRateBandPerDay: { lower: Number.NEGATIVE_INFINITY, upper: Number.NaN },
+      last24HourUsageBand: { lower: Number.NEGATIVE_INFINITY, upper: Number.NaN },
       projectedRemainingBandAtReset: { lower: Number.NEGATIVE_INFINITY, upper: Number.POSITIVE_INFINITY },
       next24HourBudget: -5,
     }));

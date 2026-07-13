@@ -166,9 +166,11 @@ WeeklyRunwayForecast
 - sustainableRatePerDay
 - recentRateBandPerDay
 - cycleRateBandPerDay
+- last24HourUsageBand
 - projectedRemainingBandAtReset
 - estimatedEmptyAtRange
 - next24HourBudget
+- currentCycleTrend
 - headline
 - detail
 - qualityExplanation

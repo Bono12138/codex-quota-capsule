@@ -11,7 +11,7 @@ import {
 type FixtureCase = {
   id: string;
   snapshot: { usedPercent: number; remainingPercent: number; resetsAt: string };
-  readings: Array<{ fetchedAt: string; usedPercent: number; resetsAt: string }>;
+  readings: Array<{ fetchedAt: string; usedPercent: number; resetsAt: string; windowMinutes?: number }>;
   expected: {
     qualityState: string;
     cycleCount: number;
@@ -19,6 +19,13 @@ type FixtureCase = {
     sustainableRate?: number;
     projectedLower?: number;
     projectedUpper?: number;
+    last24Lower?: number;
+    last24Upper?: number;
+    ignoredShortWindow?: boolean;
+    recentFasterThanCycle?: boolean;
+    cycleFasterThanRecent?: boolean;
+    exhaustionBeforeReset?: boolean;
+    exhaustionAtNow?: boolean;
   };
 };
 
@@ -46,7 +53,7 @@ describe("shared weekly runway fixtures", () => {
         provider: "codex",
         sourceStatus: "ok",
         fetchedAt: new Date(reading.fetchedAt),
-        windowMinutes: 10_080,
+        windowMinutes: reading.windowMinutes ?? 10_080,
         usedPercent: reading.usedPercent,
         remainingPercent: 100 - reading.usedPercent,
         resetsAt: new Date(reading.resetsAt),
@@ -65,6 +72,30 @@ describe("shared weekly runway fixtures", () => {
         expect(forecast.projectedRemainingBandAtReset?.lower).toBeCloseTo(testCase.expected.projectedLower, 9);
         expect(forecast.projectedRemainingBandAtReset?.upper).toBeCloseTo(testCase.expected.projectedUpper!, 9);
       }
+      if (testCase.expected.last24Lower !== undefined) {
+        expect(forecast.last24HourUsageBand?.lower).toBeCloseTo(testCase.expected.last24Lower, 9);
+        expect(forecast.last24HourUsageBand?.upper).toBeCloseTo(testCase.expected.last24Upper!, 9);
+      }
+      if (testCase.expected.ignoredShortWindow) {
+        expect(quality.observations.every((observation) => observation.usedPercent !== 90)).toBe(true);
+      }
+      if (testCase.expected.recentFasterThanCycle) {
+        expect(midpoint(forecast.recentRateBandPerDay)).toBeGreaterThan(midpoint(forecast.cycleRateBandPerDay));
+      }
+      if (testCase.expected.cycleFasterThanRecent) {
+        expect(midpoint(forecast.cycleRateBandPerDay)).toBeGreaterThan(midpoint(forecast.recentRateBandPerDay));
+      }
+      if (testCase.expected.exhaustionBeforeReset) {
+        expect(forecast.estimatedEmptyAtRange?.latest?.getTime()).toBeLessThan(new Date(testCase.snapshot.resetsAt).getTime());
+      }
+      if (testCase.expected.exhaustionAtNow) {
+        expect(forecast.estimatedEmptyAtRange?.earliest.getTime()).toBe(now.getTime());
+        expect(forecast.estimatedEmptyAtRange?.latest?.getTime()).toBe(now.getTime());
+      }
     });
   }
 });
+
+function midpoint(band: { lower: number; upper: number } | null): number {
+  return band ? (band.lower + band.upper) / 2 : Number.NaN;
+}

@@ -17,12 +17,14 @@ Heavy Codex users often run several coding tasks at the same time and repeatedly
 - If it may not last, what does the risk range look like?
 - If it can last, how much margin should remain at reset?
 
-Quota Capsule stays small, visible, and direct:
+Quota Capsule stays small, visible, and direct with six honest states:
 
-- Safe: the current pace is likely enough to reach reset.
-- Watch: usable for now, with a thin margin.
-- Danger: likely to run out before reset at the current pace.
-- Unknown: the source is missing, stale, or unreadable.
+- Calibrating: fewer than six hours of valid history, so no runway claim yet.
+- Enough: the pace should reach reset with at least a 5% reserve.
+- Running fast: it may still last, but the forecast margin is thin.
+- May run out: both the fast and slow estimates can exhaust before reset.
+- Exhausted: this week's quota is gone and will recover at reset.
+- Unavailable: the live read failed or expired; frozen percentages remain visible without a pace claim.
 
 ## Who It Is For
 
@@ -38,7 +40,8 @@ The first local macOS beta is usable. It includes:
 - Native floating desktop capsule.
 - Menu bar status item.
 - Read-only Codex app-server rate-limit adapter.
-- Weekly pace, reset-buffer range, and daily-budget prediction.
+- Weekly pace, actual last-24-hour usage, reset-buffer range, and a next-24-hour budget.
+- Current-cycle trend with a sustainable line, forecast band, and reset marker.
 - Local history snapshots.
 - Multilingual UI.
 - Public feedback links.
@@ -122,7 +125,7 @@ scripts/                   Local helper scripts.
 ## Roadmap
 
 - Better onboarding and in-product guidance.
-- History trends and usage rhythm review.
+- Longer-term history and usage-rhythm review.
 - Chrome version.
 - More agent provider adapters.
 - Signed, notarized, packaged macOS distribution after the beta stabilizes.

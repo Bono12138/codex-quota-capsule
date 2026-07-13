@@ -15,12 +15,28 @@ jobs:
           node-version: 20
           cache: npm
       - run: npm ci
+      - run: npm run lint
       - run: npm run build
       - run: npm test
+      - run: npm run audit:weekly-only
+      - run: git diff --check
 
   macos-swift:
     runs-on: macos-15
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - run: swift test
       - run: swift build --product QuotaCapsuleMac
       - run: swift run QuotaCapsuleCoreSpec
+      - run: npm run public:prepare
+      - run: npm ci
+        working-directory: artifacts/public-repo-staging
+      - run: npm test
+        working-directory: artifacts/public-repo-staging
+      - run: swift test
+        working-directory: artifacts/public-repo-staging

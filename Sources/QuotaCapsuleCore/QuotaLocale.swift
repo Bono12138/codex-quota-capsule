@@ -139,6 +139,46 @@ public struct QuotaCopy: Equatable, Sendable {
         }
     }
 
+    public var weeklyTrendTitle: String {
+        switch locale {
+        case .zhHans: "本周趋势"
+        case .zhHant: "本週趨勢"
+        case .en: "This week's trend"
+        }
+    }
+
+    public var sustainableLineTitle: String {
+        switch locale {
+        case .zhHans: "可持续线（刷新时保留 5%）"
+        case .zhHant: "可持續線（重設時保留 5%）"
+        case .en: "Sustainable line (5% reserve at reset)"
+        }
+    }
+
+    public var forecastResetBandTitle: String {
+        switch locale {
+        case .zhHans: "预测刷新余量"
+        case .zhHant: "預測重設餘量"
+        case .en: "Forecast balance at reset"
+        }
+    }
+
+    public var resetMarkerTitle: String {
+        switch locale {
+        case .zhHans: "刷新"
+        case .zhHant: "重設"
+        case .en: "Reset"
+        }
+    }
+
+    public var trendLearningText: String {
+        switch locale {
+        case .zhHans: "正在积累当前周期的趋势点"
+        case .zhHant: "正在累積目前週期的趨勢點"
+        case .en: "Learning the current-cycle trend"
+        }
+    }
+
     public var dataDiagnosticsTitle: String {
         switch locale {
         case .zhHans: "数据诊断"
@@ -176,96 +216,11 @@ public struct QuotaCopy: Equatable, Sendable {
         }
     }
 
-    public var statusSafe: String {
-        switch locale {
-        case .zhHans: "安全"
-        case .zhHant: "安全"
-        case .en: "Safe"
-        }
-    }
-
-    public var statusWatch: String {
-        switch locale {
-        case .zhHans: "注意"
-        case .zhHant: "注意"
-        case .en: "Watch"
-        }
-    }
-
-    public var statusDanger: String {
-        switch locale {
-        case .zhHans: "危险"
-        case .zhHant: "危險"
-        case .en: "Danger"
-        }
-    }
-
-    public var statusUnknown: String {
-        switch locale {
-        case .zhHans: "未知"
-        case .zhHant: "未知"
-        case .en: "Unknown"
-        }
-    }
-
     public var statusStale: String {
         switch locale {
         case .zhHans: "已过期"
         case .zhHant: "已過期"
         case .en: "Stale"
-        }
-    }
-
-    public var statusWaiting: String {
-        switch locale {
-        case .zhHans: "待开始"
-        case .zhHant: "待開始"
-        case .en: "Waiting"
-        }
-    }
-
-    public var waitingValue: String {
-        statusWaiting
-    }
-
-    public var metricElapsed: String {
-        switch locale {
-        case .zhHans: "时间进度"
-        case .zhHant: "時間進度"
-        case .en: "Time elapsed"
-        }
-    }
-
-    public var metricUsed: String {
-        switch locale {
-        case .zhHans: "额度已用"
-        case .zhHant: "額度已用"
-        case .en: "Quota used"
-        }
-    }
-
-    public var metricPace: String {
-        switch locale {
-        case .zhHans: "当前速度"
-        case .zhHant: "目前速度"
-        case .en: "Current pace"
-        }
-    }
-
-    public var metricResetBuffer: String {
-        switch locale {
-        case .zhHans: "刷新余量"
-        case .zhHant: "重設餘量"
-        case .en: "Reset buffer"
-        }
-    }
-
-    public func statusLabel(for level: CapsuleLevel) -> String {
-        switch level {
-        case .safe: statusSafe
-        case .watch: statusWatch
-        case .danger: statusDanger
-        case .unknown: statusUnknown
         }
     }
 
@@ -529,9 +484,9 @@ public struct QuotaCopy: Equatable, Sendable {
 
     public var productIntroBody: String {
         switch locale {
-        case .zhHans: "Quota Capsule 会常驻 Mac 桌面和菜单栏，把 Codex 周额度转换成可操作判断：照最近速度能否撑到刷新，以及今天还能放心使用多少。"
-        case .zhHant: "Quota Capsule 會常駐 Mac 桌面和選單列，把 Codex 週額度轉換成可操作判斷：依最近速度能否撐到重設，以及今天還能放心使用多少。"
-        case .en: "Quota Capsule stays on your Mac desktop and menu bar, turning Codex weekly quota into two practical answers: whether your recent pace can last until reset and how much you can safely use today."
+        case .zhHans: "Quota Capsule 会常驻 Mac 桌面和菜单栏，把 Codex 周额度转换成可操作判断：照最近速度能否撑到刷新，以及未来 24 小时建议不超过多少。"
+        case .zhHant: "Quota Capsule 會常駐 Mac 桌面和選單列，把 Codex 週額度轉換成可操作判斷：依最近速度能否撐到重設，以及未來 24 小時建議不超過多少。"
+        case .en: "Quota Capsule stays on your Mac desktop and menu bar, showing whether recent pace can last until reset and a safe budget for the next 24 hours."
         }
     }
 
@@ -934,9 +889,9 @@ public struct QuotaCopy: Equatable, Sendable {
 
     public var onboardingSubtitle: String {
         switch locale {
-        case .zhHans: "它会常驻桌面，帮你判断 Codex 周额度能否撑到刷新，并给出今天的可持续预算。"
-        case .zhHant: "它會常駐桌面，幫你判斷 Codex 週額度能否撐到重設，並給出今天的可持續預算。"
-        case .en: "It stays on your desktop, shows whether weekly Codex quota can last until reset, and gives you a sustainable budget for today."
+        case .zhHans: "它会常驻桌面，帮你判断 Codex 周额度能否撑到刷新，并给出未来 24 小时建议。"
+        case .zhHant: "它會常駐桌面，幫你判斷 Codex 週額度能否撐到重設，並給出未來 24 小時建議。"
+        case .en: "It stays on your desktop, shows whether weekly Codex quota can last until reset, and gives a budget for the next 24 hours."
         }
     }
 
@@ -1310,9 +1265,9 @@ public struct QuotaCopy: Equatable, Sendable {
 
     public var onboardingWeeklyStepBody: String {
         switch locale {
-        case .zhHans: "周速度是主判断：看最近速度、刷新余量和今天的可持续预算。"
-        case .zhHant: "週速度是主判斷：看最近速度、重設餘量和今天的可持續預算。"
-        case .en: "Weekly pace is the main judgment: recent pace, projected reset buffer, and today's sustainable budget."
+        case .zhHans: "周速度是主判断：看最近 24 小时实际用量、刷新余量和未来 24 小时建议。"
+        case .zhHant: "週速度是主判斷：看最近 24 小時實際用量、重設餘量和未來 24 小時建議。"
+        case .en: "Weekly pace is the main judgment: actual last-24-hour usage, projected reset buffer, and the next-24-hour budget."
         }
     }
 

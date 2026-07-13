@@ -391,6 +391,8 @@ struct DetailPopoverView: View {
                 }
             }
 
+            WeeklyTrendChartView(store: store)
+
             HStack(spacing: 8) {
                 Label("\(store.copy.resetTimeTitle) \(store.resetText)", systemImage: "clock.arrow.circlepath")
                 Spacer(minLength: 8)
@@ -426,6 +428,133 @@ struct DetailPopoverView: View {
                     .foregroundStyle(.secondary)
             }
         }
+    }
+}
+
+struct WeeklyTrendChartView: View {
+    @ObservedObject var store: QuotaStore
+
+    private var points: [WeeklyTrendPoint] {
+        store.runwayForecast.currentCycleTrend
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text(store.copy.weeklyTrendTitle)
+                .font(.system(size: 10, weight: .bold))
+                .foregroundStyle(.secondary)
+
+            if points.count >= 2,
+               let window = store.snapshot.weeklyWindow {
+                chart(window: window)
+                    .frame(height: 76)
+
+                ViewThatFits(in: .horizontal) {
+                    HStack(spacing: 12) { chartLegend }
+                    VStack(alignment: .leading, spacing: 5) { chartLegend }
+                }
+            } else {
+                Label(store.copy.trendLearningText, systemImage: "chart.xyaxis.line")
+                    .font(.system(size: 11, weight: .semibold))
+                    .foregroundStyle(.secondary)
+                    .padding(.vertical, 12)
+                    .frame(maxWidth: .infinity, alignment: .center)
+            }
+        }
+        .padding(10)
+        .background(.white.opacity(0.07), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                .stroke(.white.opacity(0.14), lineWidth: 1)
+        )
+    }
+
+    private func chart(window: QuotaWindow) -> some View {
+        Canvas { context, size in
+            let inset: CGFloat = 5
+            let width = max(1, size.width - inset * 2)
+            let height = max(1, size.height - inset * 2)
+            let cycleStart = window.resetsAt.addingTimeInterval(-Double(window.windowMinutes) * 60)
+            let duration = max(1, window.resetsAt.timeIntervalSince(cycleStart))
+
+            func location(at date: Date, usedPercent: Double) -> CGPoint {
+                let progress = min(1, max(0, date.timeIntervalSince(cycleStart) / duration))
+                let used = min(100, max(0, usedPercent)) / 100
+                return CGPoint(
+                    x: inset + width * progress,
+                    y: inset + height * (1 - used)
+                )
+            }
+
+            var sustainable = Path()
+            sustainable.move(to: CGPoint(x: inset, y: inset + height))
+            sustainable.addLine(to: CGPoint(x: inset + width, y: inset + height * 0.05))
+            context.stroke(
+                sustainable,
+                with: .color(.secondary.opacity(0.55)),
+                style: StrokeStyle(lineWidth: 1, dash: [4, 4])
+            )
+
+            var actual = Path()
+            for (index, point) in points.enumerated() {
+                let location = location(at: point.at, usedPercent: point.usedPercent)
+                index == 0 ? actual.move(to: location) : actual.addLine(to: location)
+            }
+            context.stroke(
+                actual,
+                with: .color(toneColor(store.displayModel.tone)),
+                style: StrokeStyle(lineWidth: 2.5, lineCap: .round, lineJoin: .round)
+            )
+
+            if let band = store.runwayForecast.projectedRemainingBandAtReset {
+                let lowerUsed = 100 - min(100, max(0, band.upper))
+                let upperUsed = 100 - min(100, max(0, band.lower))
+                var forecastBand = Path()
+                forecastBand.move(to: location(at: window.resetsAt, usedPercent: lowerUsed))
+                forecastBand.addLine(to: location(at: window.resetsAt, usedPercent: upperUsed))
+                context.stroke(
+                    forecastBand,
+                    with: .color(toneColor(store.displayModel.tone).opacity(0.52)),
+                    style: StrokeStyle(lineWidth: 7, lineCap: .round)
+                )
+            }
+
+            var reset = Path()
+            reset.move(to: CGPoint(x: inset + width, y: inset))
+            reset.addLine(to: CGPoint(x: inset + width, y: inset + height))
+            context.stroke(
+                reset,
+                with: .color(.primary.opacity(0.32)),
+                style: StrokeStyle(lineWidth: 1, dash: [2, 3])
+            )
+        }
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("\(store.copy.weeklyTrendTitle)，\(store.copy.sustainableLineTitle)，\(forecastBandText)")
+    }
+
+    @ViewBuilder
+    private var chartLegend: some View {
+        Label(store.copy.sustainableLineTitle, systemImage: "line.diagonal")
+        Label(forecastBandText, systemImage: "arrow.up.and.down")
+        Label("\(store.copy.resetMarkerTitle) \(store.resetText)", systemImage: "flag.checkered")
+    }
+
+    private var forecastBandText: String {
+        guard let band = store.runwayForecast.projectedRemainingBandAtReset,
+              band.lower.isFinite,
+              band.upper.isFinite else {
+            return "\(store.copy.forecastResetBandTitle)：\(store.copy.accumulatingValue)"
+        }
+        let lower = min(100, max(0, min(band.lower, band.upper)))
+        let upper = min(100, max(0, max(band.lower, band.upper)))
+        return "\(store.copy.forecastResetBandTitle)：\(format(lower))%–\(format(upper))%"
+    }
+
+    private func format(_ value: Double) -> String {
+        if abs(value.rounded() - value) < 0.05 {
+            return "\(Int(value.rounded()))"
+        }
+        return String(format: "%.1f", value)
     }
 }
 

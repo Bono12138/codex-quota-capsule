@@ -59,6 +59,19 @@ struct WeeklyRunwayPredictorTests {
         #expect(forecast.next24HourBudget == 15)
     }
 
+    @Test("the last-24-hour metric is actual consumption rather than a daily rate")
+    func last24HoursReportsObservedConsumption() {
+        let forecast = WeeklyRunwayPredictor.predict(
+            snapshot: snapshot(remaining: 70, daysRemaining: 4),
+            quality: quality(values: [20, 25, 30], spacingHours: 24),
+            now: now
+        )
+
+        #expect(forecast.last24HourUsageBand == PercentageBand(lower: 4, upper: 6))
+        #expect(forecast.currentCycleTrend.count == 3)
+        #expect(forecast.currentCycleTrend.last?.usedPercent == 30)
+    }
+
     @Test("flat integer readings do not claim a zero pace")
     func flatIntegerReadingsDoNotClaimZeroPace() {
         let forecast = WeeklyRunwayPredictor.predict(
@@ -82,6 +95,8 @@ struct WeeklyRunwayPredictorTests {
 
         #expect(forecast.state == .mayRunOut)
         #expect(forecast.projectedRemainingBandAtReset?.upper ?? 0 < 0)
+        #expect(forecast.estimatedEmptyAtRange?.earliest ?? .distantFuture < forecast.estimatedEmptyAtRange?.latest ?? .distantPast)
+        #expect(forecast.estimatedEmptyAtRange?.latest ?? .distantFuture < now.addingTimeInterval(3 * 86_400))
     }
 
     @Test("a projection range crossing zero is watch, not may-run-out")

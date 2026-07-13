@@ -30,6 +30,16 @@ public struct ExhaustionDateRange: Equatable, Sendable {
     }
 }
 
+public struct WeeklyTrendPoint: Equatable, Sendable {
+    public let at: Date
+    public let usedPercent: Double
+
+    public init(at: Date, usedPercent: Double) {
+        self.at = at
+        self.usedPercent = usedPercent
+    }
+}
+
 public enum WeeklyRunwayState: String, Codable, Equatable, Sendable {
     case unavailable
     case exhausted
@@ -55,9 +65,11 @@ public struct WeeklyRunwayForecast: Equatable, Sendable {
     public let sustainableRatePerDay: Double?
     public let recentRateBandPerDay: PaceBand?
     public let cycleRateBandPerDay: PaceBand?
+    public let last24HourUsageBand: PercentageBand?
     public let projectedRemainingBandAtReset: PercentageBand?
     public let estimatedEmptyAtRange: ExhaustionDateRange?
     public let next24HourBudget: Double?
+    public let currentCycleTrend: [WeeklyTrendPoint]
     public let headline: String
     public let detail: String
     public let qualityExplanation: String
@@ -72,9 +84,11 @@ public struct WeeklyRunwayForecast: Equatable, Sendable {
         sustainableRatePerDay: Double?,
         recentRateBandPerDay: PaceBand?,
         cycleRateBandPerDay: PaceBand?,
+        last24HourUsageBand: PercentageBand? = nil,
         projectedRemainingBandAtReset: PercentageBand?,
         estimatedEmptyAtRange: ExhaustionDateRange?,
         next24HourBudget: Double?,
+        currentCycleTrend: [WeeklyTrendPoint] = [],
         headline: String = "",
         detail: String = "",
         qualityExplanation: String = ""
@@ -88,9 +102,11 @@ public struct WeeklyRunwayForecast: Equatable, Sendable {
         self.sustainableRatePerDay = sustainableRatePerDay
         self.recentRateBandPerDay = recentRateBandPerDay
         self.cycleRateBandPerDay = cycleRateBandPerDay
+        self.last24HourUsageBand = last24HourUsageBand
         self.projectedRemainingBandAtReset = projectedRemainingBandAtReset
         self.estimatedEmptyAtRange = estimatedEmptyAtRange
         self.next24HourBudget = next24HourBudget
+        self.currentCycleTrend = currentCycleTrend
         self.headline = headline
         self.detail = detail
         self.qualityExplanation = qualityExplanation
@@ -119,6 +135,9 @@ public enum WeeklyRunwayPredictor {
         let elapsed = elapsedPercent(window: window, now: now)
         let sustainable = max(0, window.remainingPercent - reservePercent) / daysRemaining
         let budget = min(window.remainingPercent, sustainable)
+        let active = quality.state == .stable ? activeCycleAndSegment(quality.observations) : []
+        let last24HourUsage = last24HourUsageBand(active, now: now)
+        let trend = trendPoints(active)
 
         if window.remainingPercent <= 0 {
             return WeeklyRunwayForecast(
@@ -131,9 +150,11 @@ public enum WeeklyRunwayPredictor {
                 sustainableRatePerDay: 0,
                 recentRateBandPerDay: nil,
                 cycleRateBandPerDay: nil,
+                last24HourUsageBand: last24HourUsage,
                 projectedRemainingBandAtReset: PercentageBand(lower: 0, upper: 0),
                 estimatedEmptyAtRange: ExhaustionDateRange(earliest: now, latest: now),
-                next24HourBudget: 0
+                next24HourBudget: 0,
+                currentCycleTrend: trend
             )
         }
 
@@ -156,7 +177,6 @@ public enum WeeklyRunwayPredictor {
             )
         }
 
-        let active = activeCycleAndSegment(quality.observations)
         guard let latestObservation = active.last,
               abs(latestObservation.usedPercent - window.usedPercent) <= 1.5,
               abs(latestObservation.canonicalResetAt.timeIntervalSince(window.resetsAt)) <= WeeklyQualityEngine.resetClusterTolerance else {
@@ -165,7 +185,9 @@ public enum WeeklyRunwayPredictor {
                 elapsed: elapsed,
                 daysRemaining: daysRemaining,
                 sustainable: sustainable,
-                budget: budget
+                budget: budget,
+                last24HourUsageBand: last24HourUsage,
+                trend: trend
             )
         }
         let cycleBand = qualifiedPaceBand(active)
@@ -179,7 +201,9 @@ public enum WeeklyRunwayPredictor {
                 daysRemaining: daysRemaining,
                 sustainable: sustainable,
                 budget: budget,
-                cycleBand: cycleBand
+                cycleBand: cycleBand,
+                last24HourUsageBand: last24HourUsage,
+                trend: trend
             )
         }
 
@@ -216,9 +240,11 @@ public enum WeeklyRunwayPredictor {
             sustainableRatePerDay: sustainable,
             recentRateBandPerDay: recentBand,
             cycleRateBandPerDay: cycleBand,
+            last24HourUsageBand: last24HourUsage,
             projectedRemainingBandAtReset: projected,
             estimatedEmptyAtRange: exhaustion,
-            next24HourBudget: budget
+            next24HourBudget: budget,
+            currentCycleTrend: trend
         )
     }
 
@@ -344,13 +370,50 @@ public enum WeeklyRunwayPredictor {
         return ExhaustionDateRange(earliest: earliest, latest: latest)
     }
 
+    private static func last24HourUsageBand(
+        _ observations: [WeeklyObservation],
+        now: Date
+    ) -> PercentageBand? {
+        guard let latest = observations.last else { return nil }
+        let cutoff = now.addingTimeInterval(-recentHorizon)
+        guard let baseline = observations.last(where: { $0.fetchedAt <= cutoff }),
+              cutoff.timeIntervalSince(baseline.fetchedAt) <= 3 * 60 * 60,
+              latest.fetchedAt > baseline.fetchedAt else {
+            return nil
+        }
+        let first = quantizedInterval(baseline.usedPercent)
+        let last = quantizedInterval(latest.usedPercent)
+        return PercentageBand(
+            lower: max(0, last.lower - first.upper),
+            upper: max(0, last.upper - first.lower)
+        )
+    }
+
+    private static func trendPoints(
+        _ observations: [WeeklyObservation],
+        limit: Int = 32
+    ) -> [WeeklyTrendPoint] {
+        guard observations.count > limit, limit > 1 else {
+            return observations.map { WeeklyTrendPoint(at: $0.fetchedAt, usedPercent: $0.usedPercent) }
+        }
+        let stride = Double(observations.count - 1) / Double(limit - 1)
+        var indexes = (0..<limit).map { Int((Double($0) * stride).rounded()) }
+        indexes[indexes.count - 1] = observations.count - 1
+        return indexes.map { index in
+            let observation = observations[index]
+            return WeeklyTrendPoint(at: observation.fetchedAt, usedPercent: observation.usedPercent)
+        }
+    }
+
     private static func calibrating(
         window: QuotaWindow,
         elapsed: Double,
         daysRemaining: Double,
         sustainable: Double,
         budget: Double,
-        cycleBand: PaceBand? = nil
+        cycleBand: PaceBand? = nil,
+        last24HourUsageBand: PercentageBand? = nil,
+        trend: [WeeklyTrendPoint] = []
     ) -> WeeklyRunwayForecast {
         WeeklyRunwayForecast(
             state: .calibrating,
@@ -362,9 +425,11 @@ public enum WeeklyRunwayPredictor {
             sustainableRatePerDay: sustainable,
             recentRateBandPerDay: nil,
             cycleRateBandPerDay: cycleBand,
+            last24HourUsageBand: last24HourUsageBand,
             projectedRemainingBandAtReset: nil,
             estimatedEmptyAtRange: nil,
-            next24HourBudget: budget
+            next24HourBudget: budget,
+            currentCycleTrend: trend
         )
     }
 

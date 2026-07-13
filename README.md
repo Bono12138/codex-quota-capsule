@@ -20,14 +20,16 @@ Heavy Codex users often run multiple tasks, check usage pages repeatedly, and st
 
 很多 Codex 重度用户会同时跑多个任务，也会反复查看 usage 页面。百分比只能提供证据。真正影响工作节奏的是：现在还能不能继续放心用。
 
-Quota Capsule stays visible on the desktop and in the menu bar, then turns weekly quota pace into direct states and a safe daily budget:
+Quota Capsule stays visible on the desktop and in the menu bar, then turns weekly quota pace into six honest states and a next-24-hour budget:
 
-额度胶囊常驻桌面和菜单栏，把周额度速度转换成直接状态和今天可持续使用的预算：
+额度胶囊常驻桌面和菜单栏，把周额度速度转换成六个明确状态和未来 24 小时建议：
 
-- Safe / 安全：当前速度大概率能撑到刷新。
-- Watch / 注意：暂时能用，但余量偏薄。
-- Danger / 危险：当前速度大概率会在刷新前见底。
-- Unknown / 未知：数据缺失、过期或读取失败。
+- Calibrating / 正在校准：有效历史还不足 6 小时，暂不下结论。
+- Enough / 够用：按近期与本周速度，预计能带着至少 5% 余量到刷新。
+- Running fast / 偏快：仍可能撑到刷新，但余量区间已经偏薄。
+- May run out / 可能不够：快、慢两种估计都可能在刷新前见底。
+- Exhausted / 已用尽：本周额度已经用完，等待刷新恢复。
+- Unavailable / 数据暂不可用：实时读取失败或数据过期，只保留最后成功百分比，不给速度结论。
 
 ## Who It Is For / 适合谁
 
@@ -97,7 +99,8 @@ The first public beta is a macOS app built from source. It currently includes:
 
 - Native floating desktop capsule and menu bar item.
 - Read-only Codex app-server rate-limit source.
-- Weekly pace, reset-buffer, and daily-budget prediction.
+- Weekly pace, last-24-hour usage, reset-buffer range, and next-24-hour budget.
+- Current-cycle trend with a sustainable line, forecast band, and reset marker.
 - Local history snapshots.
 - Multilingual UI.
 - Feedback links for GitHub Issues, email, X, and Douyin.
@@ -106,7 +109,8 @@ The first public beta is a macOS app built from source. It currently includes:
 
 - 原生桌面悬浮胶囊和菜单栏入口。
 - 只读 Codex app-server rate-limit 数据源。
-- 周速度、刷新余量和今日可用预算预测。
+- 周速度、最近 24 小时实际用量、刷新余量区间和未来 24 小时建议。
+- 带可持续线、预测区间和刷新标记的当前周期趋势。
 - 本地历史快照。
 - 多语言界面。
 - GitHub Issues、邮箱、X、抖音反馈入口。
@@ -114,13 +118,13 @@ The first public beta is a macOS app built from source. It currently includes:
 ## Roadmap / 路线图
 
 - Better onboarding and in-product guidance.
-- History trends and usage rhythm review.
+- Longer-term history and usage-rhythm review.
 - Chrome version.
 - More agent provider adapters.
 - Signed, notarized, packaged macOS distribution after the beta stabilizes.
 
 - 更完整的新手引导和产品内提示。
-- 历史趋势和使用节奏复盘。
+- 更长期的历史趋势和使用节奏复盘。
 - Chrome 独立版本。
 - 更多 Agent provider adapter。
 - 内测稳定后补签名、公证和正式 macOS 分发。

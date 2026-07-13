@@ -94,6 +94,16 @@ describe("Weekly Only runway", () => {
     const forecast = forecastFor("enough");
     expect(forecast.sustainableRatePerDay).toBeCloseTo((65 - 5) / 4, 9);
     expect(forecast.next24HourBudget).toBeLessThan(forecast.remainingPercent!);
+    expect(forecast.last24HourUsageBand).toEqual({ lower: 4, upper: 6 });
+    expect(forecast.currentCycleTrend).toHaveLength(3);
+  });
+
+  it("exposes the same exhaustion interval contract as the native engine", () => {
+    const forecast = forecastFor("mayRunOut");
+
+    expect(forecast.estimatedEmptyAtRange?.earliest).toBeInstanceOf(Date);
+    expect(forecast.estimatedEmptyAtRange?.latest).toBeInstanceOf(Date);
+    expect(forecast.estimatedEmptyAtRange!.earliest.getTime()).toBeLessThan(forecast.estimatedEmptyAtRange!.latest!.getTime());
   });
 
   it("calibrates when cleaned history disagrees with the live reading", () => {

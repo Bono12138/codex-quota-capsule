@@ -19,6 +19,19 @@ const explicitExclusions = new Set([
 ]);
 const files = roots.flatMap(collectCurrentFiles).filter((file) => !explicitExclusions.has(file));
 const forbidden = /5\s*小时|5\s*小時|5-hour|\b5h\b|shortWindow|short_window|short window|短窗口|等待新的/g;
+const retiredProductCopy = /\bSafe\b|\bWatch\b|\bDanger\b|\bUnknown\b|daily[- ]budget|today's sustainable|今天的可持续|今天可持续|今日预算|今日可用预算|最近周速度区间/g;
+const publicNarrativeFiles = new Set([
+  "README.md",
+  "README.zh-CN.md",
+  "README.en.md",
+  "INSTALL.md",
+  "docs/product/brief.md",
+  "docs/product/mvp-scope.md",
+  "docs/product/visual-design-direction.md",
+  "docs/distribution/public-launch-materials.md",
+  "docs/distribution/launch-video-production-brief.md",
+  "docs/distribution/launch-video-materials-requirements.md",
+]);
 const failures: string[] = [];
 
 for (const file of files) {
@@ -26,6 +39,10 @@ for (const file of files) {
   text.split("\n").forEach((line, index) => {
     if (forbidden.test(line)) failures.push(`${file}:${index + 1}: ${line.trim()}`);
     forbidden.lastIndex = 0;
+    if (publicNarrativeFiles.has(file) && retiredProductCopy.test(line)) {
+      failures.push(`${file}:${index + 1}: retired product copy: ${line.trim()}`);
+    }
+    retiredProductCopy.lastIndex = 0;
   });
 }
 
