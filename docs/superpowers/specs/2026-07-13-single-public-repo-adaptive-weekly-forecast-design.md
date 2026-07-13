@@ -357,11 +357,13 @@ Implementation follows red-green-refactor. Every defect discovered during real u
 - first valid reading returns an early estimate without six-hour waiting;
 - zero-use first reading avoids a false zero-pace conclusion;
 - quantized 1% transitions produce bounded, not exact, rates;
+- activity intervals propagate uncertainty from both quantized endpoints instead of widening only the summed delta;
 - burst then idle decays recent pace;
 - steady use produces a narrowing interval and rising confidence;
 - conflicting cycle/recent estimators widen the interval and lower confidence;
 - stale history suppresses current reassurance;
 - reset jitter requires three-read confirmation;
+- an unconfirmed reset/correction remains visibly pending while the last accepted timestamp and percentages stay unchanged;
 - downward corrections do not become negative consumption;
 - next-24-hour budget uses the actual time to reset;
 - Swift and TypeScript fixtures remain identical.

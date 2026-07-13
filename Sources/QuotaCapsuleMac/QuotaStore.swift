@@ -28,6 +28,7 @@ final class QuotaStore: ObservableObject {
     @Published private(set) var lastAttemptText = ""
     @Published private(set) var lastErrorText: String?
     @Published private(set) var lastSuccessfulReadAt: Date?
+    @Published private(set) var isConfirmingQuotaChange = false
     @Published private(set) var nextAutomaticReadAt: Date?
     @Published private(set) var currentTime = Date()
 
@@ -210,6 +211,12 @@ final class QuotaStore: ObservableObject {
 
     var sourceText: String {
         if snapshot.sourceStatus == .ok {
+            if isConfirmingQuotaChange {
+                return copy.sourceConfirming(
+                    lastRefreshText: lastRefreshText,
+                    lastAttemptText: lastAttemptText
+                )
+            }
             if let lastErrorText {
                 return copy.sourceShowingLastSuccess(lastRefreshText: lastRefreshText, error: lastErrorText)
             }
@@ -234,6 +241,9 @@ final class QuotaStore: ObservableObject {
 
     var sourceStatusText: String {
         if snapshot.sourceStatus == .ok {
+            if isConfirmingQuotaChange {
+                return copy.sourceStatusConfirming
+            }
             if lastErrorText != nil {
                 return copy.sourceStatusShowingLastSuccess
             }
@@ -251,6 +261,9 @@ final class QuotaStore: ObservableObject {
         }
         if snapshot.sourceStatus == .ok, let lastErrorText {
             return copy.sourceLatestFailure(lastErrorText)
+        }
+        if snapshot.sourceStatus == .ok, isConfirmingQuotaChange {
+            return copy.sourceConfirmationPending(lastAttemptText)
         }
         if snapshot.sourceStatus == .ok {
             return copy.sourceLastAttempt(lastAttemptText)
@@ -488,6 +501,7 @@ final class QuotaStore: ObservableObject {
 
     private func applyRefreshResult(_ newSnapshot: AgentQuotaSnapshot, now: Date) {
         let previousSnapshot = snapshot
+        let previousLastRefreshText = lastRefreshText
         let attemptText = QuotaStore.timeFormatter(for: locale).string(from: now)
         let reduction = QuotaRefreshReducer.reduce(
             currentSnapshot: snapshot,
@@ -504,7 +518,6 @@ final class QuotaStore: ObservableObject {
         lastErrorText = reduction.lastErrorText
         let attemptSnapshot = reduction.latestAttemptSnapshot
         if attemptSnapshot.sourceStatus == .ok {
-            lastSuccessfulReadAt = now
             historyStore.recordWeeklySnapshot(attemptSnapshot)
             let readings = historyStore.recentWeeklyReadings(now: now)
             let forecastReduction = QuotaRefreshReducer.reduceForecastResult(
@@ -515,19 +528,24 @@ final class QuotaStore: ObservableObject {
                 locale: locale
             )
             runwayForecast = forecastReduction.forecast
-            if !forecastReduction.shouldAdoptLiveSnapshot,
-               let acceptedWindow = previousSnapshot.weeklyWindow {
-                snapshot = AgentQuotaSnapshot(
-                    provider: attemptSnapshot.provider,
-                    sourceStatus: .ok,
-                    fetchedAt: attemptSnapshot.fetchedAt,
-                    weeklyWindow: acceptedWindow,
-                    errorMessage: nil
-                )
+            isConfirmingQuotaChange = !forecastReduction.shouldAdoptLiveSnapshot
+            if forecastReduction.shouldAdoptLiveSnapshot {
+                lastSuccessfulReadAt = now
+            } else {
+                lastRefreshText = previousLastRefreshText
+                if let acceptedWindow = previousSnapshot.weeklyWindow {
+                    snapshot = AgentQuotaSnapshot(
+                        provider: previousSnapshot.provider,
+                        sourceStatus: .ok,
+                        fetchedAt: previousSnapshot.fetchedAt,
+                        weeklyWindow: acceptedWindow,
+                        errorMessage: nil
+                    )
+                }
             }
         }
         displayModel = makeDisplayModel()
-        if attemptSnapshot.sourceStatus == .ok {
+        if attemptSnapshot.sourceStatus == .ok, !isConfirmingQuotaChange {
             recordQuotaStateSample()
         }
         recordEvent(

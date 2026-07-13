@@ -15,7 +15,7 @@ export type ActivitySegmentSummary = {
   transitionCount: number;
   coverageHours: number;
   idleSinceLastTransitionHours: number;
-  observedIncrease: number;
+  observedIncreaseBand: PaceBand;
 };
 
 export function cycleEvidence(window: QuotaWindow, now: Date): PaceEvidence | null {
@@ -61,12 +61,11 @@ export function activityEvidence(observations: WeeklyObservation[], now: Date): 
   if (!segments) return null;
   const effectiveUseHours = segments.activeBurstHours + segments.ordinaryUseHours;
   if (effectiveUseHours <= 0) return null;
-  const increase = quantizedInterval(segments.observedIncrease);
   const activeScale = 24 / effectiveUseHours;
   const recencyDecay = Math.exp(-segments.idleSinceLastTransitionHours / 48);
   const band = {
-    lower: increase.lower * activeScale * segments.dutyRatio * recencyDecay,
-    upper: increase.upper * activeScale * segments.dutyRatio * recencyDecay,
+    lower: segments.observedIncreaseBand.lower * activeScale * segments.dutyRatio * recencyDecay,
+    upper: segments.observedIncreaseBand.upper * activeScale * segments.dutyRatio * recencyDecay,
   };
   if (band.upper <= 0) return null;
   const diversity = segments.activeBurstHours > 0 && segments.ordinaryUseHours > 0 ? 0.05 : 0;
@@ -100,7 +99,8 @@ export function activitySegments(observations: WeeklyObservation[], now: Date): 
   let ordinary = 0;
   let idle = 0;
   let transitions = 0;
-  let observedIncrease = 0;
+  let observedIncreaseLower = 0;
+  let observedIncreaseUpper = 0;
   let lastTransitionAt: Date | null = null;
   for (let index = 1; index < eligible.length; index += 1) {
     const earlier = eligible[index - 1];
@@ -109,7 +109,10 @@ export function activitySegments(observations: WeeklyObservation[], now: Date): 
     if (gap <= 0) continue;
     if (later.usedPercent > earlier.usedPercent) {
       transitions += 1;
-      observedIncrease += later.usedPercent - earlier.usedPercent;
+      const earlierInterval = quantizedInterval(earlier.usedPercent);
+      const laterInterval = quantizedInterval(later.usedPercent);
+      observedIncreaseLower += Math.max(0, laterInterval.lower - earlierInterval.upper);
+      observedIncreaseUpper += Math.max(0, laterInterval.upper - earlierInterval.lower);
       lastTransitionAt = later.fetchedAt;
       if (gap <= BURST_GAP_MS) active += gap;
       else if (gap <= ORDINARY_GAP_MS) ordinary += gap;
@@ -122,7 +125,7 @@ export function activitySegments(observations: WeeklyObservation[], now: Date): 
     }
   }
   idle += Math.max(0, now.getTime() - last.fetchedAt.getTime());
-  if (!transitions || observedIncrease <= 0 || !lastTransitionAt) return null;
+  if (!transitions || observedIncreaseUpper <= 0 || !lastTransitionAt) return null;
   return {
     activeBurstHours: active / 3_600_000,
     ordinaryUseHours: ordinary / 3_600_000,
@@ -131,7 +134,10 @@ export function activitySegments(observations: WeeklyObservation[], now: Date): 
     transitionCount: transitions,
     coverageHours: coverage / 3_600_000,
     idleSinceLastTransitionHours: Math.max(0, now.getTime() - lastTransitionAt.getTime()) / 3_600_000,
-    observedIncrease,
+    observedIncreaseBand: {
+      lower: observedIncreaseLower,
+      upper: observedIncreaseUpper,
+    },
   };
 }
 

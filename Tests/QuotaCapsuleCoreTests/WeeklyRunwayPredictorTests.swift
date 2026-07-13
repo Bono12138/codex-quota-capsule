@@ -238,8 +238,8 @@ struct WeeklyRunwayPredictorTests {
         #expect(result != previous)
     }
 
-    @Test("an unconfirmed reset candidate preserves the accepted forecast")
-    func resetCandidatePreservesAcceptedForecast() {
+    @Test("an unconfirmed reset candidate exposes calibration with accepted data")
+    func resetCandidateExposesCalibrationWithAcceptedData() {
         let previousSnapshot = snapshot(remaining: 70, daysRemaining: 4)
         let previous = WeeklyRunwayPredictor.predict(
             snapshot: previousSnapshot,
@@ -291,7 +291,11 @@ struct WeeklyRunwayPredictorTests {
         )
 
         #expect(WeeklyQualityEngine.analyze(history, now: now).state == .calibrating)
-        #expect(reduction.forecast == previous)
+        #expect(reduction.forecast.state == .calibrating)
+        #expect(reduction.forecast.usedPercent == 30)
+        #expect(reduction.forecast.remainingPercent == 70)
+        #expect(reduction.forecast.projectedRemainingBandAtReset == nil)
+        #expect(reduction.forecast.paceEvidence.isEmpty)
         #expect(!reduction.shouldAdoptLiveSnapshot)
     }
 }

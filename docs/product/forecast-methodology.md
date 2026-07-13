@@ -98,9 +98,11 @@ The product rounds the next-24-hour budget down for display. It does not subtrac
 - `exhausted`: remaining allowance is effectively zero.
 - `unavailable`: the source, timestamps, reset, or quality evidence cannot support an honest current estimate.
 
-`calibrating` remains an internal data-quality transition, not a user waiting room. A valid live weekly window normally falls back to cycle evidence instead of withholding all value.
+The calibrating state is a short, visible data-quality transition rather than a user waiting room. A first valid weekly window normally falls back to cycle evidence immediately. When a later reset or correction candidate is still unconfirmed, the UI keeps the last accepted percentages, labels them as accepted rather than newly updated, and pauses the pace judgment until confirmation.
 
-A first accepted `0%` reading is the exception to cycle-rate projection: quantization still preserves the possible `[0, 0.5]` measurement interval internally, but the UI says that no consumption has been observed and shows the next-24-hour budget without converting a few minutes of uncertainty into a pace warning. While a reset or correction candidate is still calibrating, the native reducer keeps the previously accepted snapshot and forecast until confirmation succeeds.
+A first accepted 0% reading is the exception to cycle-rate projection: quantization still preserves the possible [0, 0.5] measurement interval internally, but the UI says that no consumption has been observed and shows the next-24-hour budget without converting a few minutes of uncertainty into a pace warning. During candidate confirmation, the predictor creates a neutral calibrating presentation from the last accepted observation; it never computes a pace or risk verdict from the candidate.
+
+For activity evidence, uncertainty is propagated through both endpoints of every accepted increase. If the source reports 5% → 9%, the actual increase interval is [8.5 - 5.5, 9.5 - 4.5] = [3, 5], not [3.5, 4.5]. Separate upward transitions are accumulated conservatively so the displayed activity band never claims more precision than the quantized readings support.
 
 ## Confidence
 

@@ -49,12 +49,6 @@ public enum QuotaRefreshReducer {
             )
         }
         let quality = WeeklyQualityEngine.analyze(weeklyReadings, now: now)
-        guard quality.state != .calibrating else {
-            return WeeklyForecastRefreshReduction(
-                forecast: currentForecast,
-                shouldAdoptLiveSnapshot: false
-            )
-        }
         return WeeklyForecastRefreshReduction(
             forecast: WeeklyRunwayPredictor.predict(
                 snapshot: newSnapshot,
@@ -62,7 +56,7 @@ public enum QuotaRefreshReducer {
                 now: now,
                 locale: locale
             ),
-            shouldAdoptLiveSnapshot: true
+            shouldAdoptLiveSnapshot: quality.state != .calibrating
         )
     }
 

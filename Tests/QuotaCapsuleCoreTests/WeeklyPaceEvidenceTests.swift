@@ -74,6 +74,18 @@ struct WeeklyPaceEvidenceTests {
         #expect(afterIdle.reliability < immediate.reliability)
     }
 
+    @Test("activity pace propagates uncertainty from both quantized endpoints")
+    func activityPacePropagatesEndpointUncertainty() throws {
+        let samples = [
+            observation(at: now.addingTimeInterval(-2 * 3_600), used: 5),
+            observation(at: now, used: 9)
+        ]
+        let evidence = try #require(WeeklyPaceEvidence.activity(observations: samples, now: now))
+
+        #expect(abs(evidence.bandPerDay.lower - 36) < 0.000_001)
+        #expect(abs(evidence.bandPerDay.upper - 60) < 0.000_001)
+    }
+
     @Test("activity segmentation distinguishes bursts, ordinary use, and idle gaps")
     func activitySegmentationClassifiesObservedTime() throws {
         let samples = [

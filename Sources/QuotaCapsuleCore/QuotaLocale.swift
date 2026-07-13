@@ -400,6 +400,14 @@ public struct QuotaCopy: Equatable, Sendable {
         }
     }
 
+    public func sourceConfirming(lastRefreshText: String, lastAttemptText: String) -> String {
+        switch locale {
+        case .zhHans: "Codex app-server / rateLimits/read。\(lastAttemptText) 读取到可能的新周期，正在确认；继续显示 \(lastRefreshText) 的已确认数据。"
+        case .zhHant: "Codex app-server / rateLimits/read。\(lastAttemptText) 讀取到可能的新週期，正在確認；繼續顯示 \(lastRefreshText) 的已確認資料。"
+        case .en: "Codex app-server / rateLimits/read. A possible new cycle was read at \(lastAttemptText) and is being confirmed; showing the accepted data from \(lastRefreshText)."
+        }
+    }
+
     public var sourceName: String { "Codex app-server" }
     public var sourceEndpoint: String { "rateLimits/read" }
 
@@ -408,6 +416,14 @@ public struct QuotaCopy: Equatable, Sendable {
         case .zhHans: "实时读取成功"
         case .zhHant: "即時讀取成功"
         case .en: "Live"
+        }
+    }
+
+    public var sourceStatusConfirming: String {
+        switch locale {
+        case .zhHans: "新数据确认中"
+        case .zhHant: "新資料確認中"
+        case .en: "Confirming update"
         }
     }
 
@@ -440,6 +456,14 @@ public struct QuotaCopy: Equatable, Sendable {
         case .zhHans: "最近尝试 \(lastAttemptText)，每 60 秒自动刷新。"
         case .zhHant: "最近嘗試 \(lastAttemptText)，每 60 秒自動重新整理。"
         case .en: "Last attempt \(lastAttemptText). Auto-refreshes every 60 seconds."
+        }
+    }
+
+    public func sourceConfirmationPending(_ lastAttemptText: String) -> String {
+        switch locale {
+        case .zhHans: "最近尝试 \(lastAttemptText)：读取成功，但新周期尚待确认；每 60 秒自动读取。"
+        case .zhHant: "最近嘗試 \(lastAttemptText)：讀取成功，但新週期尚待確認；每 60 秒自動重新整理。"
+        case .en: "Last attempt \(lastAttemptText): the read succeeded, but the possible new cycle is not confirmed yet. Auto-refreshes every 60 seconds."
         }
     }
 

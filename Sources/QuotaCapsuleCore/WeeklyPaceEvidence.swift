@@ -8,7 +8,7 @@ public struct ActivitySegmentSummary: Equatable, Sendable {
     public let transitionCount: Int
     public let coverageHours: Double
     public let idleSinceLastTransitionHours: Double
-    public let observedIncrease: Double
+    public let observedIncreaseBand: PaceBand
 }
 
 public enum WeeklyPaceEvidence {
@@ -84,12 +84,11 @@ public enum WeeklyPaceEvidence {
         guard let segments = activitySegments(observations: observations, now: now) else { return nil }
         let effectiveUseHours = segments.activeBurstHours + segments.ordinaryUseHours
         guard effectiveUseHours > 0 else { return nil }
-        let increase = quantizedInterval(segments.observedIncrease)
         let activeScale = 24 / effectiveUseHours
         let recencyDecay = exp(-segments.idleSinceLastTransitionHours / 48)
         let band = PaceBand(
-            lower: increase.lower * activeScale * segments.dutyRatio * recencyDecay,
-            upper: increase.upper * activeScale * segments.dutyRatio * recencyDecay
+            lower: segments.observedIncreaseBand.lower * activeScale * segments.dutyRatio * recencyDecay,
+            upper: segments.observedIncreaseBand.upper * activeScale * segments.dutyRatio * recencyDecay
         )
         guard band.upper > 0 else { return nil }
         let segmentDiversity = segments.activeBurstHours > 0 && segments.ordinaryUseHours > 0 ? 0.05 : 0
@@ -128,7 +127,8 @@ public enum WeeklyPaceEvidence {
         var ordinary: TimeInterval = 0
         var idle: TimeInterval = 0
         var transitions = 0
-        var observedIncrease = 0.0
+        var observedIncreaseLower = 0.0
+        var observedIncreaseUpper = 0.0
         var lastTransitionAt: Date?
 
         for (earlier, later) in zip(eligible, eligible.dropFirst()) {
@@ -136,7 +136,10 @@ public enum WeeklyPaceEvidence {
             guard gap > 0 else { continue }
             if later.usedPercent > earlier.usedPercent {
                 transitions += 1
-                observedIncrease += later.usedPercent - earlier.usedPercent
+                let earlierInterval = quantizedInterval(earlier.usedPercent)
+                let laterInterval = quantizedInterval(later.usedPercent)
+                observedIncreaseLower += max(0, laterInterval.lower - earlierInterval.upper)
+                observedIncreaseUpper += max(0, laterInterval.upper - earlierInterval.lower)
                 lastTransitionAt = later.fetchedAt
                 if gap <= burstGap {
                     active += gap
@@ -153,7 +156,7 @@ public enum WeeklyPaceEvidence {
 
         let trailingIdle = max(0, now.timeIntervalSince(last.fetchedAt))
         idle += trailingIdle
-        guard transitions > 0, observedIncrease > 0, let lastTransitionAt else { return nil }
+        guard transitions > 0, observedIncreaseUpper > 0, let lastTransitionAt else { return nil }
         let duty = clamp((active + ordinary) / coverage, lower: 0, upper: 1)
         return ActivitySegmentSummary(
             activeBurstHours: active / 3_600,
@@ -163,7 +166,10 @@ public enum WeeklyPaceEvidence {
             transitionCount: transitions,
             coverageHours: coverage / 3_600,
             idleSinceLastTransitionHours: max(0, now.timeIntervalSince(lastTransitionAt)) / 3_600,
-            observedIncrease: observedIncrease
+            observedIncreaseBand: PaceBand(
+                lower: observedIncreaseLower,
+                upper: observedIncreaseUpper
+            )
         )
     }
 

@@ -57,6 +57,17 @@ describe("adaptive weekly pace evidence", () => {
     expect(afterIdle.reliability).toBeLessThan(immediate.reliability);
   });
 
+  it("propagates uncertainty from both quantized activity endpoints", () => {
+    const samples = [
+      observation(new Date(now.getTime() - 2 * 3_600_000), 5),
+      observation(now, 9),
+    ];
+    const evidence = activityEvidence(samples, now)!;
+
+    expect(evidence.bandPerDay.lower).toBeCloseTo(36, 9);
+    expect(evidence.bandPerDay.upper).toBeCloseTo(60, 9);
+  });
+
   it("segments active bursts, ordinary use, and idle gaps", () => {
     const samples = [
       observation(new Date(now.getTime() - 30 * 3_600_000), 5),
