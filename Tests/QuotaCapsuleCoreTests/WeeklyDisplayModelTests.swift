@@ -134,8 +134,9 @@ struct WeeklyDisplayModelTests {
         #expect(simplified.sourceStatusConfirming == "新数据确认中")
         #expect(traditional.sourceStatusConfirming == "新資料確認中")
         #expect(english.sourceStatusConfirming == "Confirming update")
+        #expect(simplified.sourceConfirming(lastRefreshText: "10:00", lastAttemptText: "10:01").contains("可能的额度变化"))
         #expect(simplified.sourceConfirming(lastRefreshText: "10:00", lastAttemptText: "10:01").contains("继续显示 10:00"))
-        #expect(simplified.sourceConfirmationPending("10:01").contains("读取成功，但新周期尚待确认"))
+        #expect(simplified.sourceConfirmationPending("10:01").contains("读取成功，但额度变化尚待确认"))
     }
 
     @Test("onboarding teaches the weekly decision hierarchy")

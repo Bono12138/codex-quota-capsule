@@ -68,6 +68,18 @@ describe("adaptive weekly pace evidence", () => {
     expect(evidence.bandPerDay.upper).toBeCloseTo(60, 9);
   });
 
+  it("propagates only the endpoints of a continuous activity run", () => {
+    const samples = [
+      observation(new Date(now.getTime() - 2 * 3_600_000), 5),
+      observation(new Date(now.getTime() - 1 * 3_600_000), 6),
+      observation(now, 7),
+    ];
+    const evidence = activityEvidence(samples, now)!;
+
+    expect(evidence.bandPerDay.lower).toBeCloseTo(12, 9);
+    expect(evidence.bandPerDay.upper).toBeCloseTo(36, 9);
+  });
+
   it("segments active bursts, ordinary use, and idle gaps", () => {
     const samples = [
       observation(new Date(now.getTime() - 30 * 3_600_000), 5),

@@ -86,6 +86,19 @@ struct WeeklyPaceEvidenceTests {
         #expect(abs(evidence.bandPerDay.upper - 60) < 0.000_001)
     }
 
+    @Test("continuous activity propagates only the run endpoints")
+    func continuousActivityDoesNotDoubleCountSharedEndpointUncertainty() throws {
+        let samples = [
+            observation(at: now.addingTimeInterval(-2 * 3_600), used: 5),
+            observation(at: now.addingTimeInterval(-1 * 3_600), used: 6),
+            observation(at: now, used: 7)
+        ]
+        let evidence = try #require(WeeklyPaceEvidence.activity(observations: samples, now: now))
+
+        #expect(abs(evidence.bandPerDay.lower - 12) < 0.000_001)
+        #expect(abs(evidence.bandPerDay.upper - 36) < 0.000_001)
+    }
+
     @Test("activity segmentation distinguishes bursts, ordinary use, and idle gaps")
     func activitySegmentationClassifiesObservedTime() throws {
         let samples = [

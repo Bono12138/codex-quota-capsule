@@ -130,16 +130,28 @@ public enum WeeklyPaceEvidence {
         var observedIncreaseLower = 0.0
         var observedIncreaseUpper = 0.0
         var lastTransitionAt: Date?
+        var increaseRunStart: WeeklyObservation?
+        var increaseRunEnd: WeeklyObservation?
+
+        func flushIncreaseRun() {
+            guard let start = increaseRunStart, let end = increaseRunEnd else { return }
+            let startInterval = quantizedInterval(start.usedPercent)
+            let endInterval = quantizedInterval(end.usedPercent)
+            observedIncreaseLower += max(0, endInterval.lower - startInterval.upper)
+            observedIncreaseUpper += max(0, endInterval.upper - startInterval.lower)
+            increaseRunStart = nil
+            increaseRunEnd = nil
+        }
 
         for (earlier, later) in zip(eligible, eligible.dropFirst()) {
             let gap = later.fetchedAt.timeIntervalSince(earlier.fetchedAt)
             guard gap > 0 else { continue }
             if later.usedPercent > earlier.usedPercent {
                 transitions += 1
-                let earlierInterval = quantizedInterval(earlier.usedPercent)
-                let laterInterval = quantizedInterval(later.usedPercent)
-                observedIncreaseLower += max(0, laterInterval.lower - earlierInterval.upper)
-                observedIncreaseUpper += max(0, laterInterval.upper - earlierInterval.lower)
+                if increaseRunStart == nil {
+                    increaseRunStart = earlier
+                }
+                increaseRunEnd = later
                 lastTransitionAt = later.fetchedAt
                 if gap <= burstGap {
                     active += gap
@@ -150,9 +162,11 @@ public enum WeeklyPaceEvidence {
                     idle += gap - burstGap
                 }
             } else {
+                flushIncreaseRun()
                 idle += gap
             }
         }
+        flushIncreaseRun()
 
         let trailingIdle = max(0, now.timeIntervalSince(last.fetchedAt))
         idle += trailingIdle

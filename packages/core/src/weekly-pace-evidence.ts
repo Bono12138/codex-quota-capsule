@@ -102,6 +102,17 @@ export function activitySegments(observations: WeeklyObservation[], now: Date): 
   let observedIncreaseLower = 0;
   let observedIncreaseUpper = 0;
   let lastTransitionAt: Date | null = null;
+  let increaseRunStart: WeeklyObservation | null = null;
+  let increaseRunEnd: WeeklyObservation | null = null;
+  const flushIncreaseRun = () => {
+    if (!increaseRunStart || !increaseRunEnd) return;
+    const startInterval = quantizedInterval(increaseRunStart.usedPercent);
+    const endInterval = quantizedInterval(increaseRunEnd.usedPercent);
+    observedIncreaseLower += Math.max(0, endInterval.lower - startInterval.upper);
+    observedIncreaseUpper += Math.max(0, endInterval.upper - startInterval.lower);
+    increaseRunStart = null;
+    increaseRunEnd = null;
+  };
   for (let index = 1; index < eligible.length; index += 1) {
     const earlier = eligible[index - 1];
     const later = eligible[index];
@@ -109,10 +120,8 @@ export function activitySegments(observations: WeeklyObservation[], now: Date): 
     if (gap <= 0) continue;
     if (later.usedPercent > earlier.usedPercent) {
       transitions += 1;
-      const earlierInterval = quantizedInterval(earlier.usedPercent);
-      const laterInterval = quantizedInterval(later.usedPercent);
-      observedIncreaseLower += Math.max(0, laterInterval.lower - earlierInterval.upper);
-      observedIncreaseUpper += Math.max(0, laterInterval.upper - earlierInterval.lower);
+      if (!increaseRunStart) increaseRunStart = earlier;
+      increaseRunEnd = later;
       lastTransitionAt = later.fetchedAt;
       if (gap <= BURST_GAP_MS) active += gap;
       else if (gap <= ORDINARY_GAP_MS) ordinary += gap;
@@ -121,9 +130,11 @@ export function activitySegments(observations: WeeklyObservation[], now: Date): 
         idle += gap - BURST_GAP_MS;
       }
     } else {
+      flushIncreaseRun();
       idle += gap;
     }
   }
+  flushIncreaseRun();
   idle += Math.max(0, now.getTime() - last.fetchedAt.getTime());
   if (!transitions || observedIncreaseUpper <= 0 || !lastTransitionAt) return null;
   return {
