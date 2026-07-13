@@ -187,7 +187,7 @@ public struct QuotaCopy: Equatable, Sendable {
 
     public var resetMarkerTitle: String {
         switch locale {
-        case .zhHans: "刷新"
+        case .zhHans: "重置"
         case .zhHant: "重設"
         case .en: "Reset"
         }

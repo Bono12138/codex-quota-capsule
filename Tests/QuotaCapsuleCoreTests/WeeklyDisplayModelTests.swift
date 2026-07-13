@@ -93,7 +93,9 @@ struct WeeklyDisplayModelTests {
 
         #expect(watch.statusLabel == "偏快")
         #expect(risk.statusLabel == "可能不够")
+        #expect(risk.defaultText == "照最近速度，本周额度可能在重置前用完")
         #expect(exhausted.statusLabel == "已用尽")
+        #expect(exhausted.defaultText == "本周额度已用尽，重置后会自动恢复")
         #expect(!watch.defaultText.contains("-"))
     }
 
@@ -134,6 +136,7 @@ struct WeeklyDisplayModelTests {
         #expect(copy.weeklyTrendTitle == "本周趋势")
         #expect(!copy.sustainableLineTitle.contains("5%"))
         #expect(copy.forecastResetBandTitle.contains("重置余量"))
+        #expect(copy.resetMarkerTitle == "重置")
         #expect(copy.resetTimeTitle == "周额度重置")
     }
 

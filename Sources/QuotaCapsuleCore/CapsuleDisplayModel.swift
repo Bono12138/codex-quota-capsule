@@ -121,7 +121,7 @@ public struct CapsuleDisplayModel: Equatable, Sendable {
             }
         case .exhausted:
             switch locale {
-            case .zhHans: "本周额度已用尽，刷新后会自动恢复"
+            case .zhHans: "本周额度已用尽，重置后会自动恢复"
             case .zhHant: "本週額度已用盡，重設後會自動恢復"
             case .en: "This week's quota is exhausted and will recover at reset"
             }
@@ -135,7 +135,7 @@ public struct CapsuleDisplayModel: Equatable, Sendable {
             earlyEstimateText(forecast.projectedRemainingBandAtReset, locale: locale)
         case .mayRunOut:
             switch locale {
-            case .zhHans: "照最近速度，本周额度可能在刷新前用完"
+            case .zhHans: "照最近速度，本周额度可能在重置前用完"
             case .zhHant: "照最近速度，本週額度可能在重設前用完"
             case .en: "At the recent pace, weekly quota may run out before reset"
             }
