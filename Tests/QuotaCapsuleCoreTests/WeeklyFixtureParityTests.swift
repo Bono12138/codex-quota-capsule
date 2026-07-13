@@ -25,6 +25,7 @@ struct WeeklyFixtureParityTests {
             let qualityState: String
             let cycleCount: Int
             let forecastState: String
+            let usedPercent: Double?
             let confidence: String?
             let evidenceKinds: [String]?
             let sustainableRate: Double?
@@ -89,6 +90,9 @@ struct WeeklyFixtureParityTests {
             #expect(forecast.state.rawValue == testCase.expected.forecastState, "forecast mismatch in \(testCase.id)")
             if let expected = testCase.expected.confidence {
                 #expect(forecast.confidence.rawValue == expected, "confidence mismatch in \(testCase.id)")
+            }
+            if let expected = testCase.expected.usedPercent {
+                #expect(forecast.usedPercent == expected, "accepted used percent mismatch in \(testCase.id)")
             }
             if let expected = testCase.expected.evidenceKinds {
                 #expect(forecast.paceEvidence.map { $0.kind.rawValue } == expected, "evidence mismatch in \(testCase.id)")

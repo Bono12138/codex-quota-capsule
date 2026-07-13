@@ -14,6 +14,7 @@ public struct CapsuleDisplayModel: Equatable, Sendable {
     public let metrics: [CapsuleMetric]
     public let confidenceText: String
     public let freshnessText: String
+    public let showsLivePaceDetails: Bool
 
     public init(
         tone: CapsuleLevel,
@@ -22,7 +23,8 @@ public struct CapsuleDisplayModel: Equatable, Sendable {
         compactDetail: String,
         metrics: [CapsuleMetric],
         confidenceText: String = "",
-        freshnessText: String = ""
+        freshnessText: String = "",
+        showsLivePaceDetails: Bool = false
     ) {
         self.tone = tone
         self.statusLabel = statusLabel
@@ -31,6 +33,7 @@ public struct CapsuleDisplayModel: Equatable, Sendable {
         self.metrics = metrics
         self.confidenceText = confidenceText
         self.freshnessText = freshnessText
+        self.showsLivePaceDetails = showsLivePaceDetails
     }
 
     public static func make(
@@ -54,7 +57,10 @@ public struct CapsuleDisplayModel: Equatable, Sendable {
                 CapsuleMetric(label: labels[2], value: budget, numericValue: nil),
                 CapsuleMetric(label: labels[3], value: recent, numericValue: nil)
             ],
-            confidenceText: copy.confidenceReason(forecast)
+            confidenceText: copy.confidenceReason(forecast),
+            showsLivePaceDetails: forecast.state != .unavailable
+                && forecast.state != .calibrating
+                && forecast.confidenceReason != "no-consumption-observed"
         )
     }
 
@@ -89,7 +95,8 @@ public struct CapsuleDisplayModel: Equatable, Sendable {
                 CapsuleMetric(label: labels[1], value: formatPercent(used, copy: copy), numericValue: used.map { Int($0.rounded()) }),
                 CapsuleMetric(label: labels[2], value: suppressedValue, numericValue: nil),
                 CapsuleMetric(label: labels[3], value: suppressedValue, numericValue: nil)
-            ]
+            ],
+            showsLivePaceDetails: false
         )
     }
 
@@ -132,7 +139,15 @@ public struct CapsuleDisplayModel: Equatable, Sendable {
             case .en: "Data is being confirmed; the pace judgment is unchanged for now"
             }
         case .earlyEstimate:
-            earlyEstimateText(forecast.projectedRemainingBandAtReset, locale: locale)
+            if forecast.confidenceReason == "no-consumption-observed" {
+                switch locale {
+                case .zhHans: "尚未观察到消耗；可先按未来 24 小时建议使用"
+                case .zhHant: "尚未觀察到消耗；可先按未來 24 小時建議使用"
+                case .en: "No usage observed yet; start with the next 24-hour budget"
+                }
+            } else {
+                earlyEstimateText(forecast.projectedRemainingBandAtReset, locale: locale)
+            }
         case .mayRunOut:
             switch locale {
             case .zhHans: "照最近速度，本周额度可能在重置前用完"

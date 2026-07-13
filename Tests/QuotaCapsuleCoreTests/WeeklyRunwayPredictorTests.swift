@@ -86,6 +86,24 @@ struct WeeklyRunwayPredictorTests {
         #expect(forecast.confidence == .low)
     }
 
+    @Test("a zero reading just after reset reports no observed consumption")
+    func zeroReadingAfterResetDoesNotWarn() {
+        let daysRemaining = 7 - 10.0 / 1_440
+        let forecast = WeeklyRunwayPredictor.predict(
+            snapshot: snapshot(remaining: 100, daysRemaining: daysRemaining),
+            quality: quality(values: [0], spacingHours: 1, resetDays: daysRemaining),
+            now: now
+        )
+        let model = CapsuleDisplayModel.make(forecast: forecast, locale: .zhHans)
+
+        #expect(forecast.state == .earlyEstimate)
+        #expect(forecast.paceEvidence.isEmpty)
+        #expect(forecast.projectedRemainingBandAtReset == nil)
+        #expect(forecast.confidenceReason == "no-consumption-observed")
+        #expect(model.defaultText == "尚未观察到消耗；可先按未来 24 小时建议使用")
+        #expect(!model.defaultText.contains("偏快"))
+    }
+
     @Test("both pace scenarios running out produces may-run-out")
     func bothPaceScenariosRunningOutIsMayRunOut() {
         let forecast = WeeklyRunwayPredictor.predict(
@@ -218,5 +236,62 @@ struct WeeklyRunwayPredictorTests {
 
         #expect(result.state == .enough)
         #expect(result != previous)
+    }
+
+    @Test("an unconfirmed reset candidate preserves the accepted forecast")
+    func resetCandidatePreservesAcceptedForecast() {
+        let previousSnapshot = snapshot(remaining: 70, daysRemaining: 4)
+        let previous = WeeklyRunwayPredictor.predict(
+            snapshot: previousSnapshot,
+            quality: quality(values: [20, 25, 30], spacingHours: 12),
+            now: now
+        )
+        let candidateReset = now.addingTimeInterval(6 * 86_400)
+        let candidateSnapshot = AgentQuotaSnapshot(
+            provider: "codex",
+            sourceStatus: .ok,
+            fetchedAt: now,
+            weeklyWindow: QuotaWindow(
+                label: "weekly",
+                windowMinutes: 10_080,
+                usedPercent: 2,
+                remainingPercent: 98,
+                resetsAt: candidateReset
+            ),
+            errorMessage: nil
+        )
+        let history = [
+            WeeklyQuotaReading(
+                provider: "codex",
+                sourceStatus: .ok,
+                fetchedAt: now.addingTimeInterval(-60),
+                windowMinutes: 10_080,
+                usedPercent: 30,
+                remainingPercent: 70,
+                resetsAt: now.addingTimeInterval(4 * 86_400),
+                errorMessage: nil
+            ),
+            WeeklyQuotaReading(
+                provider: "codex",
+                sourceStatus: .ok,
+                fetchedAt: now,
+                windowMinutes: 10_080,
+                usedPercent: 2,
+                remainingPercent: 98,
+                resetsAt: candidateReset,
+                errorMessage: nil
+            )
+        ]
+
+        let reduction = QuotaRefreshReducer.reduceForecastResult(
+            currentForecast: previous,
+            newSnapshot: candidateSnapshot,
+            weeklyReadings: history,
+            now: now
+        )
+
+        #expect(WeeklyQualityEngine.analyze(history, now: now).state == .calibrating)
+        #expect(reduction.forecast == previous)
+        #expect(!reduction.shouldAdoptLiveSnapshot)
     }
 }

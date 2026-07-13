@@ -51,6 +51,7 @@ struct WeeklyDisplayModelTests {
         #expect(model.metrics[3].value == "4–6%")
         #expect(model.metrics.map(\.value) == ["42%", "28%", "≤12%", "4–6%"])
         #expect(model.confidenceText.contains("已观察到 2 次实际增长"))
+        #expect(model.showsLivePaceDetails)
     }
 
     @Test("early estimate gives immediate value without a six-hour waiting room")
@@ -175,6 +176,7 @@ struct WeeklyDisplayModelTests {
         #expect(model.metrics[2].value == "暂不判断")
         #expect(model.metrics[3].value == "暂不判断")
         #expect(model.usedQuotaText == "28%")
+        #expect(!model.showsLivePaceDetails)
     }
 
     @Test("non-finite and negative values never reach display strings")

@@ -71,6 +71,25 @@ struct WeeklyPaceEvidenceTests {
 
         #expect(afterIdle.bandPerDay.upper < immediate.bandPerDay.upper)
         #expect(afterIdle.bandPerDay.lower < immediate.bandPerDay.lower)
+        #expect(afterIdle.reliability < immediate.reliability)
+    }
+
+    @Test("activity segmentation distinguishes bursts, ordinary use, and idle gaps")
+    func activitySegmentationClassifiesObservedTime() throws {
+        let samples = [
+            observation(at: now.addingTimeInterval(-30 * 3_600), used: 5),
+            observation(at: now.addingTimeInterval(-29 * 3_600), used: 6),
+            observation(at: now.addingTimeInterval(-28 * 3_600), used: 7),
+            observation(at: now.addingTimeInterval(-16 * 3_600), used: 8),
+            observation(at: now.addingTimeInterval(-4 * 3_600), used: 8)
+        ]
+        let summary = try #require(WeeklyPaceEvidence.activitySegments(observations: samples, now: now))
+
+        #expect(abs(summary.activeBurstHours - 2) < 0.000_001)
+        #expect(abs(summary.ordinaryUseHours - 12) < 0.000_001)
+        #expect(abs(summary.idleHours - 16) < 0.000_001)
+        #expect(abs(summary.dutyRatio - (14.0 / 30.0)) < 0.000_001)
+        #expect(summary.transitionCount == 3)
     }
 
     @Test("downward corrections never count as consumption")

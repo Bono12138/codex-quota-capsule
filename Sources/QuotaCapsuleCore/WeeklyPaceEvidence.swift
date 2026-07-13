@@ -1,9 +1,23 @@
 import Foundation
 
+public struct ActivitySegmentSummary: Equatable, Sendable {
+    public let activeBurstHours: Double
+    public let ordinaryUseHours: Double
+    public let idleHours: Double
+    public let dutyRatio: Double
+    public let transitionCount: Int
+    public let coverageHours: Double
+    public let idleSinceLastTransitionHours: Double
+    public let observedIncrease: Double
+}
+
 public enum WeeklyPaceEvidence {
     private static let day: TimeInterval = 86_400
     private static let minimumPairSeparation: TimeInterval = 30 * 60
     private static let recentHorizon: TimeInterval = 24 * 60 * 60
+    private static let activityHorizon: TimeInterval = 72 * 60 * 60
+    private static let burstGap: TimeInterval = 3 * 60 * 60
+    private static let ordinaryGap: TimeInterval = 12 * 60 * 60
 
     public static func cycle(window: QuotaWindow, now: Date) -> PaceEvidence? {
         let duration = Double(window.windowMinutes) * 60
@@ -67,44 +81,89 @@ public enum WeeklyPaceEvidence {
         observations: [WeeklyObservation],
         now: Date
     ) -> PaceEvidence? {
-        let eligible = observations.filter { $0.fetchedAt <= now }
-        let transitionIndexes = eligible.indices.dropFirst().filter {
-            eligible[$0].usedPercent > eligible[$0 - 1].usedPercent
-        }
-        guard let firstTransition = transitionIndexes.first,
-              let lastTransition = transitionIndexes.last else {
-            return nil
-        }
-
-        let baseline = eligible[firstTransition - 1]
-        let latestTransition = eligible[lastTransition]
-        let coverage = now.timeIntervalSince(baseline.fetchedAt)
-        guard coverage >= minimumPairSeparation else { return nil }
-
-        let first = quantizedInterval(baseline.usedPercent)
-        let last = quantizedInterval(latestTransition.usedPercent)
-        let scale = day / coverage
+        guard let segments = activitySegments(observations: observations, now: now) else { return nil }
+        let effectiveUseHours = segments.activeBurstHours + segments.ordinaryUseHours
+        guard effectiveUseHours > 0 else { return nil }
+        let increase = quantizedInterval(segments.observedIncrease)
+        let activeScale = 24 / effectiveUseHours
+        let recencyDecay = exp(-segments.idleSinceLastTransitionHours / 48)
         let band = PaceBand(
-            lower: max(0, last.lower - first.upper) * scale,
-            upper: max(0, last.upper - first.lower) * scale
+            lower: increase.lower * activeScale * segments.dutyRatio * recencyDecay,
+            upper: increase.upper * activeScale * segments.dutyRatio * recencyDecay
         )
         guard band.upper > 0 else { return nil }
-
-        let idle = max(0, now.timeIntervalSince(latestTransition.fetchedAt))
-        let idleFactor = max(0.5, exp(-idle / (48 * 3_600)))
+        let segmentDiversity = segments.activeBurstHours > 0 && segments.ordinaryUseHours > 0 ? 0.05 : 0
+        let baseReliability = 0.18
+            + 0.08 * Double(min(segments.transitionCount, 4))
+            + 0.15 * sqrt(min(1, segments.coverageHours / 72))
+            + 0.12 * min(1, segments.dutyRatio * 3)
+            + segmentDiversity
         let reliability = clamp(
-            (0.18
-                + 0.08 * Double(min(transitionIndexes.count, 4))
-                + 0.18 * sqrt(min(1, coverage / recentHorizon))) * idleFactor,
+            baseReliability * (0.35 + 0.65 * recencyDecay),
             lower: 0.12,
-            upper: 0.72
+            upper: 0.75
         )
         return PaceEvidence(
             kind: .activity,
             bandPerDay: band,
             reliability: reliability,
-            transitionCount: transitionIndexes.count,
-            coverageHours: coverage / 3_600
+            transitionCount: segments.transitionCount,
+            coverageHours: segments.coverageHours
+        )
+    }
+
+    public static func activitySegments(
+        observations: [WeeklyObservation],
+        now: Date
+    ) -> ActivitySegmentSummary? {
+        let cutoff = now.addingTimeInterval(-activityHorizon)
+        let eligible = observations
+            .filter { $0.fetchedAt >= cutoff && $0.fetchedAt <= now }
+            .sorted { $0.fetchedAt < $1.fetchedAt }
+        guard let first = eligible.first, let last = eligible.last, eligible.count >= 2 else { return nil }
+        let coverage = now.timeIntervalSince(first.fetchedAt)
+        guard coverage >= minimumPairSeparation else { return nil }
+
+        var active: TimeInterval = 0
+        var ordinary: TimeInterval = 0
+        var idle: TimeInterval = 0
+        var transitions = 0
+        var observedIncrease = 0.0
+        var lastTransitionAt: Date?
+
+        for (earlier, later) in zip(eligible, eligible.dropFirst()) {
+            let gap = later.fetchedAt.timeIntervalSince(earlier.fetchedAt)
+            guard gap > 0 else { continue }
+            if later.usedPercent > earlier.usedPercent {
+                transitions += 1
+                observedIncrease += later.usedPercent - earlier.usedPercent
+                lastTransitionAt = later.fetchedAt
+                if gap <= burstGap {
+                    active += gap
+                } else if gap <= ordinaryGap {
+                    ordinary += gap
+                } else {
+                    ordinary += burstGap
+                    idle += gap - burstGap
+                }
+            } else {
+                idle += gap
+            }
+        }
+
+        let trailingIdle = max(0, now.timeIntervalSince(last.fetchedAt))
+        idle += trailingIdle
+        guard transitions > 0, observedIncrease > 0, let lastTransitionAt else { return nil }
+        let duty = clamp((active + ordinary) / coverage, lower: 0, upper: 1)
+        return ActivitySegmentSummary(
+            activeBurstHours: active / 3_600,
+            ordinaryUseHours: ordinary / 3_600,
+            idleHours: idle / 3_600,
+            dutyRatio: duty,
+            transitionCount: transitions,
+            coverageHours: coverage / 3_600,
+            idleSinceLastTransitionHours: max(0, now.timeIntervalSince(lastTransitionAt)) / 3_600,
+            observedIncrease: observedIncrease
         )
     }
 

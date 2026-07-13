@@ -24,6 +24,18 @@ verify_archive() {
   fi
 }
 
+refresh_archive_checksums() {
+  (
+    cd "$ARCHIVE_DIR"
+    : > SHA256SUMS.tmp
+    while IFS= read -r -d '' file; do
+      shasum -a 256 "$file" >> SHA256SUMS.tmp
+    done < <(find . -type f ! -name SHA256SUMS ! -name SHA256SUMS.tmp -print0)
+    mv SHA256SUMS.tmp SHA256SUMS
+    shasum -a 256 -c SHA256SUMS >/dev/null
+  )
+}
+
 describe_item() {
   local kind="$1"
   local source="$2"
@@ -61,6 +73,7 @@ case "$MODE" in
     mkdir -p "$RETIRED_DIR"
     archive_item "$LEGACY_APP" "$RETIRED_DIR/Quota Capsule Dev Local.app"
     archive_item "$LEGACY_DATA" "$RETIRED_DIR/Quota Capsule Dev Local"
+    refresh_archive_checksums
     echo "legacy Dev artifacts retired"
     ;;
   *)

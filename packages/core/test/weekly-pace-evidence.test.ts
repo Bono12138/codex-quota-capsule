@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   activityEvidence,
+  activitySegments,
   countUpwardTransitions,
   cycleEvidence,
   historicalEvidence,
@@ -53,6 +54,24 @@ describe("adaptive weekly pace evidence", () => {
 
     expect(afterIdle.bandPerDay.upper).toBeLessThan(immediate.bandPerDay.upper);
     expect(afterIdle.bandPerDay.lower).toBeLessThan(immediate.bandPerDay.lower);
+    expect(afterIdle.reliability).toBeLessThan(immediate.reliability);
+  });
+
+  it("segments active bursts, ordinary use, and idle gaps", () => {
+    const samples = [
+      observation(new Date(now.getTime() - 30 * 3_600_000), 5),
+      observation(new Date(now.getTime() - 29 * 3_600_000), 6),
+      observation(new Date(now.getTime() - 28 * 3_600_000), 7),
+      observation(new Date(now.getTime() - 16 * 3_600_000), 8),
+      observation(new Date(now.getTime() - 4 * 3_600_000), 8),
+    ];
+    const summary = activitySegments(samples, now)!;
+
+    expect(summary.activeBurstHours).toBeCloseTo(2, 9);
+    expect(summary.ordinaryUseHours).toBeCloseTo(12, 9);
+    expect(summary.idleHours).toBeCloseTo(16, 9);
+    expect(summary.dutyRatio).toBeCloseTo(14 / 30, 9);
+    expect(summary.transitionCount).toBe(3);
   });
 
   it("never counts a downward correction as consumption", () => {

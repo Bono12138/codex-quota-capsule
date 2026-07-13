@@ -1,5 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { auditForecastDocumentation, auditRepository, type RepositoryFile } from "./repository-policy";
+import {
+  auditForecastDocumentation,
+  auditMarkdownLinks,
+  auditReleaseEvidence,
+  auditReleaseMetadata,
+  auditRepository,
+  type RepositoryFile,
+} from "./repository-policy";
 
 describe("repository policy", () => {
   it("rejects legacy development channel text", () => {
@@ -57,6 +64,44 @@ describe("repository policy", () => {
     expect(findings).toContainEqual(expect.objectContaining({
       path: "docs/product/forecast-methodology.md",
       rule: "forecast-documentation",
+    }));
+  });
+
+  it("rejects mismatched package, app, bundle, and tag versions", () => {
+    const findings = auditReleaseMetadata([
+      textFile("package.json", '{"version":"0.3.0"}'),
+      textFile("script/build_and_run.sh", 'APP_VERSION="${QUOTA_CAPSULE_VERSION:-0.2.0}"\nBUNDLE_NAME="${QUOTA_CAPSULE_BUNDLE_NAME:-Quota Capsule Old}"\nBUNDLE_ID="${QUOTA_CAPSULE_BUNDLE_ID:-com.example.old}"'),
+      textFile("script/package_macos.sh", 'BUNDLE_NAME="${QUOTA_CAPSULE_BUNDLE_NAME:-Quota Capsule Beta}"'),
+    ], "v0.2.0-beta.1");
+
+    expect(findings.map((item) => item.rule)).toEqual(expect.arrayContaining([
+      "release-version-mismatch",
+      "release-tag-mismatch",
+      "release-bundle-mismatch",
+    ]));
+  });
+
+  it("rejects broken internal Markdown links", () => {
+    const findings = auditMarkdownLinks([
+      textFile("README.md", "[missing](docs/missing.md)"),
+      textFile("docs/README.md", "# Docs"),
+    ]);
+
+    expect(findings).toContainEqual(expect.objectContaining({
+      path: "README.md",
+      rule: "broken-document-link",
+    }));
+  });
+
+  it("requires a complete release evidence record", () => {
+    const findings = auditReleaseEvidence([
+      textFile("CHANGELOG.md", "# Changelog"),
+      textFile("docs/product/acceptance-criteria.md", "# Acceptance"),
+      textFile("docs/operations/release-checklist.md", "# Checklist"),
+    ]);
+
+    expect(findings).toContainEqual(expect.objectContaining({
+      rule: "missing-release-evidence",
     }));
   });
 });

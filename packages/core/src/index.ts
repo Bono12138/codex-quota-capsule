@@ -25,6 +25,7 @@ export {
 } from "./prediction";
 export {
   activityEvidence,
+  activitySegments,
   countUpwardTransitions,
   cycleEvidence,
   fusePaceEvidence,
@@ -32,5 +33,6 @@ export {
   quantizedInterval,
   recentEvidence,
 } from "./weekly-pace-evidence";
+export type { ActivitySegmentSummary } from "./weekly-pace-evidence";
 export { createSnapshotRecord, InMemorySnapshotStore } from "./snapshot";
 export type { CreateSnapshotRecordOptions, QuotaSnapshotRecord, SnapshotListFilter } from "./snapshot";

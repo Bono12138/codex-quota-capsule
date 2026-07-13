@@ -452,7 +452,8 @@ struct WeeklyTrendChartView: View {
                 .font(.system(size: 10, weight: .bold))
                 .foregroundStyle(.secondary)
 
-            if points.count >= 2,
+            if store.displayModel.showsLivePaceDetails,
+               points.count >= 2,
                let window = store.snapshot.weeklyWindow {
                 chart(window: window)
                     .frame(height: 76)
@@ -461,6 +462,12 @@ struct WeeklyTrendChartView: View {
                     HStack(spacing: 12) { chartLegend }
                     VStack(alignment: .leading, spacing: 5) { chartLegend }
                 }
+            } else if !store.displayModel.showsLivePaceDetails {
+                Label(store.copy.paceDetailsPausedText, systemImage: "pause.circle")
+                    .font(.system(size: 11, weight: .semibold))
+                    .foregroundStyle(.secondary)
+                    .padding(.vertical, 12)
+                    .frame(maxWidth: .infinity, alignment: .center)
             } else {
                 Label(store.copy.trendLearningText, systemImage: "chart.xyaxis.line")
                     .font(.system(size: 11, weight: .semibold))

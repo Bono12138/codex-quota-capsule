@@ -8,6 +8,16 @@ public struct QuotaRefreshReduction: Equatable, Sendable {
     public let latestAttemptSnapshot: AgentQuotaSnapshot
 }
 
+public struct WeeklyForecastRefreshReduction: Equatable, Sendable {
+    public let forecast: WeeklyRunwayForecast
+    public let shouldAdoptLiveSnapshot: Bool
+
+    public init(forecast: WeeklyRunwayForecast, shouldAdoptLiveSnapshot: Bool) {
+        self.forecast = forecast
+        self.shouldAdoptLiveSnapshot = shouldAdoptLiveSnapshot
+    }
+}
+
 public enum QuotaRefreshReducer {
     public static func reduceForecast(
         currentForecast: WeeklyRunwayForecast,
@@ -16,15 +26,43 @@ public enum QuotaRefreshReducer {
         now: Date,
         locale: QuotaLocale = .zhHans
     ) -> WeeklyRunwayForecast {
-        guard newSnapshot.sourceStatus == .ok, newSnapshot.weeklyWindow != nil else {
-            return currentForecast
-        }
-        let quality = WeeklyQualityEngine.analyze(weeklyReadings, now: now)
-        return WeeklyRunwayPredictor.predict(
-            snapshot: newSnapshot,
-            quality: quality,
+        reduceForecastResult(
+            currentForecast: currentForecast,
+            newSnapshot: newSnapshot,
+            weeklyReadings: weeklyReadings,
             now: now,
             locale: locale
+        ).forecast
+    }
+
+    public static func reduceForecastResult(
+        currentForecast: WeeklyRunwayForecast,
+        newSnapshot: AgentQuotaSnapshot,
+        weeklyReadings: [WeeklyQuotaReading],
+        now: Date,
+        locale: QuotaLocale = .zhHans
+    ) -> WeeklyForecastRefreshReduction {
+        guard newSnapshot.sourceStatus == .ok, newSnapshot.weeklyWindow != nil else {
+            return WeeklyForecastRefreshReduction(
+                forecast: currentForecast,
+                shouldAdoptLiveSnapshot: false
+            )
+        }
+        let quality = WeeklyQualityEngine.analyze(weeklyReadings, now: now)
+        guard quality.state != .calibrating else {
+            return WeeklyForecastRefreshReduction(
+                forecast: currentForecast,
+                shouldAdoptLiveSnapshot: false
+            )
+        }
+        return WeeklyForecastRefreshReduction(
+            forecast: WeeklyRunwayPredictor.predict(
+                snapshot: newSnapshot,
+                quality: quality,
+                now: now,
+                locale: locale
+            ),
+            shouldAdoptLiveSnapshot: true
         )
     }
 

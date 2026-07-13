@@ -153,6 +153,40 @@ export function predictWeeklyRunway(
   const window = snapshot.weeklyWindow;
   if (snapshot.sourceStatus !== "ok" || !isValidWeeklyWindow(window, now)) return unavailableWeeklyForecast();
 
+  if (quality.state === "calibrating") {
+    const accepted = quality.observations.at(-1);
+    if (!accepted) return unavailableWeeklyForecast();
+    const acceptedWindow: QuotaWindow = {
+      label: "weekly",
+      windowMinutes: window.windowMinutes,
+      usedPercent: accepted.usedPercent,
+      remainingPercent: accepted.remainingPercent,
+      resetsAt: accepted.canonicalResetAt,
+    };
+    if (!isValidWeeklyWindow(acceptedWindow, now)) return unavailableWeeklyForecast();
+    const acceptedDaysRemaining = (acceptedWindow.resetsAt.getTime() - now.getTime()) / 86_400_000;
+    const acceptedStart = acceptedWindow.resetsAt.getTime() - acceptedWindow.windowMinutes * 60_000;
+    const acceptedElapsed = Math.min(100, Math.max(0, ((now.getTime() - acceptedStart) / (acceptedWindow.windowMinutes * 60_000)) * 100));
+    const acceptedSustainable = acceptedWindow.remainingPercent / acceptedDaysRemaining;
+    const acceptedBudget = Math.min(acceptedWindow.remainingPercent, acceptedSustainable * Math.min(1, acceptedDaysRemaining));
+    const acceptedActive = activeCycleAndSegment(quality.observations);
+    return makeWeeklyForecast(
+      "calibrating",
+      "low",
+      acceptedWindow,
+      acceptedElapsed,
+      acceptedDaysRemaining,
+      acceptedSustainable,
+      null,
+      null,
+      null,
+      acceptedBudget,
+      observedLast24HourUsageBand(acceptedActive, now),
+      null,
+      trendPoints(acceptedActive),
+    );
+  }
+
   const daysRemaining = (window.resetsAt.getTime() - now.getTime()) / 86_400_000;
   const start = window.resetsAt.getTime() - window.windowMinutes * 60_000;
   const elapsedPercent = Math.min(100, Math.max(0, ((now.getTime() - start) / (window.windowMinutes * 60_000)) * 100));
@@ -167,6 +201,26 @@ export function predictWeeklyRunway(
   }
   if (quality.state === "stale" || quality.state === "unavailable" || quality.state === "unstable") {
     return { ...unavailableWeeklyForecast(), usedPercent: window.usedPercent, remainingPercent: window.remainingPercent, elapsedPercent, daysUntilReset: daysRemaining };
+  }
+
+  if (window.usedPercent === 0) {
+    return makeWeeklyForecast(
+      "earlyEstimate",
+      "low",
+      window,
+      elapsedPercent,
+      daysRemaining,
+      sustainable,
+      null,
+      null,
+      null,
+      budget,
+      null,
+      null,
+      trend,
+      [],
+      "no-consumption-observed",
+    );
   }
 
   const cycle = cycleEvidence(window, now);

@@ -199,7 +199,10 @@ final class QuotaStore: ObservableObject {
     }
 
     var paceComparisonText: String {
-        copy.paceComparison(
+        guard snapshot.sourceStatus == .ok, displayModel.showsLivePaceDetails else {
+            return ""
+        }
+        return copy.paceComparison(
             observed: runwayForecast.recentRateBandPerDay ?? runwayForecast.cycleRateBandPerDay,
             sustainablePerDay: runwayForecast.sustainableRatePerDay
         )
@@ -484,6 +487,7 @@ final class QuotaStore: ObservableObject {
     }
 
     private func applyRefreshResult(_ newSnapshot: AgentQuotaSnapshot, now: Date) {
+        let previousSnapshot = snapshot
         let attemptText = QuotaStore.timeFormatter(for: locale).string(from: now)
         let reduction = QuotaRefreshReducer.reduce(
             currentSnapshot: snapshot,
@@ -503,13 +507,24 @@ final class QuotaStore: ObservableObject {
             lastSuccessfulReadAt = now
             historyStore.recordWeeklySnapshot(attemptSnapshot)
             let readings = historyStore.recentWeeklyReadings(now: now)
-            runwayForecast = QuotaRefreshReducer.reduceForecast(
+            let forecastReduction = QuotaRefreshReducer.reduceForecastResult(
                 currentForecast: runwayForecast,
                 newSnapshot: reduction.snapshot,
                 weeklyReadings: readings,
                 now: now,
                 locale: locale
             )
+            runwayForecast = forecastReduction.forecast
+            if !forecastReduction.shouldAdoptLiveSnapshot,
+               let acceptedWindow = previousSnapshot.weeklyWindow {
+                snapshot = AgentQuotaSnapshot(
+                    provider: attemptSnapshot.provider,
+                    sourceStatus: .ok,
+                    fetchedAt: attemptSnapshot.fetchedAt,
+                    weeklyWindow: acceptedWindow,
+                    errorMessage: nil
+                )
+            }
         }
         displayModel = makeDisplayModel()
         if attemptSnapshot.sourceStatus == .ok {

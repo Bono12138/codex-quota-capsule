@@ -62,9 +62,32 @@ describe("createCapsuleDisplayModel", () => {
     expect(JSON.stringify(model)).not.toContain("6 小时");
   });
 
+  it("explains a first zero reading without inventing a pace warning", () => {
+    const model = createCapsuleDisplayModel(forecast({
+      state: "earlyEstimate",
+      confidence: "low",
+      usedPercent: 0,
+      remainingPercent: 100,
+      projectedRemainingBandAtReset: null,
+      paceEvidence: [],
+      confidenceReason: "no-consumption-observed",
+    }));
+
+    expect(model.defaultText).toBe("尚未观察到消耗；可先按未来 24 小时建议使用");
+    expect(model.confidenceText).toBe("开始使用后会根据实际增长更新判断");
+    expect(model.defaultText).not.toContain("偏快");
+  });
+
   it("rounds the next-24-hour budget down", () => {
     const model = createCapsuleDisplayModel(forecast({ next24HourBudget: 13.9 }));
     expect(model.detailMetrics[2].value).toBe("≤13%");
+  });
+
+  it("uses reset language for exhaustion and runway risk", () => {
+    expect(createCapsuleDisplayModel(forecast({ state: "exhausted" })).defaultText)
+      .toBe("本周额度已用尽，重置后会自动恢复");
+    expect(createCapsuleDisplayModel(forecast({ state: "mayRunOut" })).defaultText)
+      .toBe("照最近速度，本周额度可能在重置前用完");
   });
 
   it("sanitizes non-finite and negative display values", () => {

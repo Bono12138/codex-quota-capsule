@@ -3,6 +3,20 @@ import type { PaceBand, PaceEvidence, PercentageBand, QuotaWindow, WeeklyObserva
 const DAY_MS = 86_400_000;
 const MINIMUM_PAIR_MS = 30 * 60_000;
 const RECENT_HORIZON_MS = 24 * 60 * 60_000;
+const ACTIVITY_HORIZON_MS = 72 * 60 * 60_000;
+const BURST_GAP_MS = 3 * 60 * 60_000;
+const ORDINARY_GAP_MS = 12 * 60 * 60_000;
+
+export type ActivitySegmentSummary = {
+  activeBurstHours: number;
+  ordinaryUseHours: number;
+  idleHours: number;
+  dutyRatio: number;
+  transitionCount: number;
+  coverageHours: number;
+  idleSinceLastTransitionHours: number;
+  observedIncrease: number;
+};
 
 export function cycleEvidence(window: QuotaWindow, now: Date): PaceEvidence | null {
   const duration = window.windowMinutes * 60_000;
@@ -43,36 +57,81 @@ export function recentEvidence(observations: WeeklyObservation[], now: Date): Pa
 }
 
 export function activityEvidence(observations: WeeklyObservation[], now: Date): PaceEvidence | null {
-  const eligible = observations.filter((item) => item.fetchedAt.getTime() <= now.getTime());
-  const transitionIndexes: number[] = [];
-  for (let index = 1; index < eligible.length; index += 1) {
-    if (eligible[index].usedPercent > eligible[index - 1].usedPercent) transitionIndexes.push(index);
-  }
-  const firstTransition = transitionIndexes[0];
-  const lastTransition = transitionIndexes.at(-1);
-  if (firstTransition === undefined || lastTransition === undefined) return null;
-
-  const baseline = eligible[firstTransition - 1];
-  const latestTransition = eligible[lastTransition];
-  const coverage = now.getTime() - baseline.fetchedAt.getTime();
-  if (coverage < MINIMUM_PAIR_MS) return null;
-  const first = quantizedInterval(baseline.usedPercent);
-  const last = quantizedInterval(latestTransition.usedPercent);
-  const scale = DAY_MS / coverage;
+  const segments = activitySegments(observations, now);
+  if (!segments) return null;
+  const effectiveUseHours = segments.activeBurstHours + segments.ordinaryUseHours;
+  if (effectiveUseHours <= 0) return null;
+  const increase = quantizedInterval(segments.observedIncrease);
+  const activeScale = 24 / effectiveUseHours;
+  const recencyDecay = Math.exp(-segments.idleSinceLastTransitionHours / 48);
   const band = {
-    lower: Math.max(0, last.lower - first.upper) * scale,
-    upper: Math.max(0, last.upper - first.lower) * scale,
+    lower: increase.lower * activeScale * segments.dutyRatio * recencyDecay,
+    upper: increase.upper * activeScale * segments.dutyRatio * recencyDecay,
   };
   if (band.upper <= 0) return null;
-
-  const idle = Math.max(0, now.getTime() - latestTransition.fetchedAt.getTime());
-  const idleFactor = Math.max(0.5, Math.exp(-idle / (48 * 3_600_000)));
+  const diversity = segments.activeBurstHours > 0 && segments.ordinaryUseHours > 0 ? 0.05 : 0;
+  const baseReliability = 0.18
+    + 0.08 * Math.min(segments.transitionCount, 4)
+    + 0.15 * Math.sqrt(Math.min(1, segments.coverageHours / 72))
+    + 0.12 * Math.min(1, segments.dutyRatio * 3)
+    + diversity;
   return {
     kind: "activity",
     bandPerDay: band,
-    reliability: clamp((0.18 + 0.08 * Math.min(transitionIndexes.length, 4) + 0.18 * Math.sqrt(Math.min(1, coverage / RECENT_HORIZON_MS))) * idleFactor, 0.12, 0.72),
-    transitionCount: transitionIndexes.length,
+    reliability: clamp(baseReliability * (0.35 + 0.65 * recencyDecay), 0.12, 0.75),
+    transitionCount: segments.transitionCount,
+    coverageHours: segments.coverageHours,
+  };
+}
+
+export function activitySegments(observations: WeeklyObservation[], now: Date): ActivitySegmentSummary | null {
+  const cutoff = now.getTime() - ACTIVITY_HORIZON_MS;
+  const eligible = observations
+    .filter((item) => item.fetchedAt.getTime() >= cutoff && item.fetchedAt.getTime() <= now.getTime())
+    .slice()
+    .sort((left, right) => left.fetchedAt.getTime() - right.fetchedAt.getTime());
+  const first = eligible[0];
+  const last = eligible.at(-1);
+  if (!first || !last || eligible.length < 2) return null;
+  const coverage = now.getTime() - first.fetchedAt.getTime();
+  if (coverage < MINIMUM_PAIR_MS) return null;
+
+  let active = 0;
+  let ordinary = 0;
+  let idle = 0;
+  let transitions = 0;
+  let observedIncrease = 0;
+  let lastTransitionAt: Date | null = null;
+  for (let index = 1; index < eligible.length; index += 1) {
+    const earlier = eligible[index - 1];
+    const later = eligible[index];
+    const gap = later.fetchedAt.getTime() - earlier.fetchedAt.getTime();
+    if (gap <= 0) continue;
+    if (later.usedPercent > earlier.usedPercent) {
+      transitions += 1;
+      observedIncrease += later.usedPercent - earlier.usedPercent;
+      lastTransitionAt = later.fetchedAt;
+      if (gap <= BURST_GAP_MS) active += gap;
+      else if (gap <= ORDINARY_GAP_MS) ordinary += gap;
+      else {
+        ordinary += BURST_GAP_MS;
+        idle += gap - BURST_GAP_MS;
+      }
+    } else {
+      idle += gap;
+    }
+  }
+  idle += Math.max(0, now.getTime() - last.fetchedAt.getTime());
+  if (!transitions || observedIncrease <= 0 || !lastTransitionAt) return null;
+  return {
+    activeBurstHours: active / 3_600_000,
+    ordinaryUseHours: ordinary / 3_600_000,
+    idleHours: idle / 3_600_000,
+    dutyRatio: clamp((active + ordinary) / coverage, 0, 1),
+    transitionCount: transitions,
     coverageHours: coverage / 3_600_000,
+    idleSinceLastTransitionHours: Math.max(0, now.getTime() - lastTransitionAt.getTime()) / 3_600_000,
+    observedIncrease,
   };
 }
 

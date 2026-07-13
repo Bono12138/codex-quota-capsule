@@ -42,7 +42,7 @@
         { "fetchedAt": "2026-07-12T22:00:00Z", "usedPercent": 0, "resetsAt": "2026-07-19T00:00:00Z" },
         { "fetchedAt": "2026-07-13T00:00:00Z", "usedPercent": 0, "resetsAt": "2026-07-19T00:00:00Z" }
       ],
-      "expected": { "qualityState": "stable", "cycleCount": 1, "forecastState": "earlyEstimate", "confidence": "low", "evidenceKinds": ["cycle"] }
+      "expected": { "qualityState": "stable", "cycleCount": 1, "forecastState": "earlyEstimate", "confidence": "low", "evidenceKinds": [] }
     },
     {
       "id": "reset-jitter",
@@ -110,12 +110,21 @@
       "expected": { "qualityState": "stable", "cycleCount": 1, "forecastState": "earlyEstimate", "confidence": "low", "evidenceKinds": ["cycle"] }
     },
     {
+      "id": "unconfirmed-reset-keeps-accepted-window",
+      "snapshot": { "usedPercent": 2, "remainingPercent": 98, "resetsAt": "2026-07-19T00:00:00Z" },
+      "readings": [
+        { "fetchedAt": "2026-07-12T23:59:00Z", "usedPercent": 30, "resetsAt": "2026-07-17T00:00:00Z" },
+        { "fetchedAt": "2026-07-13T00:00:00Z", "usedPercent": 2, "resetsAt": "2026-07-19T00:00:00Z" }
+      ],
+      "expected": { "qualityState": "calibrating", "cycleCount": 1, "forecastState": "calibrating", "usedPercent": 30, "evidenceKinds": [] }
+    },
+    {
       "id": "first-zero-reading-does-not-claim-zero-pace",
       "snapshot": { "usedPercent": 0, "remainingPercent": 100, "resetsAt": "2026-07-19T18:00:00Z" },
       "readings": [
         { "fetchedAt": "2026-07-13T00:00:00Z", "usedPercent": 0, "resetsAt": "2026-07-19T18:00:00Z" }
       ],
-      "expected": { "qualityState": "stable", "cycleCount": 1, "forecastState": "earlyEstimate", "confidence": "low", "evidenceKinds": ["cycle"] }
+      "expected": { "qualityState": "stable", "cycleCount": 1, "forecastState": "earlyEstimate", "confidence": "low", "evidenceKinds": [] }
     },
     {
       "id": "three-hour-transition-is-actionable",

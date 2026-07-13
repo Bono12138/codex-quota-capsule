@@ -1,6 +1,6 @@
 import type { AgentQuotaSnapshot, WeeklyQuotaReading } from "./model";
 
-export type WeeklyMockKind = "enough" | "watch" | "mayRunOut" | "calibrating" | "unavailable" | "exhausted";
+export type WeeklyMockKind = "enough" | "watch" | "mayRunOut" | "earlyEstimate" | "calibrating" | "unavailable" | "exhausted";
 
 export function createMockWeeklyScenario(
   kind: WeeklyMockKind,
@@ -13,11 +13,50 @@ export function createMockWeeklyScenario(
     };
   }
 
+  if (kind === "calibrating") {
+    const acceptedReset = new Date(now.getTime() + 4 * 86_400_000);
+    const candidateReset = new Date(now.getTime() + 6 * 86_400_000);
+    return {
+      snapshot: {
+        provider: "mock",
+        sourceStatus: "ok",
+        fetchedAt: now,
+        weeklyWindow: {
+          label: "weekly",
+          windowMinutes: 10_080,
+          usedPercent: 2,
+          remainingPercent: 98,
+          resetsAt: candidateReset,
+        },
+      },
+      readings: [
+        {
+          provider: "mock",
+          sourceStatus: "ok",
+          fetchedAt: new Date(now.getTime() - 60_000),
+          windowMinutes: 10_080,
+          usedPercent: 30,
+          remainingPercent: 70,
+          resetsAt: acceptedReset,
+        },
+        {
+          provider: "mock",
+          sourceStatus: "ok",
+          fetchedAt: now,
+          windowMinutes: 10_080,
+          usedPercent: 2,
+          remainingPercent: 98,
+          resetsAt: candidateReset,
+        },
+      ],
+    };
+  }
+
   const settings = {
     enough: { used: 35, remaining: 65, resetDays: 4, values: [25, 30, 35], spacingHours: 24 },
     watch: { used: 70, remaining: 30, resetDays: 3, values: [60, 65, 70], spacingHours: 12 },
     mayRunOut: { used: 80, remaining: 20, resetDays: 3, values: [50, 65, 80], spacingHours: 24 },
-    calibrating: { used: 1, remaining: 99, resetDays: 6, values: [1, 1, 1, 1, 1], spacingHours: 2 },
+    earlyEstimate: { used: 1, remaining: 99, resetDays: 6, values: [1, 1, 1, 1, 1], spacingHours: 2 },
     exhausted: { used: 100, remaining: 0, resetDays: 2, values: [100], spacingHours: 1 },
   }[kind];
   const resetsAt = new Date(now.getTime() + settings.resetDays * 86_400_000);

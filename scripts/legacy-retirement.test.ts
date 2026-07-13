@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import { existsSync, mkdtempSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { spawnSync } from "node:child_process";
@@ -43,6 +43,13 @@ describe("legacy Dev retirement", () => {
     expect(existsSync(fixture.data)).toBe(false);
     expect(existsSync(join(fixture.archive, "retired-artifacts", "Quota Capsule Dev Local.app"))).toBe(true);
     expect(existsSync(join(fixture.archive, "retired-artifacts", "Quota Capsule Dev Local"))).toBe(true);
+    const checksums = readFileSync(join(fixture.archive, "SHA256SUMS"), "utf8");
+    expect(checksums).toContain("retired-artifacts/Quota Capsule Dev Local.app/app.txt");
+    expect(checksums).toContain("retired-artifacts/Quota Capsule Dev Local/history.txt");
+    expect(spawnSync("shasum", ["-a", "256", "-c", "SHA256SUMS"], {
+      cwd: fixture.archive,
+      encoding: "utf8",
+    }).status).toBe(0);
   });
 });
 

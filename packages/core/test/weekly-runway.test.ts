@@ -16,6 +16,7 @@ type FixtureCase = {
     qualityState: string;
     cycleCount: number;
     forecastState: string;
+    usedPercent?: number;
     confidence?: string;
     evidenceKinds?: string[];
     sustainableRate?: number;
@@ -69,6 +70,9 @@ describe("shared weekly runway fixtures", () => {
       expect(forecast.state).toBe(testCase.expected.forecastState);
       if (testCase.expected.confidence !== undefined) {
         expect(forecast.confidence).toBe(testCase.expected.confidence);
+      }
+      if (testCase.expected.usedPercent !== undefined) {
+        expect(forecast.usedPercent).toBe(testCase.expected.usedPercent);
       }
       if (testCase.expected.evidenceKinds !== undefined) {
         expect(forecast.paceEvidence.map((evidence) => evidence.kind)).toEqual(testCase.expected.evidenceKinds);

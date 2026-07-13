@@ -1,5 +1,5 @@
 import { execFileSync } from "node:child_process";
-import { basename, extname, resolve } from "node:path";
+import { basename, extname, posix, resolve } from "node:path";
 import { readFileSync, statSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 
@@ -133,10 +133,112 @@ export function auditForecastDocumentation(files: RepositoryFile[]): PolicyFindi
   return [];
 }
 
+export function auditReleaseMetadata(files: RepositoryFile[], tag?: string): PolicyFinding[] {
+  const findings: PolicyFinding[] = [];
+  const packageText = textAt(files, "package.json");
+  const buildScript = textAt(files, "script/build_and_run.sh");
+  const packageScript = textAt(files, "script/package_macos.sh");
+  let version: string | null = null;
+  try {
+    const value = packageText ? JSON.parse(packageText) as { version?: unknown } : {};
+    version = typeof value.version === "string" ? value.version : null;
+  } catch {
+    version = null;
+  }
+  const appVersion = captureDefault(buildScript, /APP_VERSION="\$\{QUOTA_CAPSULE_VERSION:-([^}]+)\}"/);
+  const buildBundle = captureDefault(buildScript, /BUNDLE_NAME="\$\{QUOTA_CAPSULE_BUNDLE_NAME:-([^}]+)\}"/);
+  const packageBundle = captureDefault(packageScript, /BUNDLE_NAME="\$\{QUOTA_CAPSULE_BUNDLE_NAME:-([^}]+)\}"/);
+  const bundleID = captureDefault(buildScript, /BUNDLE_ID="\$\{QUOTA_CAPSULE_BUNDLE_ID:-([^}]+)\}"/);
+
+  if (!version || appVersion !== version) {
+    findings.push(finding("script/build_and_run.sh", "release-version-mismatch", "package and app versions must match"));
+  }
+  if (buildBundle !== "Quota Capsule Beta"
+    || packageBundle !== "Quota Capsule Beta"
+    || buildBundle !== packageBundle
+    || bundleID !== "com.bono.quota-capsule.beta") {
+    findings.push(finding("script/build_and_run.sh", "release-bundle-mismatch", "the supported Beta name and bundle identifier must match"));
+  }
+  if (tag && (!version || !new RegExp(`^v${escapeRegExp(version)}-beta\\.\\d+$`).test(tag))) {
+    findings.push(finding("package.json", "release-tag-mismatch", "release tag does not match the package version"));
+  }
+  return findings;
+}
+
+export function auditMarkdownLinks(files: RepositoryFile[]): PolicyFinding[] {
+  const findings: PolicyFinding[] = [];
+  const paths = new Set(files.map((file) => file.path.replaceAll("\\", "/")));
+  for (const file of files) {
+    const filePath = file.path.replaceAll("\\", "/");
+    if (!filePath.endsWith(".md") || file.text === null) continue;
+    for (const match of file.text.matchAll(/!?\[[^\]]*\]\(([^)]+)\)/g)) {
+      let target = match[1].trim();
+      if (target.startsWith("<") && target.endsWith(">")) target = target.slice(1, -1);
+      if (/^(?:https?:|mailto:|app:|data:|#)/i.test(target)) continue;
+      target = target.split("#", 1)[0].split("?", 1)[0];
+      if (!target) continue;
+      try {
+        target = decodeURIComponent(target);
+      } catch {
+        findings.push(finding(filePath, "broken-document-link", "internal Markdown link is malformed"));
+        continue;
+      }
+      const candidate = target.startsWith("/")
+        ? posix.normalize(target.slice(1))
+        : posix.normalize(posix.join(posix.dirname(filePath), target));
+      const resolved = paths.has(candidate)
+        || paths.has(`${candidate}/README.md`)
+        || (candidate.endsWith("/") && paths.has(`${candidate}README.md`));
+      if (!resolved) {
+        findings.push(finding(filePath, "broken-document-link", "internal Markdown link target is missing"));
+      }
+    }
+  }
+  return findings;
+}
+
+export function auditReleaseEvidence(files: RepositoryFile[]): PolicyFinding[] {
+  const findings: PolicyFinding[] = [];
+  const requiredPaths = [
+    "CHANGELOG.md",
+    "docs/product/acceptance-criteria.md",
+    "docs/operations/release-checklist.md",
+  ];
+  for (const path of requiredPaths) {
+    if (!files.some((file) => file.path.replaceAll("\\", "/") === path)) {
+      findings.push(finding(path, "missing-release-evidence", "required release record is missing"));
+    }
+  }
+  const evidence = files.find((file) => /^docs\/operations\/release-evidence\/v[^/]+\.md$/.test(file.path.replaceAll("\\", "/")))?.text;
+  const requiredSections = [
+    /Automated verification/i,
+    /Installed app verification/i,
+    /Code review/i,
+    /Pull request/i,
+    /Release status/i,
+  ];
+  if (!evidence || requiredSections.some((section) => !section.test(evidence))) {
+    findings.push(finding("docs/operations/release-evidence", "missing-release-evidence", "release evidence is missing required verification sections"));
+  }
+  return findings;
+}
+
 function allowsPolicyFixtures(path: string): boolean {
   return path === "scripts/repository-policy.ts"
     || path === "scripts/repository-policy.test.ts"
     || path === "scripts/single-channel.test.ts";
+}
+
+function textAt(files: RepositoryFile[], path: string): string | null {
+  return files.find((file) => file.path.replaceAll("\\", "/") === path)?.text ?? null;
+}
+
+function captureDefault(text: string | null, pattern: RegExp): string | null {
+  return text?.match(pattern)?.[1] ?? null;
+}
+
+function escapeRegExp(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
 export function trackedRepositoryFiles(root = process.cwd()): RepositoryFile[] {
@@ -169,7 +271,14 @@ function finding(path: string, rule: string, message: string): PolicyFinding {
 
 function runCLI(): void {
   const files = trackedRepositoryFiles();
-  const findings = [...auditRepository(files), ...auditForecastDocumentation(files)];
+  const tag = process.env.GITHUB_REF_TYPE === "tag" ? process.env.GITHUB_REF_NAME : undefined;
+  const findings = [
+    ...auditRepository(files),
+    ...auditForecastDocumentation(files),
+    ...auditReleaseMetadata(files, tag),
+    ...auditMarkdownLinks(files),
+    ...auditReleaseEvidence(files),
+  ];
   if (findings.length === 0) {
     console.log("Repository policy audit passed.");
     return;

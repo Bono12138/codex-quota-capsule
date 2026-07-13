@@ -23,6 +23,11 @@ All notable user-visible and repository-governance changes are recorded here.
 ### Fixed
 
 - Correct the repository-local Git identity to `Bono12138` and remove the erroneous co-author attribution from reachable default-branch history.
+- Keep unconfirmed reset/correction candidates from replacing the last accepted forecast or displayed window.
+- Show “no usage observed” after a fresh zero reading instead of converting quantization uncertainty into a fast-pace warning.
+- Hide pace comparison and forecast trend details while the live snapshot is stale.
+- Align reset terminology in the Swift and TypeScript interfaces.
+- Recompute and verify checksums after retired Dev artifacts enter the local archive.
 
 ## 0.2.0-beta.1 — 2026-07-13
 

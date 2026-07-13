@@ -11,6 +11,8 @@ The former split-repository workflow and secondary local application identity ar
 
 Before cleanup, the maintainer created an external dated archive containing a full Git bundle, private-only strategy and research source files, local legacy application history, a manifest, and SHA-256 checksums.
 
+After legacy application or data files are moved, the retirement helper regenerates `SHA256SUMS` over the final archive contents and verifies the new list. This prevents moved runtime state from sitting outside the recovery proof.
+
 The first restoration test discovered that the source checkout was shallow. The repository was unshallowed, the bundle rebuilt, and a fresh clone plus `git fsck --full` passed. This failure is preserved because it demonstrates why `git bundle verify` alone is not sufficient.
 
 ## Public Distillation

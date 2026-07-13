@@ -201,6 +201,14 @@ public struct QuotaCopy: Equatable, Sendable {
         }
     }
 
+    public var paceDetailsPausedText: String {
+        switch locale {
+        case .zhHans: "实时数据恢复前，速度与预测趋势已暂停"
+        case .zhHant: "即時資料恢復前，速度與預測趨勢已暫停"
+        case .en: "Pace and forecast trend are paused until live data recovers"
+        }
+    }
+
     public var dataDiagnosticsTitle: String {
         switch locale {
         case .zhHans: "数据诊断"
@@ -224,6 +232,13 @@ public struct QuotaCopy: Equatable, Sendable {
 
     public func confidenceReason(_ forecast: WeeklyRunwayForecast) -> String {
         let transitions = forecast.paceEvidence.map(\.transitionCount).max() ?? 0
+        if forecast.confidenceReason == "no-consumption-observed" {
+            return switch locale {
+            case .zhHans: "开始使用后会根据实际增长更新判断"
+            case .zhHant: "開始使用後會根據實際增長更新判斷"
+            case .en: "The estimate will update after actual usage increases"
+            }
+        }
         if forecast.confidenceReason == "cycle-only" || forecast.state == .earlyEstimate {
             return switch locale {
             case .zhHans: "初步判断：仅依据当前周期平均速度"

@@ -13,7 +13,7 @@ const COPY_BANK: Record<CapsuleLevel, string[]> = {
   ],
   danger: [
     "先停大任务。",
-    "按这个速度撑不到刷新。",
+    "按这个速度撑不到重置。",
     "慢点用，快见底了。",
   ],
   unknown: [
@@ -27,4 +27,3 @@ export function pickCapsuleCopy(level: CapsuleLevel, seed = 0): string {
   const lines = COPY_BANK[level];
   return lines[Math.abs(seed) % lines.length];
 }
-

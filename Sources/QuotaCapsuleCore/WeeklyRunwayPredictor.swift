@@ -164,6 +164,14 @@ public enum WeeklyRunwayPredictor {
             return unavailable()
         }
 
+        if quality.state == .calibrating {
+            return calibratingFromAcceptedObservation(
+                quality.observations,
+                windowMinutes: window.windowMinutes,
+                now: now
+            )
+        }
+
         let daysRemaining = window.resetsAt.timeIntervalSince(now) / 86_400
         let elapsed = elapsedPercent(window: window, now: now)
         let sustainable = window.remainingPercent / daysRemaining
@@ -200,6 +208,27 @@ public enum WeeklyRunwayPredictor {
                 remaining: window.remainingPercent,
                 elapsed: elapsed,
                 daysRemaining: daysRemaining
+            )
+        }
+
+        if window.usedPercent == 0 {
+            return WeeklyRunwayForecast(
+                state: .earlyEstimate,
+                confidence: .low,
+                usedPercent: 0,
+                remainingPercent: window.remainingPercent,
+                elapsedPercent: elapsed,
+                daysUntilReset: daysRemaining,
+                sustainableRatePerDay: sustainable,
+                recentRateBandPerDay: nil,
+                cycleRateBandPerDay: nil,
+                last24HourUsageBand: nil,
+                projectedRemainingBandAtReset: nil,
+                estimatedEmptyAtRange: nil,
+                next24HourBudget: budget,
+                currentCycleTrend: trend,
+                paceEvidence: [],
+                confidenceReason: "no-consumption-observed"
             )
         }
 
@@ -435,6 +464,36 @@ public enum WeeklyRunwayPredictor {
             estimatedEmptyAtRange: nil,
             next24HourBudget: budget,
             currentCycleTrend: trend
+        )
+    }
+
+    private static func calibratingFromAcceptedObservation(
+        _ observations: [WeeklyObservation],
+        windowMinutes: Int,
+        now: Date
+    ) -> WeeklyRunwayForecast {
+        guard let accepted = observations.last else { return unavailable() }
+        let window = QuotaWindow(
+            label: "weekly",
+            windowMinutes: windowMinutes,
+            usedPercent: accepted.usedPercent,
+            remainingPercent: accepted.remainingPercent,
+            resetsAt: accepted.canonicalResetAt
+        )
+        guard isValid(window, now: now) else { return unavailable() }
+        let daysRemaining = window.resetsAt.timeIntervalSince(now) / 86_400
+        let elapsed = elapsedPercent(window: window, now: now)
+        let sustainable = window.remainingPercent / daysRemaining
+        let budget = min(window.remainingPercent, sustainable * min(1, daysRemaining))
+        let active = activeCycleAndSegment(observations)
+        return calibrating(
+            window: window,
+            elapsed: elapsed,
+            daysRemaining: daysRemaining,
+            sustainable: sustainable,
+            budget: budget,
+            last24HourUsageBand: last24HourUsageBand(active, now: now),
+            trend: trendPoints(active)
         )
     }
 

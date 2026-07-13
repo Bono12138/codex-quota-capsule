@@ -32,7 +32,8 @@ describe("Weekly Only runway", () => {
     expect(forecastFor("enough").state).toBe("enough");
     expect(forecastFor("watch").state).toBe("watch");
     expect(forecastFor("mayRunOut").state).toBe("mayRunOut");
-    expect(forecastFor("calibrating").state).toBe("earlyEstimate");
+    expect(forecastFor("earlyEstimate").state).toBe("earlyEstimate");
+    expect(forecastFor("calibrating").state).toBe("calibrating");
     expect(forecastFor("unavailable").state).toBe("unavailable");
     expect(forecastFor("exhausted").state).toBe("exhausted");
   });
@@ -90,6 +91,41 @@ describe("Weekly Only runway", () => {
     expect(forecast.projectedRemainingBandAtReset).toBeNull();
   });
 
+  it("does not forecast from an unconfirmed reset candidate", () => {
+    const acceptedReset = new Date(now.getTime() + 4 * 86_400_000);
+    const candidateReset = new Date(now.getTime() + 6 * 86_400_000);
+    const history: WeeklyQuotaReading[] = [
+      ...readings([30], acceptedReset).map((reading) => ({ ...reading, fetchedAt: new Date(now.getTime() - 60_000) })),
+      {
+        provider: "codex",
+        sourceStatus: "ok",
+        fetchedAt: now,
+        windowMinutes: 10_080,
+        usedPercent: 2,
+        remainingPercent: 98,
+        resetsAt: candidateReset,
+      },
+    ];
+    const quality = analyzeWeeklyQuality(history, now);
+    const forecast = predictWeeklyRunway({
+      provider: "codex",
+      sourceStatus: "ok",
+      fetchedAt: now,
+      weeklyWindow: {
+        label: "weekly",
+        windowMinutes: 10_080,
+        usedPercent: 2,
+        remainingPercent: 98,
+        resetsAt: candidateReset,
+      },
+    }, quality, now);
+
+    expect(quality.state).toBe("calibrating");
+    expect(forecast.state).toBe("calibrating");
+    expect(forecast.usedPercent).toBe(30);
+    expect(forecast.projectedRemainingBandAtReset).toBeNull();
+  });
+
   it("uses the full remaining allowance without a hidden reserve", () => {
     const forecast = forecastFor("enough");
     expect(forecast.sustainableRatePerDay).toBeCloseTo(65 / 4, 9);
@@ -97,6 +133,24 @@ describe("Weekly Only runway", () => {
     expect(forecast.next24HourBudget).toBeLessThan(forecast.remainingPercent!);
     expect(forecast.last24HourUsageBand).toEqual({ lower: 4, upper: 6 });
     expect(forecast.currentCycleTrend).toHaveLength(3);
+  });
+
+  it("does not warn that a zero reading just after reset is running fast", () => {
+    const daysRemaining = 7 - 10 / 1_440;
+    const resetsAt = new Date(now.getTime() + daysRemaining * 86_400_000);
+    const snapshot: AgentQuotaSnapshot = {
+      provider: "codex",
+      sourceStatus: "ok",
+      fetchedAt: now,
+      weeklyWindow: { label: "weekly", windowMinutes: 10_080, usedPercent: 0, remainingPercent: 100, resetsAt },
+    };
+    const quality = analyzeWeeklyQuality(readings([0], resetsAt), now);
+    const forecast = predictWeeklyRunway(snapshot, quality, now);
+
+    expect(forecast.state).toBe("earlyEstimate");
+    expect(forecast.paceEvidence).toEqual([]);
+    expect(forecast.projectedRemainingBandAtReset).toBeNull();
+    expect(forecast.confidenceReason).toBe("no-consumption-observed");
   });
 
   it("exposes the same exhaustion interval contract as the native engine", () => {

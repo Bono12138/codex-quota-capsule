@@ -50,7 +50,13 @@ Recent evidence uses cleaned observations from the latest 24 hours. It requires 
 
 ### Activity evidence
 
-Activity evidence measures actual upward transitions from the baseline preceding the first recent burst through the current time. An idle period therefore lowers the average naturally instead of leaving a burst rate frozen forever. Downward corrections contribute zero consumption.
+Activity evidence uses at most the latest 72 hours of the current clean segment and classifies observed intervals:
+
+- an upward transition within three hours is an active-burst interval;
+- an upward transition observed over three to twelve hours is ordinary use;
+- flat intervals are idle; a transition observed across more than twelve hours assigns at most three hours to ordinary use and the remainder to idle.
+
+The estimator calculates active consumption rate, a duty ratio of `active + ordinary` over total observed time, and an exponential decay from the most recent real transition with a 48-hour time constant. The reported activity pace is `active rate × duty ratio × recency decay`. It therefore preserves observed average consumption while falling during an idle period instead of leaving a burst rate frozen forever. Downward corrections contribute zero consumption, and activity evidence cannot by itself override cycle-wide evidence.
 
 ### Historical prior
 
@@ -94,6 +100,8 @@ The product rounds the next-24-hour budget down for display. It does not subtrac
 
 `calibrating` remains an internal data-quality transition, not a user waiting room. A valid live weekly window normally falls back to cycle evidence instead of withholding all value.
 
+A first accepted `0%` reading is the exception to cycle-rate projection: quantization still preserves the possible `[0, 0.5]` measurement interval internally, but the UI says that no consumption has been observed and shows the next-24-hour budget without converting a few minutes of uncertainty into a pace warning. While a reset or correction candidate is still calibrating, the native reducer keeps the previously accepted snapshot and forecast until confirmation succeeds.
+
 ## Confidence
 
 - Low confidence: cycle-only evidence or no real current-cycle transition.
@@ -105,6 +113,8 @@ The UI explains the reason in words, such as cycle-only evidence, observed trans
 ## Stale and failed reads
 
 When the latest data is stale or a refresh fails, the app may keep the last successful percentages for continuity, but it suppresses current pace and budget reassurance. It shows the last successful data read time, the next automatic read countdown, and the latest failure in diagnostics.
+
+The stale surface also hides the pace-comparison sentence and forecast trend band; old percentages remain visibly labelled as the last successful reading rather than current guidance.
 
 ## Cross-runtime parity and change control
 
