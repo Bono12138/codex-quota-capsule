@@ -8,6 +8,14 @@ test("rejects retired English weekly state labels regardless of case", () => {
   }
 });
 
+test("rejects superseded English enough and unavailable display labels", () => {
+  expect(retiredProductCopyReason("Enough.")).toBe("retired English weekly state label");
+  expect(retiredProductCopyReason("- Unavailable: live read failed")).toBe(
+    "retired English weekly state label",
+  );
+  expect(retiredProductCopyReason("`state`: enough / unavailable")).toBeNull();
+});
+
 test("rejects retired Chinese weekly state sequences and badge examples", () => {
   expect(retiredProductCopyReason("安全 / 注意 / 危险 / 未知")).toBe(
     "retired Chinese weekly state label",

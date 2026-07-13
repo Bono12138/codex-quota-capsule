@@ -202,11 +202,11 @@ Quota Capsule is a small macOS floating capsule for Codex quota windows.
 It turns weekly quota pace into six direct states and a next-24-hour budget:
 
 Calibrating.
-Enough.
+On track.
 Running fast.
 May run out.
 Exhausted.
-Unavailable.
+Data unavailable.
 
 4.
 It is Codex-first, local-first, and agent-extensible.
