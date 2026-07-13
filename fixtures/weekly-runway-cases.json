@@ -1,0 +1,133 @@
+{
+  "version": 1,
+  "now": "2026-07-13T00:00:00Z",
+  "cases": [
+    {
+      "id": "on-track",
+      "snapshot": { "usedPercent": 35, "remainingPercent": 65, "resetsAt": "2026-07-17T00:00:00Z" },
+      "readings": [
+        { "fetchedAt": "2026-07-11T00:00:00Z", "usedPercent": 25, "resetsAt": "2026-07-17T00:00:00Z" },
+        { "fetchedAt": "2026-07-12T00:00:00Z", "usedPercent": 30, "resetsAt": "2026-07-17T00:00:00Z" },
+        { "fetchedAt": "2026-07-13T00:00:00Z", "usedPercent": 35, "resetsAt": "2026-07-17T00:00:00Z" }
+      ],
+      "expected": { "qualityState": "stable", "cycleCount": 1, "forecastState": "enough", "sustainableRate": 15, "projectedLower": 41, "projectedUpper": 49, "last24Lower": 4, "last24Upper": 6 }
+    },
+    {
+      "id": "watch-crosses-zero",
+      "snapshot": { "usedPercent": 70, "remainingPercent": 30, "resetsAt": "2026-07-16T00:00:00Z" },
+      "readings": [
+        { "fetchedAt": "2026-07-12T00:00:00Z", "usedPercent": 60, "resetsAt": "2026-07-16T00:00:00Z" },
+        { "fetchedAt": "2026-07-12T12:00:00Z", "usedPercent": 65, "resetsAt": "2026-07-16T00:00:00Z" },
+        { "fetchedAt": "2026-07-13T00:00:00Z", "usedPercent": 70, "resetsAt": "2026-07-16T00:00:00Z" }
+      ],
+      "expected": { "qualityState": "stable", "cycleCount": 1, "forecastState": "watch", "sustainableRate": 8.333333333333334, "projectedLower": -6, "projectedUpper": 6 }
+    },
+    {
+      "id": "may-run-out",
+      "snapshot": { "usedPercent": 80, "remainingPercent": 20, "resetsAt": "2026-07-16T00:00:00Z" },
+      "readings": [
+        { "fetchedAt": "2026-07-11T00:00:00Z", "usedPercent": 50, "resetsAt": "2026-07-16T00:00:00Z" },
+        { "fetchedAt": "2026-07-12T00:00:00Z", "usedPercent": 65, "resetsAt": "2026-07-16T00:00:00Z" },
+        { "fetchedAt": "2026-07-13T00:00:00Z", "usedPercent": 80, "resetsAt": "2026-07-16T00:00:00Z" }
+      ],
+      "expected": { "qualityState": "stable", "cycleCount": 1, "forecastState": "mayRunOut", "sustainableRate": 5, "projectedLower": -28, "projectedUpper": -22, "exhaustionBeforeReset": true }
+    },
+    {
+      "id": "flat-zero",
+      "snapshot": { "usedPercent": 0, "remainingPercent": 100, "resetsAt": "2026-07-19T00:00:00Z" },
+      "readings": [
+        { "fetchedAt": "2026-07-12T16:00:00Z", "usedPercent": 0, "resetsAt": "2026-07-19T00:00:00Z" },
+        { "fetchedAt": "2026-07-12T18:00:00Z", "usedPercent": 0, "resetsAt": "2026-07-19T00:00:00Z" },
+        { "fetchedAt": "2026-07-12T20:00:00Z", "usedPercent": 0, "resetsAt": "2026-07-19T00:00:00Z" },
+        { "fetchedAt": "2026-07-12T22:00:00Z", "usedPercent": 0, "resetsAt": "2026-07-19T00:00:00Z" },
+        { "fetchedAt": "2026-07-13T00:00:00Z", "usedPercent": 0, "resetsAt": "2026-07-19T00:00:00Z" }
+      ],
+      "expected": { "qualityState": "stable", "cycleCount": 1, "forecastState": "calibrating" }
+    },
+    {
+      "id": "reset-jitter",
+      "snapshot": { "usedPercent": 11, "remainingPercent": 89, "resetsAt": "2026-07-18T18:53:22Z" },
+      "readings": [
+        { "fetchedAt": "2026-07-12T23:58:00Z", "usedPercent": 10, "resetsAt": "2026-07-18T18:53:20Z" },
+        { "fetchedAt": "2026-07-12T23:59:00Z", "usedPercent": 10, "resetsAt": "2026-07-18T18:53:22Z" },
+        { "fetchedAt": "2026-07-13T00:00:00Z", "usedPercent": 11, "resetsAt": "2026-07-18T18:53:24Z" }
+      ],
+      "expected": { "qualityState": "stable", "cycleCount": 1, "forecastState": "calibrating" }
+    },
+    {
+      "id": "alternating-stream",
+      "snapshot": { "usedPercent": 1, "remainingPercent": 99, "resetsAt": "2026-07-18T18:53:20Z" },
+      "readings": [
+        { "fetchedAt": "2026-07-12T23:56:00Z", "usedPercent": 1, "resetsAt": "2026-07-18T18:53:20Z" },
+        { "fetchedAt": "2026-07-12T23:57:00Z", "usedPercent": 5, "resetsAt": "2026-07-18T18:54:30Z" },
+        { "fetchedAt": "2026-07-12T23:58:00Z", "usedPercent": 1, "resetsAt": "2026-07-18T18:53:20Z" },
+        { "fetchedAt": "2026-07-12T23:59:00Z", "usedPercent": 5, "resetsAt": "2026-07-18T18:54:30Z" },
+        { "fetchedAt": "2026-07-13T00:00:00Z", "usedPercent": 1, "resetsAt": "2026-07-18T18:53:20Z" }
+      ],
+      "expected": { "qualityState": "unstable", "cycleCount": 1, "forecastState": "calibrating" }
+    },
+    {
+      "id": "ignored-short-window",
+      "snapshot": { "usedPercent": 35, "remainingPercent": 65, "resetsAt": "2026-07-17T00:00:00Z" },
+      "readings": [
+        { "fetchedAt": "2026-07-10T00:00:00Z", "usedPercent": 90, "resetsAt": "2026-07-10T05:00:00Z", "windowMinutes": 300 },
+        { "fetchedAt": "2026-07-11T00:00:00Z", "usedPercent": 25, "resetsAt": "2026-07-17T00:00:00Z" },
+        { "fetchedAt": "2026-07-12T00:00:00Z", "usedPercent": 30, "resetsAt": "2026-07-17T00:00:00Z" },
+        { "fetchedAt": "2026-07-13T00:00:00Z", "usedPercent": 35, "resetsAt": "2026-07-17T00:00:00Z" }
+      ],
+      "expected": { "qualityState": "stable", "cycleCount": 1, "forecastState": "enough", "ignoredShortWindow": true }
+    },
+    {
+      "id": "recent-acceleration",
+      "snapshot": { "usedPercent": 40, "remainingPercent": 60, "resetsAt": "2026-07-17T00:00:00Z" },
+      "readings": [
+        { "fetchedAt": "2026-07-10T00:00:00Z", "usedPercent": 10, "resetsAt": "2026-07-17T00:00:00Z" },
+        { "fetchedAt": "2026-07-11T00:00:00Z", "usedPercent": 15, "resetsAt": "2026-07-17T00:00:00Z" },
+        { "fetchedAt": "2026-07-12T00:00:00Z", "usedPercent": 20, "resetsAt": "2026-07-17T00:00:00Z" },
+        { "fetchedAt": "2026-07-12T12:00:00Z", "usedPercent": 30, "resetsAt": "2026-07-17T00:00:00Z" },
+        { "fetchedAt": "2026-07-13T00:00:00Z", "usedPercent": 40, "resetsAt": "2026-07-17T00:00:00Z" }
+      ],
+      "expected": { "qualityState": "stable", "cycleCount": 1, "forecastState": "watch", "recentFasterThanCycle": true }
+    },
+    {
+      "id": "horizon-disagreement",
+      "snapshot": { "usedPercent": 54, "remainingPercent": 46, "resetsAt": "2026-07-17T00:00:00Z" },
+      "readings": [
+        { "fetchedAt": "2026-07-10T00:00:00Z", "usedPercent": 10, "resetsAt": "2026-07-17T00:00:00Z" },
+        { "fetchedAt": "2026-07-11T00:00:00Z", "usedPercent": 30, "resetsAt": "2026-07-17T00:00:00Z" },
+        { "fetchedAt": "2026-07-12T00:00:00Z", "usedPercent": 50, "resetsAt": "2026-07-17T00:00:00Z" },
+        { "fetchedAt": "2026-07-12T12:00:00Z", "usedPercent": 52, "resetsAt": "2026-07-17T00:00:00Z" },
+        { "fetchedAt": "2026-07-13T00:00:00Z", "usedPercent": 54, "resetsAt": "2026-07-17T00:00:00Z" }
+      ],
+      "expected": { "qualityState": "stable", "cycleCount": 1, "forecastState": "watch", "cycleFasterThanRecent": true }
+    },
+    {
+      "id": "stale-reading",
+      "snapshot": { "usedPercent": 20, "remainingPercent": 80, "resetsAt": "2026-07-18T00:00:00Z" },
+      "readings": [
+        { "fetchedAt": "2026-07-12T23:56:00Z", "usedPercent": 20, "resetsAt": "2026-07-18T00:00:00Z" }
+      ],
+      "expected": { "qualityState": "stale", "cycleCount": 1, "forecastState": "unavailable" }
+    },
+    {
+      "id": "manual-reset",
+      "snapshot": { "usedPercent": 2, "remainingPercent": 98, "resetsAt": "2026-07-19T12:00:00Z" },
+      "readings": [
+        { "fetchedAt": "2026-07-12T19:00:00Z", "usedPercent": 75, "resetsAt": "2026-07-16T00:00:00Z" },
+        { "fetchedAt": "2026-07-12T20:00:00Z", "usedPercent": 75, "resetsAt": "2026-07-16T00:00:02Z" },
+        { "fetchedAt": "2026-07-12T22:00:00Z", "usedPercent": 1, "resetsAt": "2026-07-19T12:00:00Z" },
+        { "fetchedAt": "2026-07-12T23:00:00Z", "usedPercent": 1, "resetsAt": "2026-07-19T12:00:01Z" },
+        { "fetchedAt": "2026-07-13T00:00:00Z", "usedPercent": 2, "resetsAt": "2026-07-19T11:59:59Z" }
+      ],
+      "expected": { "qualityState": "stable", "cycleCount": 2, "forecastState": "calibrating" }
+    },
+    {
+      "id": "exhausted",
+      "snapshot": { "usedPercent": 100, "remainingPercent": 0, "resetsAt": "2026-07-15T00:00:00Z" },
+      "readings": [
+        { "fetchedAt": "2026-07-13T00:00:00Z", "usedPercent": 100, "resetsAt": "2026-07-15T00:00:00Z" }
+      ],
+      "expected": { "qualityState": "stable", "cycleCount": 1, "forecastState": "exhausted", "sustainableRate": 0, "exhaustionAtNow": true }
+    }
+  ]
+}

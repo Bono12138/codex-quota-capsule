@@ -14,7 +14,7 @@ Quota Capsule welcomes contributions for Codex and other agent products.
 
 - Track executable bugs and feature work in GitHub Issues.
 - Use `docs/product/bug-triage-and-release-blockers.md` for priority and release-blocker rules.
-- Use `docs/product/development-plan.md` for accepted, deferred, and rejected product direction.
+- Use `docs/product/feature-roadmap.md` for accepted, deferred, and rejected product direction.
 - Do not duplicate full issue status in Markdown docs.
 
 ## Adapter Rules

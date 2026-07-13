@@ -20,14 +20,16 @@ Heavy Codex users often run multiple tasks, check usage pages repeatedly, and st
 
 很多 Codex 重度用户会同时跑多个任务，也会反复查看 usage 页面。百分比只能提供证据。真正影响工作节奏的是：现在还能不能继续放心用。
 
-Quota Capsule stays visible on the desktop and in the menu bar, then turns 5-hour and weekly quota windows into direct states:
+Quota Capsule stays visible on the desktop and in the menu bar, then turns weekly quota pace into six honest states and a next-24-hour budget:
 
-额度胶囊常驻桌面和菜单栏，把 5 小时窗口和周窗口转换成直接状态：
+额度胶囊常驻桌面和菜单栏，把周额度速度转换成六个明确状态和未来 24 小时建议：
 
-- Safe / 安全：当前速度大概率能撑到刷新。
-- Watch / 注意：暂时能用，但余量偏薄。
-- Danger / 危险：当前速度大概率会在刷新前见底。
-- Unknown / 未知：数据缺失、过期或读取失败。
+- Calibrating / 正在校准：有效历史还不足 6 小时，暂不下结论。
+- On track / 够用：按近期与本周速度，预计能带着至少 5% 余量到刷新。
+- Running fast / 偏快：仍可能撑到刷新，但余量区间已经偏薄。
+- May run out / 可能不够：快、慢两种估计都可能在刷新前见底。
+- Exhausted / 已用尽：本周额度已经用完，等待刷新恢复。
+- Data unavailable / 数据暂不可用：实时读取失败或数据过期，只保留最后成功百分比，不给速度结论。
 
 ## Who It Is For / 适合谁
 
@@ -56,7 +58,7 @@ Please install and run Quota Capsule on this Mac:
 5. Do not read, copy, print, or upload auth tokens, cookies, API keys, prompt text, session text, code content, or private file paths.
 6. If Node, npm, Swift, Xcode Command Line Tools, or Codex CLI is missing, tell me before changing the system.
 7. Run npm ci, npm test, npm run build, and swift run QuotaCapsuleCoreSpec.
-8. Run npm run mac:run:internal-test -- --verify.
+8. Run npm run mac:install:internal-test and verify the running process comes from /Applications.
 9. After it launches, tell me how to open it again.
 ```
 
@@ -69,7 +71,7 @@ npm ci
 npm test
 npm run build
 swift run QuotaCapsuleCoreSpec
-npm run mac:run:internal-test -- --verify
+npm run mac:install:internal-test
 ```
 
 ## Privacy Boundary / 隐私边界
@@ -77,12 +79,12 @@ npm run mac:run:internal-test -- --verify
 - By default, quota data is read and computed locally.
 - Product events are not uploaded unless an analytics endpoint is explicitly configured.
 - Prompt text, session text, code content, private file paths, account credentials, auth tokens, and cookies stay on this Mac.
-- Missing or stale quota data is shown as `unknown`.
+- Missing or stale quota data is shown as `Data unavailable`, with stale percentages clearly marked.
 
 - 默认本地读取、本地计算。
 - 未显式配置 analytics endpoint 时，不上传产品事件。
 - prompt 正文、session 正文、代码内容、私有文件路径、账号凭据、auth token、cookie 留在本机。
-- 缺失或过期数据显示为 `unknown`。
+- 缺失或过期数据显示为“数据暂不可用”，过期百分比会被明确标记。
 
 ## Local Channels / 本机版本通道
 
@@ -97,7 +99,8 @@ The first public beta is a macOS app built from source. It currently includes:
 
 - Native floating desktop capsule and menu bar item.
 - Read-only Codex app-server rate-limit source.
-- 5-hour and weekly quota prediction.
+- Weekly pace, last-24-hour usage, reset-buffer range, and next-24-hour budget.
+- Current-cycle trend with a sustainable line, forecast band, and reset marker.
 - Local history snapshots.
 - Multilingual UI.
 - Feedback links for GitHub Issues, email, X, and Douyin.
@@ -106,7 +109,8 @@ The first public beta is a macOS app built from source. It currently includes:
 
 - 原生桌面悬浮胶囊和菜单栏入口。
 - 只读 Codex app-server rate-limit 数据源。
-- 5 小时窗口和周窗口预测。
+- 周速度、最近 24 小时实际用量、刷新余量区间和未来 24 小时建议。
+- 带可持续线、预测区间和刷新标记的当前周期趋势。
 - 本地历史快照。
 - 多语言界面。
 - GitHub Issues、邮箱、X、抖音反馈入口。
@@ -114,13 +118,13 @@ The first public beta is a macOS app built from source. It currently includes:
 ## Roadmap / 路线图
 
 - Better onboarding and in-product guidance.
-- History trends and usage rhythm review.
+- Longer-term history and usage-rhythm review.
 - Chrome version.
 - More agent provider adapters.
 - Signed, notarized, packaged macOS distribution after the beta stabilizes.
 
 - 更完整的新手引导和产品内提示。
-- 历史趋势和使用节奏复盘。
+- 更长期的历史趋势和使用节奏复盘。
 - Chrome 独立版本。
 - 更多 Agent provider adapter。
 - 内测稳定后补签名、公证和正式 macOS 分发。

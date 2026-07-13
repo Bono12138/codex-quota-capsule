@@ -13,7 +13,7 @@ enum OnboardingFocus {
 @MainActor
 final class QuotaStore: ObservableObject {
     @Published private(set) var snapshot: AgentQuotaSnapshot
-    @Published private(set) var prediction: CapsulePrediction
+    @Published private(set) var runwayForecast: WeeklyRunwayForecast
     @Published private(set) var displayModel: CapsuleDisplayModel
     @Published private(set) var copy: QuotaCopy
     @Published private(set) var isRefreshing = false
@@ -33,6 +33,8 @@ final class QuotaStore: ObservableObject {
     private var expandedStartedAt: Date?
     private var isFlushingAnalytics = false
     private var needsAnalyticsFlush = false
+    private var analyticsUploadTask: Task<Void, Never>?
+    private var analyticsUploadGeneration = 0
     private let configuration: AppConfiguration
     private let userDefaults: UserDefaults
     private let historyStore: QuotaHistoryStore
@@ -77,14 +79,18 @@ final class QuotaStore: ObservableObject {
             provider: "codex",
             sourceStatus: .error,
             fetchedAt: now,
-            shortWindow: nil,
             weeklyWindow: nil,
             errorMessage: initialCopy.initialLoadingError
         )
-        let initialPrediction = QuotaPredictor.predict(snapshot: initial, now: now, locale: locale)
         snapshot = initial
-        prediction = initialPrediction
-        displayModel = CapsuleDisplayModel.make(prediction: initialPrediction, locale: locale)
+        let initialForecast = WeeklyRunwayPredictor.predict(
+            snapshot: initial,
+            quality: WeeklyQualityResult(state: .unavailable, observations: [], canonicalResetAt: nil, flags: []),
+            now: now,
+            locale: locale
+        )
+        runwayForecast = initialForecast
+        displayModel = CapsuleDisplayModel.make(forecast: initialForecast, locale: locale)
         lastRefreshText = initialCopy.notRefreshed
         lastAttemptText = initialCopy.notAttempted
 
@@ -111,6 +117,7 @@ final class QuotaStore: ObservableObject {
     deinit {
         refreshTask?.cancel()
         heartbeatTask?.cancel()
+        analyticsUploadTask?.cancel()
         Task { @MainActor [launchedAt, lastSessionDurationKey] in
             let duration = Date().timeIntervalSince(launchedAt)
             UserDefaults.standard.set(duration, forKey: lastSessionDurationKey)
@@ -140,44 +147,22 @@ final class QuotaStore: ObservableObject {
         guard let weeklyWindow = snapshot.weeklyWindow else {
             return copy.unknownValue
         }
-        return "\(weeklyWindow.remainingPercent)%"
-    }
-
-    var weeklyProjection: CapsulePrediction? {
-        QuotaPredictor.predictWeekly(snapshot: snapshot, now: snapshot.fetchedAt, locale: locale)
+        return Self.formatQuotaPercent(weeklyWindow.remainingPercent)
     }
 
     var weeklyProjectionText: String {
-        guard let weeklyProjection else {
-            return copy.weeklyProjectionUnavailable
-        }
-
-        if weeklyProjection.canReachReset == false, let estimatedEmptyAt = weeklyProjection.estimatedEmptyAt {
-            return copy.weeklyProjectionWillRunOut(
-                emptyTime: QuotaPredictor.formatTime(estimatedEmptyAt, locale: locale)
-            )
-        }
-
-        if let usedPercent = weeklyProjection.quotaUsedPercent,
-           let projectedRemaining = weeklyProjection.projectedRemainingAtReset {
-            return copy.weeklyProjectionWillLast(
-                usedPercent: usedPercent,
-                projectedRemaining: projectedRemaining
-            )
-        }
-
-        return weeklyProjection.headline
+        displayModel.defaultText
     }
 
     var weeklyProjectionTone: CapsuleLevel {
-        weeklyProjection?.level ?? .unknown
+        displayModel.tone
     }
 
     var resetText: String {
-        guard let resetsAt = snapshot.shortWindow?.resetsAt else {
+        guard let resetsAt = snapshot.weeklyWindow?.resetsAt else {
             return copy.unknownValue
         }
-        return QuotaPredictor.formatTime(resetsAt, locale: locale)
+        return QuotaStore.timeFormatter(for: locale).string(from: resetsAt)
     }
 
     var sourceText: String {
@@ -186,6 +171,12 @@ final class QuotaStore: ObservableObject {
                 return copy.sourceShowingLastSuccess(lastRefreshText: lastRefreshText, error: lastErrorText)
             }
             return copy.sourceSuccess(lastRefreshText)
+        }
+        if snapshot.sourceStatus == .stale {
+            return copy.sourceShowingLastSuccess(
+                lastRefreshText: lastRefreshText,
+                error: lastErrorText ?? snapshot.errorMessage ?? copy.unknownError
+            )
         }
         return copy.sourceUnavailable(lastErrorText ?? snapshot.errorMessage ?? copy.unknownError)
     }
@@ -205,10 +196,16 @@ final class QuotaStore: ObservableObject {
             }
             return copy.sourceStatusLive
         }
+        if snapshot.sourceStatus == .stale {
+            return copy.sourceStatusShowingLastSuccess
+        }
         return copy.sourceStatusFailed
     }
 
     var sourceNoteText: String {
+        if snapshot.sourceStatus == .stale, let lastErrorText {
+            return copy.sourceLatestFailure(lastErrorText)
+        }
         if snapshot.sourceStatus == .ok, let lastErrorText {
             return copy.sourceLatestFailure(lastErrorText)
         }
@@ -222,7 +219,7 @@ final class QuotaStore: ObservableObject {
         if isRefreshing && snapshot.sourceStatus != .ok {
             return copy.loadingStatus
         }
-        return displayModel.statusLabel
+        return snapshot.sourceStatus == .stale ? copy.statusStale : displayModel.statusLabel
     }
 
     var visibleCompactText: String {
@@ -243,26 +240,27 @@ final class QuotaStore: ObservableObject {
     }
 
     var compactPaceText: String {
-        guard let elapsed = prediction.elapsedPercent,
-              let used = prediction.quotaUsedPercent else {
-            return copy.unknownValue
-        }
-        return "\(copy.compactTimeLabel) \(elapsed)% · \(copy.compactUsageLabel) \(used)%"
+        guard displayModel.metrics.count >= 2 else { return copy.unknownValue }
+        return "\(displayModel.metrics[0].label) \(displayModel.metrics[0].value) · \(displayModel.metrics[1].label) \(displayModel.metrics[1].value)"
     }
 
     var compactElapsedPercent: Int? {
-        prediction.elapsedPercent
+        displayModel.metrics.first?.numericValue
     }
 
     var compactUsedPercent: Int? {
-        prediction.quotaUsedPercent
+        displayModel.metrics.dropFirst().first?.numericValue
     }
 
     var visibleCompactUsedBadgeText: String? {
-        guard let compactUsedPercent else {
+        guard let compactUsedValueText else {
             return nil
         }
-        return copy.compactUsedBadge(compactUsedPercent)
+        return copy.compactUsedBadge(value: compactUsedValueText)
+    }
+
+    var compactUsedValueText: String? {
+        displayModel.usedQuotaText
     }
 
     var compactProjectedText: String {
@@ -312,13 +310,21 @@ final class QuotaStore: ObservableObject {
         copy = QuotaCopy(locale: nextLocale)
         needsLanguageSelection = false
         userDefaults.set(nextLocale.rawValue, forKey: localeKey)
-        recomputeDisplay(now: Date())
+        recomputeDisplay()
         recordEvent(name: "language_selected", surface: "onboarding", properties: ["language": nextLocale.analyticsCode])
     }
 
     func setAnalyticsConsent(_ consent: AnalyticsConsent) {
         analyticsConsent = consent
         userDefaults.set(consent.rawValue, forKey: analyticsConsentKey)
+        if consent == .denied {
+            analyticsUploadGeneration += 1
+            analyticsUploadTask?.cancel()
+            analyticsUploadTask = nil
+            isFlushingAnalytics = false
+            needsAnalyticsFlush = false
+            historyStore.disablePendingProductImprovementUploads()
+        }
         recordEvent(
             name: "analytics_consent_changed",
             surface: "onboarding",
@@ -449,18 +455,30 @@ final class QuotaStore: ObservableObject {
         )
 
         snapshot = reduction.snapshot
-        prediction = reduction.prediction
-        displayModel = reduction.displayModel
         lastRefreshText = reduction.lastRefreshText
         lastAttemptText = reduction.lastAttemptText
         lastErrorText = reduction.lastErrorText
-        historyStore.recordSnapshot(snapshot, prediction: prediction, locale: locale)
-        recordQuotaStateSample()
+        let attemptSnapshot = reduction.latestAttemptSnapshot
+        if attemptSnapshot.sourceStatus == .ok {
+            historyStore.recordWeeklySnapshot(attemptSnapshot)
+            let readings = historyStore.recentWeeklyReadings(now: now)
+            runwayForecast = QuotaRefreshReducer.reduceForecast(
+                currentForecast: runwayForecast,
+                newSnapshot: reduction.snapshot,
+                weeklyReadings: readings,
+                now: now,
+                locale: locale
+            )
+        }
+        displayModel = makeDisplayModel()
+        if attemptSnapshot.sourceStatus == .ok {
+            recordQuotaStateSample()
+        }
         recordEvent(
-            name: newSnapshot.sourceStatus == .ok ? "quota_refresh_succeeded" : "quota_refresh_failed",
+            name: attemptSnapshot.sourceStatus == .ok ? "quota_refresh_succeeded" : "quota_refresh_failed",
             surface: "source",
-            sourceStatus: newSnapshot.sourceStatus,
-            errorType: newSnapshot.sourceStatus == .ok ? nil : "source_error",
+            sourceStatus: attemptSnapshot.sourceStatus,
+            errorType: attemptSnapshot.sourceStatus == .ok ? nil : "source_error",
             requiresConsent: false
         )
     }
@@ -511,46 +529,52 @@ final class QuotaStore: ObservableObject {
             "width_bucket": widthBucket(capsuleWidth)
         ]
 
-        if let shortWindow = snapshot.shortWindow {
-            properties["short_window_minutes"] = "\(shortWindow.windowMinutes)"
-            properties["short_used_percent"] = "\(shortWindow.usedPercent)"
-            properties["short_remaining_percent"] = "\(shortWindow.remainingPercent)"
-        }
-        if let elapsed = prediction.elapsedPercent {
-            properties["short_elapsed_percent"] = "\(elapsed)"
-        }
-        if let projected = prediction.projectedRemainingAtReset {
-            properties["projected_remaining_at_reset_percent"] = "\(projected)"
-        }
-
         if let weeklyWindow = snapshot.weeklyWindow {
-            let weeklyPrediction = QuotaPredictor.predictWeekly(window: weeklyWindow, now: snapshot.fetchedAt, locale: locale)
             properties["weekly_window_minutes"] = "\(weeklyWindow.windowMinutes)"
             properties["weekly_used_percent"] = "\(weeklyWindow.usedPercent)"
             properties["weekly_remaining_percent"] = "\(weeklyWindow.remainingPercent)"
-            if let weeklyElapsed = weeklyPrediction.elapsedPercent {
-                properties["weekly_elapsed_percent"] = "\(weeklyElapsed)"
-            }
-            if let weeklyProjected = weeklyPrediction.projectedRemainingAtReset {
-                properties["weekly_projected_remaining_percent"] = "\(weeklyProjected)"
-            }
         }
+        if let elapsed = runwayForecast.elapsedPercent {
+            properties["weekly_elapsed_percent"] = "\(elapsed)"
+        }
+        if let sustainable = runwayForecast.sustainableRatePerDay {
+            properties["sustainable_rate_per_day"] = "\(sustainable)"
+        }
+        if let band = runwayForecast.recentRateBandPerDay {
+            properties["recent_rate_lower_per_day"] = "\(band.lower)"
+            properties["recent_rate_upper_per_day"] = "\(band.upper)"
+        }
+        if let band = runwayForecast.projectedRemainingBandAtReset {
+            properties["projected_remaining_lower_percent"] = "\(band.lower)"
+            properties["projected_remaining_upper_percent"] = "\(band.upper)"
+        }
+        properties["forecast_state"] = runwayForecast.state.rawValue
+        properties["forecast_confidence"] = runwayForecast.confidence.rawValue
 
         recordEvent(
             name: "quota_state_sampled",
             surface: "source",
-            status: prediction.level,
+            status: displayModel.tone,
             sourceStatus: snapshot.sourceStatus,
             requiresConsent: true,
             properties: properties
         )
     }
 
-    private func recomputeDisplay(now: Date) {
-        prediction = QuotaPredictor.predict(snapshot: snapshot, now: now, locale: locale)
-        displayModel = CapsuleDisplayModel.make(prediction: prediction, locale: locale)
+    private func recomputeDisplay() {
+        displayModel = makeDisplayModel()
         lastRefreshText = lastRefreshText == QuotaCopy(locale: .zhHans).notRefreshed ? copy.notRefreshed : lastRefreshText
         lastAttemptText = lastAttemptText == QuotaCopy(locale: .zhHans).notAttempted ? copy.notAttempted : lastAttemptText
+    }
+
+    private func makeDisplayModel() -> CapsuleDisplayModel {
+        if snapshot.sourceStatus == .stale {
+            return CapsuleDisplayModel.makeStale(
+                lastSuccessfulForecast: runwayForecast,
+                locale: locale
+            )
+        }
+        return CapsuleDisplayModel.make(forecast: runwayForecast, locale: locale)
     }
 
     private func recordEvent(
@@ -572,7 +596,7 @@ final class QuotaStore: ObservableObject {
         let event = ProductAnalyticsEvent(
             name: name,
             surface: surface,
-            status: status ?? prediction.level,
+            status: status ?? displayModel.tone,
             sourceStatus: sourceStatus ?? snapshot.sourceStatus,
             errorType: errorType,
             durationSeconds: durationSeconds,
@@ -582,8 +606,8 @@ final class QuotaStore: ObservableObject {
             feedbackTarget: feedbackTarget,
             properties: eventProperties
         )
-        let effectiveConsent: AnalyticsConsent = requiresConsent ? analyticsConsent : .granted
-        _ = historyStore.recordEvent(event, consent: effectiveConsent)
+        let uploadAllowed = requiresConsent ? analyticsConsent == .granted : true
+        _ = historyStore.recordEvent(event, consent: analyticsConsent, uploadAllowed: uploadAllowed)
         flushAnalyticsUploads()
     }
 
@@ -601,16 +625,26 @@ final class QuotaStore: ObservableObject {
         guard !uploads.isEmpty else { return }
 
         isFlushingAnalytics = true
-        Task { @MainActor in
+        analyticsUploadGeneration += 1
+        let uploadGeneration = analyticsUploadGeneration
+        analyticsUploadTask = Task { @MainActor in
             for upload in uploads {
+                guard !Task.isCancelled, uploadGeneration == analyticsUploadGeneration else { break }
+                if upload.isProductImprovement, analyticsConsent != .granted {
+                    historyStore.disableUpload(id: upload.id)
+                    continue
+                }
                 let sent = await ProductAnalyticsUploader.upload(payload: upload.payload, configuration: configuration)
+                guard !Task.isCancelled, uploadGeneration == analyticsUploadGeneration else { break }
                 if sent {
                     historyStore.markUploadSent(id: upload.id)
                 } else {
                     historyStore.markUploadFailed(id: upload.id)
                 }
             }
+            guard uploadGeneration == analyticsUploadGeneration else { return }
             isFlushingAnalytics = false
+            analyticsUploadTask = nil
             if needsAnalyticsFlush {
                 needsAnalyticsFlush = false
                 flushAnalyticsUploads()
@@ -631,6 +665,14 @@ final class QuotaStore: ObservableObject {
         formatter.dateFormat = "HH:mm:ss"
         return formatter
     }
+
+    private static func formatQuotaPercent(_ value: Double) -> String {
+        if value.rounded() == value {
+            return "\(Int(value))%"
+        }
+        return String(format: "%.1f%%", value)
+    }
+
 }
 
 private func widthBucket(_ width: CGFloat) -> String {

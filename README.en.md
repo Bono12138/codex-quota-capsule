@@ -14,15 +14,17 @@ Heavy Codex users often run several coding tasks at the same time and repeatedly
 
 - Can I keep using Codex right now?
 - Can the current pace last until reset?
-- If it cannot last, when will I run out?
+- If it may not last, what does the risk range look like?
 - If it can last, how much margin should remain at reset?
 
-Quota Capsule stays small, visible, and direct:
+Quota Capsule stays small, visible, and direct with six honest states:
 
-- Safe: the current pace is likely enough to reach reset.
-- Watch: usable for now, with a thin margin.
-- Danger: likely to run out before reset at the current pace.
-- Unknown: the source is missing, stale, or unreadable.
+- Calibrating: fewer than six hours of valid history, so no runway claim yet.
+- On track: the pace should reach reset with at least a 5% reserve.
+- Running fast: it may still last, but the forecast margin is thin.
+- May run out: both the fast and slow estimates can exhaust before reset.
+- Exhausted: this week's quota is gone and will recover at reset.
+- Data unavailable: the live read failed or expired; frozen percentages remain visible without a pace claim.
 
 ## Who It Is For
 
@@ -38,7 +40,8 @@ The first local macOS beta is usable. It includes:
 - Native floating desktop capsule.
 - Menu bar status item.
 - Read-only Codex app-server rate-limit adapter.
-- 5-hour and weekly quota prediction.
+- Weekly pace, actual last-24-hour usage, reset-buffer range, and a next-24-hour budget.
+- Current-cycle trend with a sustainable line, forecast band, and reset marker.
 - Local history snapshots.
 - Multilingual UI.
 - Public feedback links.
@@ -61,7 +64,7 @@ Please install and run Quota Capsule on this Mac:
 8. Run npm test.
 9. Run npm run build.
 10. Run swift run QuotaCapsuleCoreSpec.
-11. Run npm run mac:run:internal-test -- --verify.
+11. Run npm run mac:install:internal-test and verify that the running process comes from /Applications.
 12. After it launches, tell me how to open it again.
 ```
 
@@ -74,7 +77,7 @@ npm ci
 npm test
 npm run build
 swift run QuotaCapsuleCoreSpec
-npm run mac:run:internal-test -- --verify
+npm run mac:install:internal-test
 ```
 
 ## Local Channels
@@ -102,7 +105,7 @@ QUOTA_CAPSULE_DEV_GITHUB_ISSUES_URL="https://github.com/<owner>/<private-repo>/i
 - Product events are not uploaded unless an analytics endpoint is configured.
 - If an analytics endpoint is configured, basic diagnostics and product improvement data are sent in separate tiers.
 - Prompt text, session text, code content, private file paths, account credentials, auth tokens, and cookies stay on this Mac.
-- Missing or stale data is shown as `unknown`.
+- Missing or stale data is shown as `Data unavailable`, with stale percentages clearly marked.
 
 ## Project Structure
 
@@ -122,7 +125,7 @@ scripts/                   Local helper scripts.
 ## Roadmap
 
 - Better onboarding and in-product guidance.
-- History trends and usage rhythm review.
+- Longer-term history and usage-rhythm review.
 - Chrome version.
 - More agent provider adapters.
 - Signed, notarized, packaged macOS distribution after the beta stabilizes.

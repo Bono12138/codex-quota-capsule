@@ -13,13 +13,10 @@ Codex 是第一个 provider，但稳定的本地 quota source 还没有完全证
 - provider
 - source status：`ok`、`stale` 或 `error`
 - fetched time
-- 短窗口 used percent
-- 短窗口 remaining percent
-- 短窗口 reset time
-- weekly used percent，如果可用
-- weekly remaining percent，如果可用
-- weekly reset time，如果可用
-- reset count，如果可用
+- weekly window duration
+- weekly used percent
+- weekly remaining percent
+- weekly reset time
 
 ## Probe 规则
 
@@ -41,4 +38,3 @@ Codex 是第一个 provider，但稳定的本地 quota source 还没有完全证
 - 是否存在 usage/quota 相关命令
 
 这个 probe 故意很保守。它先确认公开本地 CLI surface 是否提供结构化 usage 路径，再决定是否进入更深的数据源调查。
-

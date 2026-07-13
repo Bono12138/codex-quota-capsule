@@ -70,7 +70,7 @@ QUOTA_CAPSULE_PUBLIC_ANALYTICS_ENDPOINT=https://example.com/v1/events npm run ma
 - `analytics_consent_changed`
 - `local_history_cleared`
 
-`quota_state_sampled` 会发送 5 小时窗口和周窗口的用量百分比、时间进度、预计刷新余量、胶囊宽度分档和展开状态。它不包含 prompt、session、token、文件路径、项目名、窗口标题、代码或命令。
+`quota_state_sampled` 会发送周窗口用量、周时间进度、可持续日速度、最近速度区间、预计刷新余量区间、预测状态与置信度，以及胶囊宽度分档和展开状态。它不包含 prompt、session、token、文件路径、项目名、窗口标题、代码或命令。
 
 ## 明确不采集
 

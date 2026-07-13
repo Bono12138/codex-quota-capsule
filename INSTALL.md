@@ -64,7 +64,7 @@ dist/development/Quota Capsule Dev Local.app
 内测版命令：
 
 ```bash
-npm run mac:run:internal-test
+npm run mac:install:internal-test
 ```
 
 开发版命令：
@@ -94,7 +94,7 @@ QUOTA_CAPSULE_DEV_GITHUB_ISSUES_URL="https://github.com/<owner>/<private-repo>/i
 9. 运行 npm test。
 10. 运行 npm run build。
 11. 运行 swift run QuotaCapsuleCoreSpec。
-12. 运行 npm run mac:run:internal-test -- --verify。
+12. 运行 npm run mac:install:internal-test，并确认运行进程来自 /Applications。
 13. 启动成功后，告诉我如何再次打开它。
 ```
 
@@ -107,24 +107,25 @@ QUOTA_CAPSULE_DEV_GITHUB_ISSUES_URL="https://github.com/<owner>/<private-repo>/i
 启动后会出现两个入口：
 
 - 右上角桌面悬浮小胶囊：默认常驻显示当前状态。
-- 菜单栏短状态：常驻显示状态和 5 小时已用比例，可立即刷新、显示/隐藏悬浮胶囊、打开反馈和引导、退出应用。
+- 菜单栏短状态：常驻显示周速度状态和本周已用比例，可立即刷新、显示/隐藏悬浮胶囊、打开反馈和引导、退出应用。
 
 胶囊默认显示：
 
-- `安全 17% / 注意 68% / 危险 92% / 未知`
-- 颜色表示风险，百分比表示 5 小时窗口已用比例
+- `正在校准 / 够用 / 偏快 / 可能不够 / 已用尽 / 数据暂不可用`
+- 颜色辅助表达周速度风险，百分比始终表示本周额度已用比例
 - 正常状态保持安静；读取失败时显示状态提示，菜单栏可手动刷新
 
 首次启动会显示轻量引导，说明本机只读、隐私边界、状态颜色含义和菜单栏操作。
 
 点击胶囊可展开详情：
 
-- 时间进度
-- 额度已用
-- 当前速度倍率，不显示无语义进度条
-- 刷新余量
-- 周额度余量
-- 本周压力预测
+- 本周时间进度
+- 本周额度已用
+- 最近 24 小时实际用了多少
+- 未来 24 小时建议不超过多少
+- 刷新时预计余量区间
+- 当前周期趋势、可持续线、预测区间和刷新标记
+- 预测置信度与数据质量说明
 - 刷新时间
 - 最近更新时间
 
@@ -164,12 +165,7 @@ codex -s read-only -a untrusted app-server
 account/rateLimits/read
 ```
 
-它只使用 rate-limit window 字段：
-
-- 5 小时窗口已用比例
-- 5 小时窗口刷新时间
-- 周窗口已用比例
-- 周窗口刷新时间
+它只使用周额度 window 的已用比例、窗口时长和刷新时间。
 
 这些内容保持在本机：
 
@@ -195,7 +191,7 @@ QUOTA_CAPSULE_DEV_ANALYTICS_ENDPOINT="http://127.0.0.1:8787/v1/events" npm run m
 
 ## 故障排查
 
-如果胶囊显示“未知”：
+如果胶囊显示“数据暂不可用”：
 
 1. 打开终端，确认：
 

@@ -3,7 +3,7 @@ import { spawn, type ChildProcessWithoutNullStreams } from "node:child_process";
 import { constants } from "node:fs";
 import { access } from "node:fs/promises";
 import { homedir } from "node:os";
-import { createInterface, type Interface } from "node:readline";
+import { StringDecoder } from "node:string_decoder";
 import { promisify } from "node:util";
 import type { AgentQuotaSnapshot, QuotaWindow } from "@quota-capsule/core";
 
@@ -21,11 +21,12 @@ export type CodexProbeResult = {
 
 export type CodexRateLimitParseOptions = {
   fetchedAt: Date;
+  timeoutMs?: number;
 };
 
 export type CodexAppServerTransport = {
   send(payload: unknown): void | Promise<void>;
-  read(): Promise<unknown>;
+  read(timeoutMs?: number): Promise<unknown>;
   close?(): void;
 };
 
@@ -94,7 +95,7 @@ export async function readCodexRateLimits(options: CodexAppServerReadOptions = {
   const transport = new ProcessCodexAppServerTransport(codexPath, options.timeoutMs);
 
   try {
-    return await readCodexRateLimitsFromTransport(transport, { fetchedAt });
+    return await readCodexRateLimitsFromTransport(transport, { fetchedAt, timeoutMs: options.timeoutMs });
   } finally {
     transport.close();
   }
@@ -105,6 +106,11 @@ export async function readCodexRateLimitsFromTransport(
   options: CodexRateLimitParseOptions,
 ): Promise<AgentQuotaSnapshot> {
   try {
+    const requestedTimeout = options.timeoutMs ?? 30_000;
+    const timeoutMs = Number.isFinite(requestedTimeout) && requestedTimeout > 0
+      ? Math.min(requestedTimeout, 300_000)
+      : 30_000;
+    const deadline = Date.now() + timeoutMs;
     await transport.send({
       jsonrpc: "2.0",
       id: 1,
@@ -115,14 +121,14 @@ export async function readCodexRateLimitsFromTransport(
       },
     });
 
-    const initialized = await readUntilId(transport, 1);
+    const initialized = await readUntilId(transport, 1, deadline);
     const initError = readRpcError(initialized);
     if (initError) return errorSnapshot(options.fetchedAt, initError);
 
     await transport.send({ jsonrpc: "2.0", method: "initialized", params: {} });
     await transport.send({ jsonrpc: "2.0", id: 2, method: "account/rateLimits/read", params: {} });
 
-    const rateLimits = await readUntilId(transport, 2);
+    const rateLimits = await readUntilId(transport, 2, deadline);
     const rateLimitError = readRpcError(rateLimits);
     if (rateLimitError) return errorSnapshot(options.fetchedAt, rateLimitError);
 
@@ -151,10 +157,14 @@ export function parseCodexRateLimits(
     .map((key) => parseRateLimitWindow(rateLimits[key]))
     .filter((window): window is QuotaWindow => Boolean(window));
 
-  const shortWindow = windows.find((window) => window.windowMinutes <= 360);
-  const weeklyWindow = windows.find((window) => window.windowMinutes > 360);
+  const weeklyCandidate = windows.find((window) =>
+    Math.abs(window.windowMinutes - 10_080) <= 60
+      && window.resetsAt.getTime() > options.fetchedAt.getTime()
+      && window.resetsAt.getTime() - options.fetchedAt.getTime() <= 8 * 24 * 60 * 60_000,
+  );
+  const weeklyWindow = weeklyCandidate ? { ...weeklyCandidate, label: "weekly" } : undefined;
 
-  if (!shortWindow && !weeklyWindow) {
+  if (!weeklyWindow) {
     return {
       provider: "codex",
       sourceStatus: "error",
@@ -167,39 +177,60 @@ export function parseCodexRateLimits(
     provider: "codex",
     sourceStatus: "ok",
     fetchedAt: options.fetchedAt,
-    shortWindow,
     weeklyWindow,
   };
 }
 
 class ProcessCodexAppServerTransport implements CodexAppServerTransport {
   private readonly child: ChildProcessWithoutNullStreams;
-  private readonly reader: Interface;
   private readonly lines: string[] = [];
-  private readonly waiters: Array<(line: string) => void> = [];
+  private readonly waiters: Array<{
+    resolve: (line: string) => void;
+    reject: (error: Error) => void;
+    timer: ReturnType<typeof setTimeout>;
+  }> = [];
   private readonly timeoutMs: number;
   private stderr = "";
   private closed = false;
+  private terminalError: Error | null = null;
+  private stdoutBuffer = "";
+  private readonly stdoutDecoder = new StringDecoder("utf8");
 
   constructor(codexPath: string, timeoutMs = 30_000) {
     this.timeoutMs = timeoutMs;
     this.child = spawn(codexPath, ["-s", "read-only", "-a", "untrusted", "app-server"], {
       stdio: ["pipe", "pipe", "pipe"],
     });
-    this.reader = createInterface({ input: this.child.stdout });
-
-    this.reader.on("line", (line) => {
-      const waiter = this.waiters.shift();
-      if (waiter) {
-        waiter(line);
-        return;
-      }
-      this.lines.push(line);
-    });
+    this.child.stdout.on("data", (chunk: Buffer) => this.appendStdout(chunk));
 
     this.child.stderr.on("data", (chunk: Buffer) => {
       this.stderr += chunk.toString("utf8");
+      if (this.stderr.length > 8_192) this.stderr = this.stderr.slice(-8_192);
     });
+    this.child.once("error", (error) => this.fail(new Error(`codex app-server failed to start: ${error.message}`)));
+    this.child.once("exit", (code) => {
+      this.fail(new Error(`codex app-server exited before response.${code === null ? "" : ` exit code: ${code}`}`));
+    });
+  }
+
+  private acceptLine(line: string): void {
+    if (this.terminalError) return;
+    if (Buffer.byteLength(line, "utf8") > 1_048_576) {
+      this.fail(new Error("codex app-server output exceeded the safety limit."));
+      this.child.kill();
+      return;
+    }
+      const waiter = this.waiters.shift();
+      if (waiter) {
+        clearTimeout(waiter.timer);
+        waiter.resolve(line);
+        return;
+      }
+      if (this.lines.length >= 1_000) {
+        this.fail(new Error("codex app-server queued too many messages."));
+        return;
+      }
+      this.lines.push(line);
   }
 
   send(payload: unknown): void {
@@ -207,48 +238,85 @@ class ProcessCodexAppServerTransport implements CodexAppServerTransport {
     this.child.stdin.write(`${JSON.stringify(payload)}\n`);
   }
 
-  async read(): Promise<unknown> {
-    while (true) {
-      const line = await this.readLine();
-      try {
-        return JSON.parse(line);
-      } catch {
-        continue;
-      }
+  async read(timeoutMs = this.timeoutMs): Promise<unknown> {
+    const line = await this.readLine(timeoutMs);
+    try {
+      return JSON.parse(line);
+    } catch {
+      throw new Error("codex app-server returned an unparseable JSON-RPC message.");
     }
   }
 
   close(): void {
     this.closed = true;
-    this.reader.close();
+    this.fail(new Error("codex app-server transport is closed."));
     this.child.kill();
   }
 
-  private readLine(): Promise<string> {
+  private appendStdout(chunk: Buffer): void {
+    if (this.terminalError) return;
+    this.stdoutBuffer += this.stdoutDecoder.write(chunk);
+    if (Buffer.byteLength(this.stdoutBuffer, "utf8") > 1_048_576) {
+      this.fail(new Error("codex app-server output exceeded the safety limit."));
+      this.child.kill();
+      return;
+    }
+
+    let newline = this.stdoutBuffer.indexOf("\n");
+    while (newline >= 0) {
+      const line = this.stdoutBuffer.slice(0, newline).replace(/\r$/, "");
+      this.stdoutBuffer = this.stdoutBuffer.slice(newline + 1);
+      this.acceptLine(line);
+      if (this.terminalError) return;
+      newline = this.stdoutBuffer.indexOf("\n");
+    }
+  }
+
+  private readLine(timeoutMs: number): Promise<string> {
     const existing = this.lines.shift();
     if (existing !== undefined) return Promise.resolve(existing);
+    if (this.terminalError) return Promise.reject(this.terminalError);
 
     return new Promise((resolve, reject) => {
       const timeout = setTimeout(() => {
-        reject(new Error(`codex app-server timed out after ${this.timeoutMs}ms.${this.stderr ? ` stderr: ${this.stderr}` : ""}`));
-      }, this.timeoutMs);
+        const index = this.waiters.findIndex((waiter) => waiter.resolve === resolve);
+        if (index >= 0) this.waiters.splice(index, 1);
+        reject(new Error(`codex app-server timed out after ${timeoutMs}ms.${safeStderrSuffix(this.stderr)}`));
+      }, Math.max(0, timeoutMs));
 
-      this.waiters.push((line) => {
-        clearTimeout(timeout);
-        resolve(line);
-      });
-
-      this.child.once("exit", (code) => {
-        clearTimeout(timeout);
-        reject(new Error(`codex app-server exited before response.${code === null ? "" : ` exit code: ${code}`}`));
-      });
+      this.waiters.push({ resolve, reject, timer: timeout });
     });
+  }
+
+  private fail(error: Error): void {
+    if (!this.terminalError) this.terminalError = error;
+    for (const waiter of this.waiters.splice(0)) {
+      clearTimeout(waiter.timer);
+      waiter.reject(this.terminalError);
+    }
   }
 }
 
-async function readUntilId(transport: CodexAppServerTransport, id: number): Promise<Record<string, unknown>> {
-  for (let attempt = 0; attempt < 50; attempt += 1) {
-    const message = readObject(await transport.read());
+function safeStderrSuffix(stderr: string): string {
+  if (!stderr) return "";
+  const sanitized = stderr
+    .replace(/Bearer\s+\S+/gi, "Bearer [redacted]")
+    .replace(/https?:\/\/\S+/g, "[remote service]")
+    .replace(/\/Users\/[^/\s]+/g, "/Users/[redacted]")
+    .replace(/\s+/g, " ")
+    .slice(0, 512);
+  return ` stderr: ${sanitized}`;
+}
+
+async function readUntilId(
+  transport: CodexAppServerTransport,
+  id: number,
+  deadline: number,
+): Promise<Record<string, unknown>> {
+  for (let attempt = 0; attempt < 1_000; attempt += 1) {
+    const remaining = deadline - Date.now();
+    if (remaining <= 0) throw new Error("codex app-server request exceeded its overall deadline.");
+    const message = readObject(await transport.read(remaining));
     if (message.id !== id) continue;
     return message;
   }
@@ -325,8 +393,23 @@ function parseRateLimitWindow(value: unknown): QuotaWindow | null {
     return null;
   }
 
+  if (
+    !Number.isFinite(usedPercent) ||
+    usedPercent < 0 ||
+    usedPercent > 100 ||
+    !Number.isFinite(windowMinutes) ||
+    !Number.isInteger(windowMinutes) ||
+    windowMinutes < 1 ||
+    windowMinutes > 525_600 ||
+    !Number.isFinite(resetsAtSeconds) ||
+    resetsAtSeconds < 946_684_800 ||
+    resetsAtSeconds > 4_102_444_800
+  ) {
+    return null;
+  }
+
   return {
-    label: windowMinutes <= 360 ? "5h" : "weekly",
+    label: "candidate",
     windowMinutes,
     usedPercent: clampPercent(usedPercent),
     remainingPercent: clampPercent(100 - usedPercent),

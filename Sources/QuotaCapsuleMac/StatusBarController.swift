@@ -53,15 +53,12 @@ final class StatusBarController {
     }
 
     private var statusBarTitle: String {
-        if let used = store.compactUsedPercent {
-            return "\(store.visibleStatusText) \(used)%"
-        }
-        return store.visibleStatusText
+        store.visibleMenuBarText
     }
 
     private var statusBarTooltip: String {
-        if let used = store.compactUsedPercent {
-            return "\(store.visibleStatusText) · \(used)%"
+        if let used = store.compactUsedValueText {
+            return "\(store.visibleStatusText) · \(used)"
         }
         return store.visibleStatusText
     }

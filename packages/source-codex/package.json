@@ -2,7 +2,7 @@
   "name": "@quota-capsule/source-codex",
   "version": "0.0.0",
   "type": "module",
-  "private": false,
+  "private": true,
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "exports": {
@@ -11,6 +11,9 @@
       "import": "./dist/index.js"
     }
   },
+  "files": [
+    "dist"
+  ],
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "test": "vitest run test"

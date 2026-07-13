@@ -14,15 +14,17 @@ Codex 是第一个适配对象。项目会保持 agent-extensible：其他 Agent
 
 - 现在还能不能继续用？
 - 当前速度能不能撑到刷新？
-- 如果撑不到，预计几点见底？
+- 如果可能撑不到，风险范围在哪里？
 - 如果能撑到，刷新时大概还有多少余量？
 
-额度胶囊要做成一个小而常驻的状态物，直接给出判断：
+额度胶囊要做成一个小而常驻的状态物，直接给出六种诚实判断：
 
-- Safe / 安全：当前速度大概率能撑到刷新。
-- Watch / 注意：暂时能用，但余量偏薄。
-- Danger / 危险：当前速度大概率会在刷新前见底。
-- Unknown / 未知：数据源缺失、过期或读取失败。
+- 正在校准：有效历史还不足 6 小时，暂不下结论。
+- 够用：预计能带着至少 5% 余量到刷新。
+- 偏快：仍可能撑到刷新，但余量区间偏薄。
+- 可能不够：快、慢两种估计都可能在刷新前见底。
+- 已用尽：本周额度已经用完，等待刷新恢复。
+- 数据暂不可用：实时读取失败或数据过期，只保留最后成功百分比，不给速度结论。
 
 ## 适合谁
 
@@ -38,7 +40,8 @@ Codex 是第一个适配对象。项目会保持 agent-extensible：其他 Agent
 - 原生桌面悬浮胶囊。
 - 菜单栏状态入口。
 - 只读 Codex app-server rate-limit adapter。
-- 5 小时窗口和周窗口预测。
+- 最近 24 小时实际用量、周速度、刷新余量区间和未来 24 小时建议。
+- 当前周期趋势、可持续线、预测区间和刷新标记。
 - 本地历史快照。
 - 多语言界面。
 - 公开反馈入口。
@@ -65,7 +68,7 @@ https://github.com/Bono12138/codex-quota-capsule
 7. 运行 npm test。
 8. 运行 npm run build。
 9. 运行 swift run QuotaCapsuleCoreSpec。
-10. 运行 npm run mac:run:internal-test -- --verify。
+10. 运行 npm run mac:install:internal-test，并确认运行进程来自 /Applications。
 11. 如果启动成功，告诉我如何再次打开 Quota Capsule。
 12. 如果失败，只给我必要的非敏感错误信息和下一步建议。
 ```
@@ -79,7 +82,7 @@ npm ci
 npm test
 npm run build
 swift run QuotaCapsuleCoreSpec
-npm run mac:run:internal-test -- --verify
+npm run mac:install:internal-test
 ```
 
 ## 本机版本通道
@@ -107,7 +110,7 @@ QUOTA_CAPSULE_DEV_GITHUB_ISSUES_URL="https://github.com/<owner>/<private-repo>/i
 - 未配置 analytics endpoint 时，不上传产品事件。
 - 配置 analytics endpoint 后，基础诊断和产品改进数据按授权分层发送。
 - prompt 正文、session 正文、代码内容、私有文件路径、账号凭据、auth token、cookie 留在本机。
-- 缺失或过期数据显示为 `unknown`。
+- 缺失或过期数据显示为“数据暂不可用”，过期百分比会被明确标记。
 
 ## 项目结构
 
@@ -127,7 +130,7 @@ scripts/                   本地 helper scripts。
 ## 路线图
 
 - 更完整的新手引导和产品内提示。
-- 历史趋势和使用节奏复盘。
+- 更长期的历史趋势和使用节奏复盘。
 - Chrome 独立版本。
 - 更多 Agent provider adapter。
 - 内测稳定后补签名、公证、DMG 和自动更新。

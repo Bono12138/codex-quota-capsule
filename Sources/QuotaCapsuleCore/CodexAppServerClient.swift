@@ -64,8 +64,10 @@ public enum CodexAppServerClient {
         maxAttempts: Int = 3,
         retryDelaySeconds: TimeInterval = 1.25
     ) async -> AgentQuotaSnapshot {
-        let attempts = max(1, maxAttempts)
+        let attempts = min(5, max(1, maxAttempts))
+        let retryDelay = retryDelaySeconds.isFinite ? min(30, max(0, retryDelaySeconds)) : 0
         var latest = fetchCurrent(codexPath: codexPath, timeoutSeconds: timeoutSeconds, locale: locale)
+        var preferred = latest
         guard attempts > 1 else {
             return latest
         }
@@ -74,19 +76,25 @@ public enum CodexAppServerClient {
             guard shouldRetry(latest) else {
                 return latest
             }
-            let delay = UInt64(retryDelaySeconds * Double(attempt) * 1_000_000_000)
-            try? await Task.sleep(nanoseconds: delay)
+            guard !Task.isCancelled else { return latest }
+            let delay = UInt64(retryDelay * Double(attempt) * 1_000_000_000)
+            do {
+                try await Task.sleep(nanoseconds: delay)
+            } catch {
+                return latest
+            }
             latest = fetchCurrent(codexPath: codexPath, timeoutSeconds: timeoutSeconds, locale: locale)
-            if latest.sourceStatus == .ok {
+            preferred = preferredRetrySnapshot(current: preferred, candidate: latest)
+            if !shouldRetry(latest) {
                 return latest
             }
         }
 
-        return latest
+        return preferred
     }
 
     public static func shouldRetry(_ snapshot: AgentQuotaSnapshot) -> Bool {
-        guard snapshot.sourceStatus != .ok else {
+        if snapshot.sourceStatus == .ok {
             return false
         }
         let message = (snapshot.errorMessage ?? "").lowercased()
@@ -94,10 +102,31 @@ public enum CodexAppServerClient {
             || message.contains("未登录")
             || message.contains("未登入")
             || message.contains("找不到 codex")
-            || message.contains("could not find the codex command") {
+            || message.contains("could not find the codex command")
+            || message.contains("method not found")
+            || message.contains("invalid params")
+            || message.contains("回应缺少 result")
+            || message.contains("response is missing result") {
             return false
         }
         return true
+    }
+
+    public static func preferredRetrySnapshot(
+        current: AgentQuotaSnapshot,
+        candidate: AgentQuotaSnapshot
+    ) -> AgentQuotaSnapshot {
+        completenessScore(candidate) >= completenessScore(current) ? candidate : current
+    }
+
+    private static func completenessScore(_ snapshot: AgentQuotaSnapshot) -> Int {
+        if snapshot.sourceStatus == .ok, snapshot.weeklyWindow != nil {
+            return 3
+        }
+        if snapshot.weeklyWindow != nil {
+            return 1
+        }
+        return 0
     }
 
     public static func fetchSnapshot(
@@ -107,6 +136,10 @@ public enum CodexAppServerClient {
         locale: QuotaLocale = .zhHans
     ) -> AgentQuotaSnapshot {
         do {
+            let effectiveTimeout = timeoutSeconds.isFinite && timeoutSeconds > 0
+                ? min(timeoutSeconds, 300)
+                : defaultTimeoutSeconds
+            let deadline = Date().addingTimeInterval(effectiveTimeout)
             try transport.send([
                 "jsonrpc": "2.0",
                 "id": 1,
@@ -121,7 +154,7 @@ public enum CodexAppServerClient {
                 ]
             ])
 
-            let initialized = try readUntilID(1, transport: transport, timeoutSeconds: timeoutSeconds, locale: locale)
+            let initialized = try readUntilID(1, transport: transport, deadline: deadline, locale: locale)
             if let error = rpcError(from: initialized) {
                 return errorSnapshot(fetchedAt: fetchedAt, CodexAppServerError.rpc(error), locale: locale)
             }
@@ -129,7 +162,7 @@ public enum CodexAppServerClient {
             try transport.send(["jsonrpc": "2.0", "method": "initialized", "params": [:]])
             try transport.send(["jsonrpc": "2.0", "id": 2, "method": "account/rateLimits/read", "params": [:]])
 
-            let response = try readUntilID(2, transport: transport, timeoutSeconds: timeoutSeconds, locale: locale)
+            let response = try readUntilID(2, transport: transport, deadline: deadline, locale: locale)
             if let error = rpcError(from: response) {
                 return errorSnapshot(fetchedAt: fetchedAt, CodexAppServerError.rpc(error), locale: locale)
             }
@@ -147,11 +180,15 @@ public enum CodexAppServerClient {
     private static func readUntilID(
         _ id: Int,
         transport: CodexRPCTransport,
-        timeoutSeconds: TimeInterval,
+        deadline: Date,
         locale: QuotaLocale
     ) throws -> [String: Any] {
-        for _ in 0..<50 {
-            let message = try transport.readMessage(timeoutSeconds: timeoutSeconds)
+        for _ in 0..<1_000 {
+            let remaining = deadline.timeIntervalSinceNow
+            guard remaining > 0 else {
+                throw CodexAppServerError.transport(deadlineMessage(locale))
+            }
+            let message = try transport.readMessage(timeoutSeconds: remaining)
             if let messageID = message["id"] as? Int, messageID == id {
                 return message
             }
@@ -183,6 +220,14 @@ public enum CodexAppServerClient {
         }
     }
 
+    private static func deadlineMessage(_ locale: QuotaLocale) -> String {
+        switch locale {
+        case .zhHans: "codex app-server 请求超过总时限。"
+        case .zhHant: "codex app-server 請求超過總時限。"
+        case .en: "The codex app-server request exceeded its overall deadline."
+        }
+    }
+
     private static func errorSnapshot(fetchedAt: Date, _ error: Error, locale: QuotaLocale) -> AgentQuotaSnapshot {
         let message = if let error = error as? CodexAppServerError {
             error.message(locale: locale)
@@ -194,7 +239,6 @@ public enum CodexAppServerClient {
             provider: "codex",
             sourceStatus: .error,
             fetchedAt: fetchedAt,
-            shortWindow: nil,
             weeklyWindow: nil,
             errorMessage: message
         )
@@ -252,6 +296,8 @@ public final class ProcessCodexRPCTransport: CodexRPCTransport, @unchecked Senda
     private var buffer = Data()
     private var messages: [[String: Any]] = []
     private var stderr = ""
+    private var terminalError: String?
+    private var isClosing = false
     private let lock = NSLock()
     private let semaphore = DispatchSemaphore(value: 0)
     private let locale: QuotaLocale
@@ -270,15 +316,20 @@ public final class ProcessCodexRPCTransport: CodexRPCTransport, @unchecked Senda
         process.standardError = errorOutput
 
         output.fileHandleForReading.readabilityHandler = { [weak self] handle in
-            self?.appendOutput(handle.availableData)
+            let data = handle.availableData
+            if !data.isEmpty {
+                self?.appendOutput(data)
+            }
         }
         errorOutput.fileHandleForReading.readabilityHandler = { [weak self] handle in
             guard let chunk = String(data: handle.availableData, encoding: .utf8), !chunk.isEmpty else {
                 return
             }
-            self?.lock.lock()
-            self?.stderr += chunk
-            self?.lock.unlock()
+            self?.appendStderr(chunk)
+        }
+
+        process.terminationHandler = { [weak self] _ in
+            self?.markTerminated()
         }
 
         try process.run()
@@ -291,11 +342,8 @@ public final class ProcessCodexRPCTransport: CodexRPCTransport, @unchecked Senda
     }
 
     public func readMessage(timeoutSeconds: TimeInterval) throws -> [String: Any] {
-        if let message = popMessage() {
-            return message
-        }
-
-        let result = semaphore.wait(timeout: .now() + timeoutSeconds)
+        let timeout = timeoutSeconds.isFinite ? max(0, timeoutSeconds) : CodexAppServerClient.defaultTimeoutSeconds
+        let result = semaphore.wait(timeout: .now() + timeout)
         if result == .timedOut {
             lock.lock()
             let stderrText = stderr
@@ -307,10 +355,20 @@ public final class ProcessCodexRPCTransport: CodexRPCTransport, @unchecked Senda
             return message
         }
 
+        lock.lock()
+        let terminal = terminalError
+        lock.unlock()
+        if let terminal {
+            throw CodexAppServerError.transport(terminal)
+        }
+
         throw CodexAppServerError.transport(ProcessCodexRPCTransport.unparseableMessage(locale: locale))
     }
 
     public func close() {
+        lock.lock()
+        isClosing = true
+        lock.unlock()
         output.fileHandleForReading.readabilityHandler = nil
         errorOutput.fileHandleForReading.readabilityHandler = nil
         input.fileHandleForWriting.closeFile()
@@ -324,20 +382,64 @@ public final class ProcessCodexRPCTransport: CodexRPCTransport, @unchecked Senda
             return
         }
 
+        var shouldSignalTerminal = false
         lock.lock()
         buffer.append(data)
 
-        while let newline = buffer.firstIndex(of: 0x0A) {
+        if buffer.count > 1_048_576 {
+            buffer.removeAll(keepingCapacity: false)
+            terminalError = Self.oversizedOutputMessage(locale)
+            shouldSignalTerminal = true
+        }
+
+        while !shouldSignalTerminal, let newline = buffer.firstIndex(of: 0x0A) {
             let line = buffer[..<newline]
             buffer.removeSubrange(...newline)
             guard let object = try? JSONSerialization.jsonObject(with: Data(line)) as? [String: Any] else {
-                continue
+                terminalError = Self.unparseableMessage(locale: locale)
+                shouldSignalTerminal = true
+                break
             }
             messages.append(object)
             semaphore.signal()
+            if messages.count > 1_000 {
+                messages.removeAll(keepingCapacity: false)
+                terminalError = Self.oversizedOutputMessage(locale)
+                shouldSignalTerminal = true
+                break
+            }
         }
 
         lock.unlock()
+        if shouldSignalTerminal {
+            semaphore.signal()
+        }
+    }
+
+    private func appendStderr(_ chunk: String) {
+        lock.lock()
+        stderr += chunk
+        if stderr.count > 8_192 {
+            stderr = String(stderr.suffix(8_192))
+        }
+        lock.unlock()
+    }
+
+    private func markTerminated() {
+        lock.lock()
+        guard terminalError == nil, !isClosing else {
+            lock.unlock()
+            return
+        }
+        guard !process.isRunning else {
+            lock.unlock()
+            return
+        }
+        let status = process.terminationStatus
+        let suffix = Self.safeStderrSuffix(stderr)
+        terminalError = processExitMessage(status: status, suffix: suffix, locale: locale)
+        lock.unlock()
+        semaphore.signal()
     }
 
     private func popMessage() -> [String: Any]? {
@@ -350,7 +452,7 @@ public final class ProcessCodexRPCTransport: CodexRPCTransport, @unchecked Senda
     }
 
     private static func timeoutMessage(stderr: String, locale: QuotaLocale) -> String {
-        let suffix = stderr.isEmpty ? "" : " stderr: \(stderr)"
+        let suffix = safeStderrSuffix(stderr)
         switch locale {
         case .zhHans:
             return "codex app-server 读取超时。\(suffix)"
@@ -366,6 +468,32 @@ public final class ProcessCodexRPCTransport: CodexRPCTransport, @unchecked Senda
         case .zhHans: "codex app-server 没有返回可解析的 JSON-RPC 消息。"
         case .zhHant: "codex app-server 沒有返回可解析的 JSON-RPC 訊息。"
         case .en: "codex app-server did not return a parseable JSON-RPC message."
+        }
+    }
+
+    private static func oversizedOutputMessage(_ locale: QuotaLocale) -> String {
+        switch locale {
+        case .zhHans: "codex app-server 输出超过安全限制。"
+        case .zhHant: "codex app-server 輸出超過安全限制。"
+        case .en: "codex app-server output exceeded the safety limit."
+        }
+    }
+
+    private static func safeStderrSuffix(_ stderr: String) -> String {
+        guard !stderr.isEmpty else { return "" }
+        let sanitized = stderr
+            .replacingOccurrences(of: #"(?i)Bearer\s+[^\s]+"#, with: "Bearer [redacted]", options: .regularExpression)
+            .replacingOccurrences(of: #"https?://[^\s]+"#, with: "[remote service]", options: .regularExpression)
+            .replacingOccurrences(of: #"/Users/[^/\s]+"#, with: "/Users/[redacted]", options: .regularExpression)
+            .replacingOccurrences(of: "\n", with: " ")
+        return " stderr: \(sanitized.prefix(512))"
+    }
+
+    private func processExitMessage(status: Int32, suffix: String, locale: QuotaLocale) -> String {
+        switch locale {
+        case .zhHans: "codex app-server 已退出（状态 \(status)）。\(suffix)"
+        case .zhHant: "codex app-server 已結束（狀態 \(status)）。\(suffix)"
+        case .en: "codex app-server exited with status \(status).\(suffix)"
         }
     }
 }

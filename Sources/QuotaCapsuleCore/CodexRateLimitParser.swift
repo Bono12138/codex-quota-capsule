@@ -13,15 +13,18 @@ public enum CodexRateLimitParser {
             parseWindow(rateLimits[key])
         }
 
-        let shortWindow = windows.first { $0.windowMinutes <= 360 }
-        let weeklyWindow = windows.first { $0.windowMinutes > 360 }
+        let latestPlausibleReset = fetchedAt.addingTimeInterval(8 * 24 * 60 * 60)
+        let weeklyWindow = windows.first { window in
+            abs(window.windowMinutes - 10_080) <= 60
+                && window.resetsAt > fetchedAt
+                && window.resetsAt <= latestPlausibleReset
+        }
 
-        guard shortWindow != nil || weeklyWindow != nil else {
+        guard let weeklyWindow else {
             return AgentQuotaSnapshot(
                 provider: "codex",
                 sourceStatus: .error,
                 fetchedAt: fetchedAt,
-                shortWindow: nil,
                 weeklyWindow: nil,
                 errorMessage: missingUsableWindowsMessage(locale)
             )
@@ -31,7 +34,6 @@ public enum CodexRateLimitParser {
             provider: "codex",
             sourceStatus: .ok,
             fetchedAt: fetchedAt,
-            shortWindow: shortWindow,
             weeklyWindow: weeklyWindow,
             errorMessage: nil
         )
@@ -41,34 +43,36 @@ public enum CodexRateLimitParser {
         guard let window = value as? [String: Any],
               let usedPercent = readNumber(window["usedPercent"]),
               let windowMinutes = readNumber(window["windowDurationMins"]),
-              let resetsAtSeconds = readNumber(window["resetsAt"]) else {
+              let resetsAtSeconds = readNumber(window["resetsAt"]),
+              usedPercent.isFinite,
+              (0...100).contains(usedPercent),
+              windowMinutes.isFinite,
+              windowMinutes >= 1,
+              windowMinutes <= 525_600,
+              windowMinutes.rounded() == windowMinutes,
+              resetsAtSeconds.isFinite,
+              resetsAtSeconds >= 946_684_800,
+              resetsAtSeconds <= 4_102_444_800 else {
             return nil
         }
 
-        let used = clampPercent(Int(usedPercent.rounded()))
         let minutes = Int(windowMinutes.rounded())
 
         return QuotaWindow(
-            label: minutes <= 360 ? "5h" : "weekly",
+            label: "weekly",
             windowMinutes: minutes,
-            usedPercent: used,
-            remainingPercent: clampPercent(100 - used),
+            usedPercent: usedPercent,
+            remainingPercent: 100 - usedPercent,
             resetsAt: Date(timeIntervalSince1970: resetsAtSeconds)
         )
     }
 
     private static func readNumber(_ value: Any?) -> Double? {
-        if let number = value as? Double {
-            return number
+        guard let number = value as? NSNumber,
+              CFGetTypeID(number) != CFBooleanGetTypeID() else {
+            return nil
         }
-        if let number = value as? Int {
-            return Double(number)
-        }
-        return nil
-    }
-
-    private static func clampPercent(_ value: Int) -> Int {
-        min(100, max(0, value))
+        return number.doubleValue
     }
 
     private static func missingUsableWindowsMessage(_ locale: QuotaLocale) -> String {
@@ -78,4 +82,5 @@ public enum CodexRateLimitParser {
         case .en: "codex app-server rateLimits did not include any usable windows."
         }
     }
+
 }

@@ -30,6 +30,8 @@ const publicPaths = [
   "Sources/QuotaCapsuleCore",
   "Sources/QuotaCapsuleCoreSpec",
   "Sources/QuotaCapsuleMac",
+  "Tests/QuotaCapsuleCoreTests",
+  "fixtures",
   "apps/desktop",
   "packages/core",
   "packages/source-codex",

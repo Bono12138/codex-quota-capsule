@@ -10,7 +10,7 @@ enum CapsuleViewMetrics {
     static let shadowPadding: CGFloat = 16
     static let collapsedContentHeight: CGFloat = 60
     static let collapsedHeight: CGFloat = collapsedContentHeight + shadowPadding * 2
-    static let expandedHeight: CGFloat = 640
+    static let expandedHeight: CGFloat = 560
     static let expandedDetailContentHeight: CGFloat = expandedHeight - shadowPadding * 2 - collapsedContentHeight - 8
     static let dockedContentWidth: CGFloat = 116
     static let dockedContentHeight: CGFloat = 46
@@ -61,8 +61,8 @@ struct DockedCapsuleView: View {
                 HStack(spacing: 4) {
                     Text(store.visibleStatusText)
                         .font(.system(size: 12, weight: .bold))
-                    if let used = store.compactUsedPercent {
-                        Text("\(used)%")
+                    if let used = store.compactUsedValueText {
+                        Text(used)
                             .font(.system(size: 11, weight: .bold))
                             .monospacedDigit()
                             .foregroundStyle(toneColor(store.displayModel.tone))
@@ -148,7 +148,10 @@ struct CompactCapsuleView: View {
                 .frame(width: compactMeterWidth, alignment: .leading)
                 .layoutPriority(2)
             } else {
-                CompactStatusNote(text: store.sourceStatusText)
+                CompactStatusNote(
+                    text: store.sourceStatusText,
+                    isSuccess: store.snapshot.sourceStatus == .ok
+                )
                     .frame(width: compactMeterWidth, alignment: .leading)
                     .layoutPriority(2)
             }
@@ -227,8 +230,13 @@ struct CompactPaceBars: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
-            CompactPaceTrack(label: elapsedLabel, percent: elapsedPercent, color: .secondary)
-            CompactPaceTrack(label: usageLabel, percent: usedPercent, color: toneColor(tone))
+            CompactPaceTrack(label: elapsedLabel, percent: elapsedPercent, percentText: "\(elapsedPercent)%", color: .secondary)
+            CompactPaceTrack(
+                label: usageLabel,
+                percent: usedPercent,
+                percentText: usedPercent == 0 ? "<1%" : "\(usedPercent)%",
+                color: toneColor(tone)
+            )
         }
     }
 }
@@ -236,6 +244,7 @@ struct CompactPaceBars: View {
 struct CompactPaceTrack: View {
     let label: String
     let percent: Int
+    let percentText: String
     let color: Color
 
     var body: some View {
@@ -254,7 +263,7 @@ struct CompactPaceTrack: View {
                 }
             }
             .frame(height: 4)
-            Text("\(percent)%")
+            Text(percentText)
                 .font(.system(size: 10, weight: .bold))
                 .monospacedDigit()
                 .foregroundStyle(.primary.opacity(0.72))
@@ -266,12 +275,13 @@ struct CompactPaceTrack: View {
 
 struct CompactStatusNote: View {
     let text: String
+    let isSuccess: Bool
 
     var body: some View {
         HStack(spacing: 6) {
-            Image(systemName: "exclamationmark.triangle.fill")
+            Image(systemName: isSuccess ? "checkmark.circle.fill" : "exclamationmark.triangle.fill")
                 .font(.system(size: 10, weight: .semibold))
-                .foregroundStyle(.secondary)
+                .foregroundStyle(isSuccess ? toneColor(.safe) : .secondary)
             Text(text)
                 .font(.system(size: 10, weight: .bold))
                 .foregroundStyle(.primary.opacity(0.72))
@@ -288,14 +298,14 @@ struct CompactStatusNote: View {
 struct DetailPopoverView: View {
     @ObservedObject var store: QuotaStore
     @State private var assistedFeedbackMessage = ""
+    @State private var diagnosticsExpanded = false
 
-    private var visibleMetrics: [CapsuleMetric] {
-        store.displayModel.metrics.filter {
-            $0.label != store.copy.metricResetBuffer && $0.label != store.copy.metricPace
-        }
+    private var progressMetrics: [CapsuleMetric] {
+        Array(store.displayModel.metrics.prefix(2))
     }
-    private var paceMetric: CapsuleMetric? {
-        store.displayModel.metrics.first { $0.label == store.copy.metricPace }
+
+    private var guidanceMetrics: [CapsuleMetric] {
+        Array(store.displayModel.metrics.dropFirst(2).prefix(2))
     }
 
     var body: some View {
@@ -333,17 +343,12 @@ struct DetailPopoverView: View {
     }
 
     private var detailContent: some View {
-        VStack(alignment: .leading, spacing: 13) {
+        VStack(alignment: .leading, spacing: 14) {
             HStack(alignment: .top) {
                 VStack(alignment: .leading, spacing: 5) {
-                    Text(store.copy.shortWindowTitle)
+                    Text(store.copy.weeklyOnlyTitle)
                         .font(.system(size: 11, weight: .bold))
                         .foregroundStyle(.secondary)
-                    Text(store.prediction.headline)
-                        .font(.system(size: 18, weight: .bold))
-                        .lineLimit(2)
-                        .minimumScaleFactor(0.86)
-                        .fixedSize(horizontal: false, vertical: true)
                 }
                 .layoutPriority(1)
                 Spacer()
@@ -356,47 +361,200 @@ struct DetailPopoverView: View {
                     .foregroundStyle(.black.opacity(0.82))
             }
 
-            Text(store.prediction.detail)
+            Text(store.displayModel.defaultText)
                 .font(.system(size: 13, weight: .medium))
                 .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
 
-            VStack(spacing: 10) {
-                ForEach(visibleMetrics, id: \.label) { metric in
+            VStack(alignment: .leading, spacing: 9) {
+                Text(store.copy.weeklyPaceTitle)
+                    .font(.system(size: 10, weight: .bold))
+                    .foregroundStyle(.secondary)
+                ForEach(progressMetrics, id: \.label) { metric in
                     MetricRow(metric: metric, tone: store.displayModel.tone)
                 }
             }
 
-            OverviewStatsGrid(
-                paceTitle: store.copy.metricPace,
-                paceValue: paceMetric?.value ?? store.copy.unknownValue,
-                weeklyTitle: store.copy.weeklyRemainingTitle,
-                weeklyValue: store.weeklyText,
-                resetTitle: store.copy.resetTimeTitle,
-                resetValue: store.resetText,
-                updatedTitle: store.copy.successUpdateTitle,
-                updatedValue: store.lastRefreshText,
-                tone: store.displayModel.tone
-            )
+            VStack(alignment: .leading, spacing: 8) {
+                Text(store.copy.weeklyGuidanceTitle)
+                    .font(.system(size: 10, weight: .bold))
+                    .foregroundStyle(.secondary)
+                HStack(spacing: 10) {
+                    ForEach(Array(guidanceMetrics.enumerated()), id: \.element.label) { index, metric in
+                        OverviewStatTile(
+                            title: metric.label,
+                            value: metric.value,
+                            tone: store.displayModel.tone,
+                            systemImage: index == 0 ? "speedometer" : "calendar.badge.clock"
+                        )
+                    }
+                }
+            }
 
-            WeeklyProjectionView(store: store)
+            WeeklyTrendChartView(store: store)
+
+            HStack(spacing: 8) {
+                Label("\(store.copy.resetTimeTitle) \(store.resetText)", systemImage: "clock.arrow.circlepath")
+                Spacer(minLength: 8)
+                Label("\(store.copy.successUpdateTitle) \(store.lastRefreshText)", systemImage: "checkmark.seal")
+            }
+            .font(.system(size: 10, weight: .semibold))
+            .foregroundStyle(.secondary)
+
+            if !store.displayModel.confidenceText.isEmpty {
+                Text(store.displayModel.confidenceText)
+                    .font(.system(size: 10, weight: .semibold))
+                    .foregroundStyle(.secondary)
+            }
 
             PanelQuickActionsView(store: store, assistedFeedbackMessage: $assistedFeedbackMessage)
 
-            VStack(alignment: .leading, spacing: 7) {
-                Text(store.copy.dataSourceTitle)
+            DisclosureGroup(isExpanded: $diagnosticsExpanded) {
+                VStack(alignment: .leading, spacing: 7) {
+                    HStack(spacing: 8) {
+                        SourcePill(title: store.copy.sourceTitle, value: store.sourceNameText)
+                        SourcePill(title: store.copy.endpointTitle, value: store.sourceEndpointText)
+                        SourcePill(title: store.copy.statusTitle, value: store.sourceStatusText)
+                    }
+                    Text(store.sourceNoteText)
+                        .font(.system(size: 10, weight: .medium))
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                .padding(.top, 8)
+            } label: {
+                Label(store.copy.dataDiagnosticsTitle, systemImage: "stethoscope")
                     .font(.system(size: 10, weight: .bold))
                     .foregroundStyle(.secondary)
-                HStack(spacing: 8) {
-                    SourcePill(title: store.copy.sourceTitle, value: store.sourceNameText)
-                    SourcePill(title: store.copy.endpointTitle, value: store.sourceEndpointText)
-                    SourcePill(title: store.copy.statusTitle, value: store.sourceStatusText)
-                }
-                Text(store.sourceNoteText)
-                    .font(.system(size: 10, weight: .medium))
-                    .foregroundStyle(.secondary)
-                    .lineLimit(2)
             }
         }
+    }
+}
+
+struct WeeklyTrendChartView: View {
+    @ObservedObject var store: QuotaStore
+
+    private var points: [WeeklyTrendPoint] {
+        store.runwayForecast.currentCycleTrend
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text(store.copy.weeklyTrendTitle)
+                .font(.system(size: 10, weight: .bold))
+                .foregroundStyle(.secondary)
+
+            if points.count >= 2,
+               let window = store.snapshot.weeklyWindow {
+                chart(window: window)
+                    .frame(height: 76)
+
+                ViewThatFits(in: .horizontal) {
+                    HStack(spacing: 12) { chartLegend }
+                    VStack(alignment: .leading, spacing: 5) { chartLegend }
+                }
+            } else {
+                Label(store.copy.trendLearningText, systemImage: "chart.xyaxis.line")
+                    .font(.system(size: 11, weight: .semibold))
+                    .foregroundStyle(.secondary)
+                    .padding(.vertical, 12)
+                    .frame(maxWidth: .infinity, alignment: .center)
+            }
+        }
+        .padding(10)
+        .background(.white.opacity(0.07), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                .stroke(.white.opacity(0.14), lineWidth: 1)
+        )
+    }
+
+    private func chart(window: QuotaWindow) -> some View {
+        Canvas { context, size in
+            let inset: CGFloat = 5
+            let width = max(1, size.width - inset * 2)
+            let height = max(1, size.height - inset * 2)
+            let cycleStart = window.resetsAt.addingTimeInterval(-Double(window.windowMinutes) * 60)
+            let duration = max(1, window.resetsAt.timeIntervalSince(cycleStart))
+
+            func location(at date: Date, usedPercent: Double) -> CGPoint {
+                let progress = min(1, max(0, date.timeIntervalSince(cycleStart) / duration))
+                let used = min(100, max(0, usedPercent)) / 100
+                return CGPoint(
+                    x: inset + width * progress,
+                    y: inset + height * (1 - used)
+                )
+            }
+
+            var sustainable = Path()
+            sustainable.move(to: CGPoint(x: inset, y: inset + height))
+            sustainable.addLine(to: CGPoint(x: inset + width, y: inset + height * 0.05))
+            context.stroke(
+                sustainable,
+                with: .color(.secondary.opacity(0.55)),
+                style: StrokeStyle(lineWidth: 1, dash: [4, 4])
+            )
+
+            var actual = Path()
+            for (index, point) in points.enumerated() {
+                let location = location(at: point.at, usedPercent: point.usedPercent)
+                index == 0 ? actual.move(to: location) : actual.addLine(to: location)
+            }
+            context.stroke(
+                actual,
+                with: .color(toneColor(store.displayModel.tone)),
+                style: StrokeStyle(lineWidth: 2.5, lineCap: .round, lineJoin: .round)
+            )
+
+            if let band = store.runwayForecast.projectedRemainingBandAtReset {
+                let lowerUsed = 100 - min(100, max(0, band.upper))
+                let upperUsed = 100 - min(100, max(0, band.lower))
+                var forecastBand = Path()
+                forecastBand.move(to: location(at: window.resetsAt, usedPercent: lowerUsed))
+                forecastBand.addLine(to: location(at: window.resetsAt, usedPercent: upperUsed))
+                context.stroke(
+                    forecastBand,
+                    with: .color(toneColor(store.displayModel.tone).opacity(0.52)),
+                    style: StrokeStyle(lineWidth: 7, lineCap: .round)
+                )
+            }
+
+            var reset = Path()
+            reset.move(to: CGPoint(x: inset + width, y: inset))
+            reset.addLine(to: CGPoint(x: inset + width, y: inset + height))
+            context.stroke(
+                reset,
+                with: .color(.primary.opacity(0.32)),
+                style: StrokeStyle(lineWidth: 1, dash: [2, 3])
+            )
+        }
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("\(store.copy.weeklyTrendTitle)，\(store.copy.sustainableLineTitle)，\(forecastBandText)")
+    }
+
+    @ViewBuilder
+    private var chartLegend: some View {
+        Label(store.copy.sustainableLineTitle, systemImage: "line.diagonal")
+        Label(forecastBandText, systemImage: "arrow.up.and.down")
+        Label("\(store.copy.resetMarkerTitle) \(store.resetText)", systemImage: "flag.checkered")
+    }
+
+    private var forecastBandText: String {
+        guard let band = store.runwayForecast.projectedRemainingBandAtReset,
+              band.lower.isFinite,
+              band.upper.isFinite else {
+            return "\(store.copy.forecastResetBandTitle)：\(store.copy.accumulatingValue)"
+        }
+        let lower = min(100, max(0, min(band.lower, band.upper)))
+        let upper = min(100, max(0, max(band.lower, band.upper)))
+        return "\(store.copy.forecastResetBandTitle)：\(format(lower))%–\(format(upper))%"
+    }
+
+    private func format(_ value: Double) -> String {
+        if abs(value.rounded() - value) < 0.05 {
+            return "\(Int(value.rounded()))"
+        }
+        return String(format: "%.1f", value)
     }
 }
 
@@ -1640,9 +1798,18 @@ struct OnboardingPreviewCard: View {
 
     private var previewDetail: some View {
         VStack(alignment: .leading, spacing: 8) {
-            previewBar(label: store.copy.metricElapsed, value: store.compactElapsedPercent ?? 24)
-            previewBar(label: store.copy.metricUsed, value: store.compactUsedPercent ?? 5)
-            previewBar(label: store.copy.metricPace, value: 21)
+            previewBar(
+                label: store.displayModel.metrics[0].label,
+                value: store.displayModel.metrics[0].numericValue ?? 24
+            )
+            previewBar(
+                label: store.displayModel.metrics[1].label,
+                value: store.displayModel.metrics[1].numericValue ?? 5
+            )
+            HStack {
+                previewGuidanceMetric(store.displayModel.metrics[2])
+                previewGuidanceMetric(store.displayModel.metrics[3])
+            }
             Text(store.copy.dataSourceTitle)
                 .font(.caption.bold())
                 .foregroundStyle(.secondary)
@@ -1652,18 +1819,31 @@ struct OnboardingPreviewCard: View {
     private var previewWeekly: some View {
         VStack(alignment: .leading, spacing: 8) {
             HStack {
-                Text(store.copy.weeklyRemainingTitle)
+                Text(store.displayModel.statusLabel)
                     .font(.caption.bold())
                 Spacer()
-                Text(store.weeklyText)
-                    .font(.headline.bold())
-                    .monospacedDigit()
+                Text(store.displayModel.confidenceText)
+                    .font(.caption2.bold())
+                    .foregroundStyle(.secondary)
             }
-            Text(store.weeklyProjectionText)
+            Text(store.displayModel.defaultText)
                 .font(.caption)
                 .foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)
+            previewGuidanceMetric(store.displayModel.metrics[3])
         }
+    }
+
+    private func previewGuidanceMetric(_ metric: CapsuleMetric) -> some View {
+        VStack(alignment: .leading, spacing: 2) {
+            Text(metric.label)
+                .font(.caption2.bold())
+                .foregroundStyle(.secondary)
+            Text(metric.value)
+                .font(.caption.bold())
+                .monospacedDigit()
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 
     private var previewMenu: some View {
