@@ -23,7 +23,8 @@ const scenarios: Array<{ id: WeeklyMockKind; label: string; icon: typeof CheckCi
   { id: "enough", label: "够用", icon: CheckCircle2 },
   { id: "watch", label: "偏快", icon: Gauge },
   { id: "mayRunOut", label: "可能不够", icon: AlertTriangle },
-  { id: "calibrating", label: "校准", icon: RefreshCw },
+  { id: "earlyEstimate", label: "初步估算", icon: RefreshCw },
+  { id: "calibrating", label: "数据确认", icon: RefreshCw },
   { id: "exhausted", label: "已用尽", icon: AlertTriangle },
   { id: "unavailable", label: "不可用", icon: CircleHelp },
 ];
@@ -81,7 +82,7 @@ function App() {
           </section>
 
           <div className="freshness-row">
-            <span>周额度刷新：{formatTime(scenario.snapshot.weeklyWindow?.resetsAt)}</span>
+            <span>周额度重置：{formatTime(scenario.snapshot.weeklyWindow?.resetsAt)}</span>
             <span>{model.confidenceText || "正在积累可信趋势"}</span>
           </div>
         </section>

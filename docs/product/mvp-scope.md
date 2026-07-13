@@ -1,46 +1,42 @@
 # MVP 范围
 
-## P0：先把核心体验做出来
+更新：2026-07-13
 
-- Provider-neutral quota model：额度窗口、刷新时间、已用比例、数据可靠性等核心模型不能绑死 Codex。
-- Prediction engine：输出 `enough`、`running_fast`、`may_run_out`、`exhausted`、`calibrating`、`unavailable`。
-- Mock scenarios：覆盖够用、偏快、可能不够、校准中、已用尽、数据过期和 source error。
-- 只读 Codex 本地 source probe。
-- `codex app-server` rate-limit 读取方案验证。
-- Mac 桌面悬浮小胶囊原型：先用 mock 数据把真实常驻体验做顺。
-- 详情层：解释本周时间进度、额度已用、最近 24 小时实际用量、未来 24 小时建议和刷新时预计余量区间。
-- 本地 snapshot 数据模型：先定义字段和隐私边界。
-- Chrome 独立版 scaffold：只搭 mock-first 骨架，不阻塞 Mac 主体验。
-- Privacy README 和 adapter contribution rules。
+## 当前必须维护的 P0
 
-## P1：进入真实可用
+- Provider-neutral quota model：周窗口、重置时间、已用/剩余比例和数据质量不能绑死具体 UI。
+- Weekly Only 预测状态：`earlyEstimate`、`enough`、`watch`、`mayRunOut`、`exhausted`、`unavailable`。
+- 第一次有效读数立即给出低置信初步估算；真实增长出现后自适应升级判断。
+- 周期、最近 24 小时、活动节奏和弱历史先验的有界证据融合。
+- 未来 24 小时建议、重置余量区间、观察速度与可持续速度对比。
+- stale/error 保护：可保留上次成功百分比，但暂停新的速度与预算结论。
+- 只读 Codex app-server `rateLimits/read` 数据源，不修改登录、auth 或配置。
+- macOS 桌面胶囊、菜单栏、唯一 Beta 应用身份和单实例运行。
+- 本地快照历史、简中/繁中/英文、公开反馈与隐私边界。
+- 周额度重置、上次成功读取、下次自动读取必须分别显示。
 
-- 真实 Codex adapter 接入产品壳层：adapter 已能通过只读方式读取 `account/rateLimits/read`，下一步要把它接到 Mac 本地 UI。
-- Mac 菜单栏显示状态。
-- 悬浮胶囊位置记忆。
-- 显示模式设置：悬浮胶囊 / 菜单栏 / 两者都开。
-- 本地 snapshot writer：持续记录额度快照。
-- 基础历史页：本周用量曲线、速度变化和快照列表。
-- Chrome 插件 source feasibility proof：确认到底能否安全、稳定地拿到 quota 数据。
-- 中英文状态文案打磨。
-- 第一版安装、退出、卸载说明。
+## 本轮 v0.3 Beta 的 P1
 
-## P2：扩展与发布
+- 用真实安装包逐态验收：初步估算、够用、偏快、可能不够、已用尽、过期、不可用。
+- 验证 60 秒自动读取、手动刷新、失败后冻结上次成功状态和倒计时更新。
+- 完成跨 Swift/TypeScript 共享 fixture、算法文档和变更控制。
+- 清理过期分支、工作树、旧应用和生成产物，只维护公开仓库。
+- 完整发布说明、校验和、版本/提交指纹、签名与单进程证据。
 
-- Windows always-on-top capsule shell。
-- Windows tray icon 和菜单。
-- Windows installer。
-- Theme packs。
-- 历史趋势视图。
-- CSV / JSON 导出。
-- CLI / JSON 输出。
-- 更多 agent adapter。
+## 明确延后
 
-## 公开发布阻塞项
+- Chrome、Windows、移动端。
+- 多 provider 默认 dashboard。
+- 通知、主题、CSV/JSON 导出、CLI 输出。
+- 复杂历史分析、团队额度和账号切换。
+- 任何需要读取 prompt、session 正文、代码内容或 auth 数据的功能。
 
-- Codex source 不能可靠读取。
-- 读取失败时仍然显示绿色“够用”。
-- App 不能干净退出。
-- 安装后不能清楚卸载。
-- 隐私边界没有写清楚。
-- UI 还像工程 demo，不适合常驻在用户桌面。
+## 发布阻塞项
+
+- 第一次有效读数仍被固定等待时间挡住。
+- 隐藏预算余量、整数百分比当作精确连续值，或 Swift/TypeScript 算法不一致。
+- stale/error 仍能显示新的绿色安全结论。
+- 重置时间与数据读取时间混用，或下次自动读取不可见。
+- Codex source 不可靠、应用不能干净退出、出现多个常驻应用/进程。
+- 三语、隐私、安装/卸载或公开反馈路径不完整。
+- UI 仍像工程 demo，或核心判断被低优先级诊断信息挤掉。

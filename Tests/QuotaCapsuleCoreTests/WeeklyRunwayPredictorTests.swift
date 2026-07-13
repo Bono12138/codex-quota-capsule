@@ -47,16 +47,16 @@ struct WeeklyRunwayPredictorTests {
         )
     }
 
-    @Test("the sustainable rate preserves a five-point reset reserve")
-    func sustainableRateLeavesFivePercentReserve() {
+    @Test("the sustainable rate uses the full remaining allowance without a hidden reserve")
+    func sustainableRateUsesFullRemainingAllowance() {
         let forecast = WeeklyRunwayPredictor.predict(
             snapshot: snapshot(remaining: 65, daysRemaining: 4),
             quality: quality(values: [25, 30, 35], spacingHours: 12),
             now: now
         )
 
-        #expect(forecast.sustainableRatePerDay == 15)
-        #expect(forecast.next24HourBudget == 15)
+        #expect(forecast.sustainableRatePerDay == 16.25)
+        #expect(forecast.next24HourBudget == 16.25)
     }
 
     @Test("the last-24-hour metric is actual consumption rather than a daily rate")
@@ -80,9 +80,28 @@ struct WeeklyRunwayPredictorTests {
             now: now
         )
 
-        #expect(forecast.state == .calibrating)
-        #expect(forecast.recentRateBandPerDay == nil)
+        #expect(forecast.state == .earlyEstimate)
+        #expect(forecast.cycleRateBandPerDay != nil)
+        #expect(forecast.paceEvidence.map(\.kind) == [.cycle])
         #expect(forecast.confidence == .low)
+    }
+
+    @Test("a zero reading just after reset reports no observed consumption")
+    func zeroReadingAfterResetDoesNotWarn() {
+        let daysRemaining = 7 - 10.0 / 1_440
+        let forecast = WeeklyRunwayPredictor.predict(
+            snapshot: snapshot(remaining: 100, daysRemaining: daysRemaining),
+            quality: quality(values: [0], spacingHours: 1, resetDays: daysRemaining),
+            now: now
+        )
+        let model = CapsuleDisplayModel.make(forecast: forecast, locale: .zhHans)
+
+        #expect(forecast.state == .earlyEstimate)
+        #expect(forecast.paceEvidence.isEmpty)
+        #expect(forecast.projectedRemainingBandAtReset == nil)
+        #expect(forecast.confidenceReason == "no-consumption-observed")
+        #expect(model.defaultText == "尚未观察到消耗；可先按未来 24 小时建议使用")
+        #expect(!model.defaultText.contains("偏快"))
     }
 
     @Test("both pace scenarios running out produces may-run-out")
@@ -112,8 +131,8 @@ struct WeeklyRunwayPredictorTests {
         #expect(forecast.projectedRemainingBandAtReset?.upper ?? -1 >= 0)
     }
 
-    @Test("a pessimistic reset reserve of five percent is enough")
-    func pessimisticFivePercentReserveIsEnough() {
+    @Test("a conservative projection above zero is enough")
+    func conservativeProjectionAboveZeroIsEnough() {
         let forecast = WeeklyRunwayPredictor.predict(
             snapshot: snapshot(remaining: 65, daysRemaining: 4),
             quality: quality(values: [25, 35], spacingHours: 24),
@@ -121,7 +140,7 @@ struct WeeklyRunwayPredictorTests {
         )
 
         #expect(forecast.state == .enough)
-        #expect(forecast.projectedRemainingBandAtReset?.lower ?? 0 >= 5)
+        #expect(forecast.projectedRemainingBandAtReset?.lower ?? 0 > 0)
     }
 
     @Test("exhaustion takes precedence over low-confidence evidence")
@@ -148,16 +167,17 @@ struct WeeklyRunwayPredictorTests {
         #expect(forecast.projectedRemainingBandAtReset == nil)
     }
 
-    @Test("history that disagrees with the live reading cannot drive a forecast")
-    func mismatchedHistoryCalibrates() {
+    @Test("history that disagrees with the live reading falls back to current-cycle evidence")
+    func mismatchedHistoryFallsBackToEarlyEstimate() {
         let forecast = WeeklyRunwayPredictor.predict(
             snapshot: snapshot(remaining: 40, daysRemaining: 4),
             quality: quality(values: [20, 30], spacingHours: 24),
             now: now
         )
 
-        #expect(forecast.state == .calibrating)
-        #expect(forecast.projectedRemainingBandAtReset == nil)
+        #expect(forecast.state == .earlyEstimate)
+        #expect(forecast.projectedRemainingBandAtReset != nil)
+        #expect(forecast.paceEvidence.map(\.kind) == [.cycle])
         #expect(forecast.confidence == .low)
     }
 
@@ -216,5 +236,66 @@ struct WeeklyRunwayPredictorTests {
 
         #expect(result.state == .enough)
         #expect(result != previous)
+    }
+
+    @Test("an unconfirmed reset candidate exposes calibration with accepted data")
+    func resetCandidateExposesCalibrationWithAcceptedData() {
+        let previousSnapshot = snapshot(remaining: 70, daysRemaining: 4)
+        let previous = WeeklyRunwayPredictor.predict(
+            snapshot: previousSnapshot,
+            quality: quality(values: [20, 25, 30], spacingHours: 12),
+            now: now
+        )
+        let candidateReset = now.addingTimeInterval(6 * 86_400)
+        let candidateSnapshot = AgentQuotaSnapshot(
+            provider: "codex",
+            sourceStatus: .ok,
+            fetchedAt: now,
+            weeklyWindow: QuotaWindow(
+                label: "weekly",
+                windowMinutes: 10_080,
+                usedPercent: 2,
+                remainingPercent: 98,
+                resetsAt: candidateReset
+            ),
+            errorMessage: nil
+        )
+        let history = [
+            WeeklyQuotaReading(
+                provider: "codex",
+                sourceStatus: .ok,
+                fetchedAt: now.addingTimeInterval(-60),
+                windowMinutes: 10_080,
+                usedPercent: 30,
+                remainingPercent: 70,
+                resetsAt: now.addingTimeInterval(4 * 86_400),
+                errorMessage: nil
+            ),
+            WeeklyQuotaReading(
+                provider: "codex",
+                sourceStatus: .ok,
+                fetchedAt: now,
+                windowMinutes: 10_080,
+                usedPercent: 2,
+                remainingPercent: 98,
+                resetsAt: candidateReset,
+                errorMessage: nil
+            )
+        ]
+
+        let reduction = QuotaRefreshReducer.reduceForecastResult(
+            currentForecast: previous,
+            newSnapshot: candidateSnapshot,
+            weeklyReadings: history,
+            now: now
+        )
+
+        #expect(WeeklyQualityEngine.analyze(history, now: now).state == .calibrating)
+        #expect(reduction.forecast.state == .calibrating)
+        #expect(reduction.forecast.usedPercent == 30)
+        #expect(reduction.forecast.remainingPercent == 70)
+        #expect(reduction.forecast.projectedRemainingBandAtReset == nil)
+        #expect(reduction.forecast.paceEvidence.isEmpty)
+        #expect(!reduction.shouldAdoptLiveSnapshot)
     }
 }

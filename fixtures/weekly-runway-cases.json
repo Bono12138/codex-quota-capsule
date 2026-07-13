@@ -10,7 +10,7 @@
         { "fetchedAt": "2026-07-12T00:00:00Z", "usedPercent": 30, "resetsAt": "2026-07-17T00:00:00Z" },
         { "fetchedAt": "2026-07-13T00:00:00Z", "usedPercent": 35, "resetsAt": "2026-07-17T00:00:00Z" }
       ],
-      "expected": { "qualityState": "stable", "cycleCount": 1, "forecastState": "enough", "sustainableRate": 15, "projectedLower": 41, "projectedUpper": 49, "last24Lower": 4, "last24Upper": 6 }
+      "expected": { "qualityState": "stable", "cycleCount": 1, "forecastState": "enough", "sustainableRate": 16.25, "last24Lower": 4, "last24Upper": 6 }
     },
     {
       "id": "watch-crosses-zero",
@@ -20,7 +20,7 @@
         { "fetchedAt": "2026-07-12T12:00:00Z", "usedPercent": 65, "resetsAt": "2026-07-16T00:00:00Z" },
         { "fetchedAt": "2026-07-13T00:00:00Z", "usedPercent": 70, "resetsAt": "2026-07-16T00:00:00Z" }
       ],
-      "expected": { "qualityState": "stable", "cycleCount": 1, "forecastState": "watch", "sustainableRate": 8.333333333333334, "projectedLower": -6, "projectedUpper": 6 }
+      "expected": { "qualityState": "stable", "cycleCount": 1, "forecastState": "watch", "sustainableRate": 10 }
     },
     {
       "id": "may-run-out",
@@ -30,7 +30,7 @@
         { "fetchedAt": "2026-07-12T00:00:00Z", "usedPercent": 65, "resetsAt": "2026-07-16T00:00:00Z" },
         { "fetchedAt": "2026-07-13T00:00:00Z", "usedPercent": 80, "resetsAt": "2026-07-16T00:00:00Z" }
       ],
-      "expected": { "qualityState": "stable", "cycleCount": 1, "forecastState": "mayRunOut", "sustainableRate": 5, "projectedLower": -28, "projectedUpper": -22, "exhaustionBeforeReset": true }
+      "expected": { "qualityState": "stable", "cycleCount": 1, "forecastState": "mayRunOut", "sustainableRate": 6.666666666666667, "exhaustionBeforeReset": true }
     },
     {
       "id": "flat-zero",
@@ -42,7 +42,7 @@
         { "fetchedAt": "2026-07-12T22:00:00Z", "usedPercent": 0, "resetsAt": "2026-07-19T00:00:00Z" },
         { "fetchedAt": "2026-07-13T00:00:00Z", "usedPercent": 0, "resetsAt": "2026-07-19T00:00:00Z" }
       ],
-      "expected": { "qualityState": "stable", "cycleCount": 1, "forecastState": "calibrating" }
+      "expected": { "qualityState": "stable", "cycleCount": 1, "forecastState": "earlyEstimate", "confidence": "low", "evidenceKinds": [] }
     },
     {
       "id": "reset-jitter",
@@ -52,7 +52,7 @@
         { "fetchedAt": "2026-07-12T23:59:00Z", "usedPercent": 10, "resetsAt": "2026-07-18T18:53:22Z" },
         { "fetchedAt": "2026-07-13T00:00:00Z", "usedPercent": 11, "resetsAt": "2026-07-18T18:53:24Z" }
       ],
-      "expected": { "qualityState": "stable", "cycleCount": 1, "forecastState": "calibrating" }
+      "expected": { "qualityState": "stable", "cycleCount": 1, "forecastState": "earlyEstimate" }
     },
     {
       "id": "alternating-stream",
@@ -64,7 +64,7 @@
         { "fetchedAt": "2026-07-12T23:59:00Z", "usedPercent": 5, "resetsAt": "2026-07-18T18:54:30Z" },
         { "fetchedAt": "2026-07-13T00:00:00Z", "usedPercent": 1, "resetsAt": "2026-07-18T18:53:20Z" }
       ],
-      "expected": { "qualityState": "unstable", "cycleCount": 1, "forecastState": "calibrating" }
+      "expected": { "qualityState": "unstable", "cycleCount": 1, "forecastState": "unavailable" }
     },
     {
       "id": "ignored-short-window",
@@ -102,6 +102,50 @@
       "expected": { "qualityState": "stable", "cycleCount": 1, "forecastState": "watch", "cycleFasterThanRecent": true }
     },
     {
+      "id": "first-valid-reading-gives-early-estimate",
+      "snapshot": { "usedPercent": 9, "remainingPercent": 91, "resetsAt": "2026-07-19T18:00:00Z" },
+      "readings": [
+        { "fetchedAt": "2026-07-13T00:00:00Z", "usedPercent": 9, "resetsAt": "2026-07-19T18:00:00Z" }
+      ],
+      "expected": { "qualityState": "stable", "cycleCount": 1, "forecastState": "earlyEstimate", "confidence": "low", "evidenceKinds": ["cycle"] }
+    },
+    {
+      "id": "unconfirmed-reset-keeps-accepted-window",
+      "snapshot": { "usedPercent": 2, "remainingPercent": 98, "resetsAt": "2026-07-19T00:00:00Z" },
+      "readings": [
+        { "fetchedAt": "2026-07-12T23:59:00Z", "usedPercent": 30, "resetsAt": "2026-07-17T00:00:00Z" },
+        { "fetchedAt": "2026-07-13T00:00:00Z", "usedPercent": 2, "resetsAt": "2026-07-19T00:00:00Z" }
+      ],
+      "expected": { "qualityState": "calibrating", "cycleCount": 1, "forecastState": "calibrating", "usedPercent": 30, "evidenceKinds": [] }
+    },
+    {
+      "id": "first-zero-reading-does-not-claim-zero-pace",
+      "snapshot": { "usedPercent": 0, "remainingPercent": 100, "resetsAt": "2026-07-19T18:00:00Z" },
+      "readings": [
+        { "fetchedAt": "2026-07-13T00:00:00Z", "usedPercent": 0, "resetsAt": "2026-07-19T18:00:00Z" }
+      ],
+      "expected": { "qualityState": "stable", "cycleCount": 1, "forecastState": "earlyEstimate", "confidence": "low", "evidenceKinds": [] }
+    },
+    {
+      "id": "three-hour-transition-is-actionable",
+      "snapshot": { "usedPercent": 9, "remainingPercent": 91, "resetsAt": "2026-07-19T18:00:00Z" },
+      "readings": [
+        { "fetchedAt": "2026-07-12T21:00:00Z", "usedPercent": 8, "resetsAt": "2026-07-19T18:00:00Z" },
+        { "fetchedAt": "2026-07-13T00:00:00Z", "usedPercent": 9, "resetsAt": "2026-07-19T18:00:00Z" }
+      ],
+      "expected": { "qualityState": "stable", "cycleCount": 1, "forecastState": "watch", "confidence": "medium", "evidenceKinds": ["cycle", "recent", "activity"] }
+    },
+    {
+      "id": "burst-then-idle-retains-actionable-evidence",
+      "snapshot": { "usedPercent": 9, "remainingPercent": 91, "resetsAt": "2026-07-19T00:00:00Z" },
+      "readings": [
+        { "fetchedAt": "2026-07-12T10:00:00Z", "usedPercent": 5, "resetsAt": "2026-07-19T00:00:00Z" },
+        { "fetchedAt": "2026-07-12T12:00:00Z", "usedPercent": 9, "resetsAt": "2026-07-19T00:00:00Z" },
+        { "fetchedAt": "2026-07-13T00:00:00Z", "usedPercent": 9, "resetsAt": "2026-07-19T00:00:00Z" }
+      ],
+      "expected": { "qualityState": "stable", "cycleCount": 1, "forecastState": "enough", "confidence": "medium", "evidenceKinds": ["cycle", "recent", "activity"] }
+    },
+    {
       "id": "stale-reading",
       "snapshot": { "usedPercent": 20, "remainingPercent": 80, "resetsAt": "2026-07-18T00:00:00Z" },
       "readings": [
@@ -119,7 +163,7 @@
         { "fetchedAt": "2026-07-12T23:00:00Z", "usedPercent": 1, "resetsAt": "2026-07-19T12:00:01Z" },
         { "fetchedAt": "2026-07-13T00:00:00Z", "usedPercent": 2, "resetsAt": "2026-07-19T11:59:59Z" }
       ],
-      "expected": { "qualityState": "stable", "cycleCount": 2, "forecastState": "calibrating" }
+      "expected": { "qualityState": "stable", "cycleCount": 2, "forecastState": "watch" }
     },
     {
       "id": "exhausted",

@@ -12,7 +12,7 @@ It answers the question a bare quota percentage cannot answer:
 
 它把 quota window 数据翻译成用户真正关心的判断：
 
-> 按现在这个速度，我能不能撑到下一次刷新？
+> 按现在这个速度，我能不能撑到下一次周额度重置？
 
 ## Why This Exists / 为什么做
 
@@ -24,11 +24,11 @@ Quota Capsule stays visible on the desktop and in the menu bar, then turns weekl
 
 额度胶囊常驻桌面和菜单栏，把周额度速度转换成六个明确状态和未来 24 小时建议：
 
-- Calibrating / 正在校准：有效历史还不足 6 小时，暂不下结论。
-- On track / 够用：按近期与本周速度，预计能带着至少 5% 余量到刷新。
-- Running fast / 偏快：仍可能撑到刷新，但余量区间已经偏薄。
-- May run out / 可能不够：快、慢两种估计都可能在刷新前见底。
-- Exhausted / 已用尽：本周额度已经用完，等待刷新恢复。
+- Early estimate / 初步判断：从第一个有效周额度读数开始给出宽区间判断，并明确显示低置信度。
+- On track / 够用：保守预测区间仍能撑到周额度重置。
+- Running fast / 偏快：仍可能撑到重置，但余量区间已经偏薄。
+- May run out / 可能不够：即使乐观估计也可能在重置前见底。
+- Exhausted / 已用尽：本周额度已经用完，等待重置恢复。
 - Data unavailable / 数据暂不可用：实时读取失败或数据过期，只保留最后成功百分比，不给速度结论。
 
 ## Who It Is For / 适合谁
@@ -58,7 +58,7 @@ Please install and run Quota Capsule on this Mac:
 5. Do not read, copy, print, or upload auth tokens, cookies, API keys, prompt text, session text, code content, or private file paths.
 6. If Node, npm, Swift, Xcode Command Line Tools, or Codex CLI is missing, tell me before changing the system.
 7. Run npm ci, npm test, npm run build, and swift run QuotaCapsuleCoreSpec.
-8. Run npm run mac:install:internal-test and verify the running process comes from /Applications.
+8. Run npm run mac:install and verify exactly one running process comes from /Applications.
 9. After it launches, tell me how to open it again.
 ```
 
@@ -71,7 +71,7 @@ npm ci
 npm test
 npm run build
 swift run QuotaCapsuleCoreSpec
-npm run mac:install:internal-test
+npm run mac:install
 ```
 
 ## Privacy Boundary / 隐私边界
@@ -86,12 +86,11 @@ npm run mac:install:internal-test
 - prompt 正文、session 正文、代码内容、私有文件路径、账号凭据、auth token、cookie 留在本机。
 - 缺失或过期数据显示为“数据暂不可用”，过期百分比会被明确标记。
 
-## Local Channels / 本机版本通道
+## One App / 唯一应用
 
-| Channel | App | Purpose |
-| --- | --- | --- |
-| Internal test | `Quota Capsule Beta.app` | Public beta build; feedback goes to public GitHub Issues. |
-| Development | `Quota Capsule Dev Local.app` | Local owner/developer build; private issue URL must be configured explicitly. |
+The public repository builds one `Quota Capsule Beta.app`. Development uses branches, tests, and previews rather than a second persistent app identity. This prevents duplicate capsules and keeps local history in one Beta data directory.
+
+公开仓库只构建一个 `Quota Capsule Beta.app`。开发使用分支、测试和预览，不再安装第二个常驻应用，避免重复胶囊和数据目录分裂。
 
 ## Current Status / 当前状态
 
@@ -99,7 +98,9 @@ The first public beta is a macOS app built from source. It currently includes:
 
 - Native floating desktop capsule and menu bar item.
 - Read-only Codex app-server rate-limit source.
-- Weekly pace, last-24-hour usage, reset-buffer range, and next-24-hour budget.
+- Immediate first-reading estimate plus adaptive cycle, recent, activity, and historical pace evidence.
+- Next-24-hour budget, last-24-hour usage, reset-balance range, and plain-language confidence.
+- Separate weekly-reset, last-successful-read, and next-automatic-read timing.
 - Current-cycle trend with a sustainable line, forecast band, and reset marker.
 - Local history snapshots.
 - Multilingual UI.
@@ -109,11 +110,15 @@ The first public beta is a macOS app built from source. It currently includes:
 
 - 原生桌面悬浮胶囊和菜单栏入口。
 - 只读 Codex app-server rate-limit 数据源。
-- 周速度、最近 24 小时实际用量、刷新余量区间和未来 24 小时建议。
-- 带可持续线、预测区间和刷新标记的当前周期趋势。
+- 第一次有效读数即给初步估算，并融合周期、近期、活动节奏和历史先验证据。
+- 未来 24 小时建议、最近 24 小时实际用量、重置余量区间和置信原因。
+- 分开显示周额度重置、上次成功读取和下次自动读取。
+- 带可持续线、预测区间和重置标记的当前周期趋势。
 - 本地历史快照。
 - 多语言界面。
 - GitHub Issues、邮箱、X、抖音反馈入口。
+
+算法公式、边界和变更规则见 [Forecast Methodology / 预测方法](docs/product/forecast-methodology.md)。
 
 ## Roadmap / 路线图
 

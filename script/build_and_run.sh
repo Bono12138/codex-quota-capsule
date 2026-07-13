@@ -3,10 +3,13 @@ set -euo pipefail
 
 MODE="${1:-run}"
 PRODUCT_NAME="QuotaCapsuleMac"
-CHANNEL="${QUOTA_CAPSULE_CHANNEL:-internal-test}"
 MIN_SYSTEM_VERSION="14.0"
-APP_VERSION="${QUOTA_CAPSULE_VERSION:-0.2.0}"
+APP_VERSION="${QUOTA_CAPSULE_VERSION:-0.3.0}"
 APP_BUILD="${QUOTA_CAPSULE_BUILD:-$(date -u +%Y%m%d%H%M)}"
+BUNDLE_NAME="${QUOTA_CAPSULE_BUNDLE_NAME:-Quota Capsule Beta}"
+BUNDLE_ID="${QUOTA_CAPSULE_BUNDLE_ID:-com.bono.quota-capsule.beta}"
+EXECUTABLE_NAME="QuotaCapsuleBeta"
+GITHUB_ISSUES_URL="${QUOTA_CAPSULE_PUBLIC_GITHUB_ISSUES_URL:-https://github.com/Bono12138/codex-quota-capsule/issues}"
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 GIT_COMMIT="$(git -C "$ROOT_DIR" rev-parse --short=12 HEAD 2>/dev/null || echo unknown)"
@@ -19,28 +22,6 @@ if [[ -n "$UNTRACKED_BUILD_INPUTS" ]]; then
 fi
 SOURCE_PATCH_SHA="$(git -C "$ROOT_DIR" diff --binary HEAD -- Package.swift Sources | shasum -a 256 | awk '{print $1}')"
 
-case "$CHANNEL" in
-  development|dev)
-    CHANNEL="development"
-    BUNDLE_NAME="${QUOTA_CAPSULE_BUNDLE_NAME:-Quota Capsule Dev Local}"
-    BUNDLE_ID="${QUOTA_CAPSULE_BUNDLE_ID:-com.bono.quota-capsule.dev}"
-    EXECUTABLE_NAME="QuotaCapsuleDevLocal"
-    GITHUB_ISSUES_URL="${QUOTA_CAPSULE_DEV_GITHUB_ISSUES_URL:-}"
-    ;;
-  internal-test|internal_test|beta|public)
-    CHANNEL="internal-test"
-    BUNDLE_NAME="${QUOTA_CAPSULE_BUNDLE_NAME:-Quota Capsule Beta}"
-    BUNDLE_ID="${QUOTA_CAPSULE_BUNDLE_ID:-com.bono.quota-capsule.beta}"
-    EXECUTABLE_NAME="QuotaCapsuleBeta"
-    GITHUB_ISSUES_URL="${QUOTA_CAPSULE_PUBLIC_GITHUB_ISSUES_URL:-https://github.com/Bono12138/codex-quota-capsule/issues}"
-    ;;
-  *)
-    echo "unknown QUOTA_CAPSULE_CHANNEL: $CHANNEL" >&2
-    echo "supported: development, internal-test" >&2
-    exit 2
-    ;;
-esac
-
 case "$BUNDLE_NAME" in
   ""|"."|".."|*/*|*$'\n'*|*$'\r'*)
     echo "unsafe bundle name: it must be one path component" >&2
@@ -48,7 +29,7 @@ case "$BUNDLE_NAME" in
     ;;
 esac
 
-DIST_DIR="$ROOT_DIR/dist/$CHANNEL"
+DIST_DIR="$ROOT_DIR/dist/beta"
 APP_BUNDLE="$DIST_DIR/$BUNDLE_NAME.app"
 APP_CONTENTS="$APP_BUNDLE/Contents"
 APP_MACOS="$APP_CONTENTS/MacOS"
@@ -58,10 +39,6 @@ INFO_PLIST="$APP_CONTENTS/Info.plist"
 APP_RESOURCE_SOURCE="$ROOT_DIR/Sources/QuotaCapsuleMac/Resources"
 
 pkill -x "$EXECUTABLE_NAME" >/dev/null 2>&1 || true
-
-if [[ "$CHANNEL" == "development" && -z "$GITHUB_ISSUES_URL" ]]; then
-  echo "warning: development build has no QUOTA_CAPSULE_DEV_GITHUB_ISSUES_URL; unified feedback will open an email draft." >&2
-fi
 
 swift build -c release --product "$PRODUCT_NAME"
 BUILD_DIR="$(swift build -c release --show-bin-path)"
@@ -85,7 +62,7 @@ fi
 /usr/bin/plutil -insert CFBundlePackageType -string "APPL" "$INFO_PLIST"
 /usr/bin/plutil -insert CFBundleShortVersionString -string "$APP_VERSION" "$INFO_PLIST"
 /usr/bin/plutil -insert CFBundleVersion -string "$APP_BUILD" "$INFO_PLIST"
-/usr/bin/plutil -insert QuotaCapsuleChannel -string "$CHANNEL" "$INFO_PLIST"
+/usr/bin/plutil -insert QuotaCapsuleChannel -string "beta" "$INFO_PLIST"
 /usr/bin/plutil -insert QuotaCapsuleGitHubIssuesURL -string "$GITHUB_ISSUES_URL" "$INFO_PLIST"
 /usr/bin/plutil -insert QuotaCapsuleGitCommit -string "$GIT_COMMIT" "$INFO_PLIST"
 /usr/bin/plutil -insert QuotaCapsuleSourcePatchSHA256 -string "$SOURCE_PATCH_SHA" "$INFO_PLIST"
@@ -117,6 +94,7 @@ verify_running_path() {
 }
 
 install_app() {
+  "$ROOT_DIR/script/retire_legacy_dev.sh" --stop-process
   local target="/Applications/$BUNDLE_NAME.app"
   local temporary="/Applications/.$BUNDLE_NAME.app.installing-$$"
   local backup="/Applications/.$BUNDLE_NAME.app.backup-$$"

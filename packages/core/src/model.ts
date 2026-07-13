@@ -50,10 +50,18 @@ export type WeeklyQualityResult = {
 };
 
 export type PaceBand = { lower: number; upper: number };
+export type PaceEvidenceKind = "cycle" | "recent" | "activity" | "historical";
+export type PaceEvidence = {
+  kind: PaceEvidenceKind;
+  bandPerDay: PaceBand;
+  reliability: number;
+  transitionCount: number;
+  coverageHours: number;
+};
 export type PercentageBand = { lower: number; upper: number };
 export type ExhaustionDateRange = { earliest: Date; latest: Date | null };
 export type WeeklyTrendPoint = { at: Date; usedPercent: number };
-export type WeeklyRunwayState = "unavailable" | "exhausted" | "calibrating" | "enough" | "watch" | "mayRunOut";
+export type WeeklyRunwayState = "unavailable" | "exhausted" | "calibrating" | "earlyEstimate" | "enough" | "watch" | "mayRunOut";
 export type ForecastConfidence = "low" | "medium" | "high";
 
 export type WeeklyRunwayForecast = {
@@ -71,4 +79,6 @@ export type WeeklyRunwayForecast = {
   estimatedEmptyAtRange: ExhaustionDateRange | null;
   next24HourBudget: number | null;
   currentCycleTrend: WeeklyTrendPoint[];
+  paceEvidence: PaceEvidence[];
+  confidenceReason: string;
 };

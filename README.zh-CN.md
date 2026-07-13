@@ -4,7 +4,7 @@
 
 额度胶囊是一个面向 Codex 重度用户的 macOS 桌面额度小胶囊。它把 quota window 数据翻译成一个工作判断：
 
-> 按现在这个速度，我能不能撑到下一次刷新？
+> 按现在这个速度，我能不能撑到下一次周额度重置？
 
 Codex 是第一个适配对象。项目会保持 agent-extensible：其他 Agent 产品可以添加自己的本地 source adapter，复用同一套 quota model、预测引擎、UI 状态和产品形态。
 
@@ -13,17 +13,17 @@ Codex 是第一个适配对象。项目会保持 agent-extensible：其他 Agent
 重度 Codex 用户经常同时跑多个 coding task，也会反复查看 usage 页面。百分比只能提供证据。真正影响工作节奏的是：
 
 - 现在还能不能继续用？
-- 当前速度能不能撑到刷新？
+- 当前速度能不能撑到周额度重置？
 - 如果可能撑不到，风险范围在哪里？
-- 如果能撑到，刷新时大概还有多少余量？
+- 如果能撑到，重置时大概还有多少余量？
 
 额度胶囊要做成一个小而常驻的状态物，直接给出六种诚实判断：
 
-- 正在校准：有效历史还不足 6 小时，暂不下结论。
-- 够用：预计能带着至少 5% 余量到刷新。
-- 偏快：仍可能撑到刷新，但余量区间偏薄。
-- 可能不够：快、慢两种估计都可能在刷新前见底。
-- 已用尽：本周额度已经用完，等待刷新恢复。
+- 初步判断：从第一个有效周额度读数开始给出宽区间，并明确标记低置信度。
+- 够用：保守预测区间仍能撑到周额度重置。
+- 偏快：仍可能撑到重置，但余量区间偏薄。
+- 可能不够：即使乐观估计也可能在重置前见底。
+- 已用尽：本周额度已经用完，等待重置恢复。
 - 数据暂不可用：实时读取失败或数据过期，只保留最后成功百分比，不给速度结论。
 
 ## 适合谁
@@ -40,13 +40,17 @@ Codex 是第一个适配对象。项目会保持 agent-extensible：其他 Agent
 - 原生桌面悬浮胶囊。
 - 菜单栏状态入口。
 - 只读 Codex app-server rate-limit adapter。
-- 最近 24 小时实际用量、周速度、刷新余量区间和未来 24 小时建议。
-- 当前周期趋势、可持续线、预测区间和刷新标记。
+- 第一次有效读数即给初步估算；随后融合周期、近期、活动节奏和弱历史先验。
+- 未来 24 小时建议、最近 24 小时实际用量、周速度、重置余量区间和置信原因。
+- 周额度重置、上次成功读取和下次自动读取分别显示。
+- 当前周期趋势、可持续线、预测区间和重置标记。
 - 本地历史快照。
 - 多语言界面。
 - 公开反馈入口。
 
 当前 macOS 原生 app 使用真实本地 Codex rate-limit 数据。浏览器/Vite demo 保留为视觉原型和 Web/Chrome 版本探索用。
+
+完整算法公式、边界和变更规则见 [预测方法](docs/product/forecast-methodology.md)。
 
 ## 快速开始
 
@@ -68,7 +72,7 @@ https://github.com/Bono12138/codex-quota-capsule
 7. 运行 npm test。
 8. 运行 npm run build。
 9. 运行 swift run QuotaCapsuleCoreSpec。
-10. 运行 npm run mac:install:internal-test，并确认运行进程来自 /Applications。
+10. 运行 npm run mac:install，并确认只有一个运行进程来自 /Applications。
 11. 如果启动成功，告诉我如何再次打开 Quota Capsule。
 12. 如果失败，只给我必要的非敏感错误信息和下一步建议。
 ```
@@ -82,26 +86,17 @@ npm ci
 npm test
 npm run build
 swift run QuotaCapsuleCoreSpec
-npm run mac:install:internal-test
+npm run mac:install
 ```
 
-## 本机版本通道
+## 唯一应用
 
-| 通道 | App | 用途 |
-| --- | --- | --- |
-| Internal test | `Quota Capsule Beta.app` | 公开内测版，反馈默认进入 public GitHub Issues。 |
-| Development | `Quota Capsule Dev Local.app` | 本机开发版，private issue URL 需要显式配置。 |
+公开仓库只构建一个 `Quota Capsule Beta.app`。开发使用分支、测试和预览，不再安装第二个常驻应用。
 
-运行公开内测版：
+运行公开 Beta：
 
 ```bash
-npm run mac:run:internal-test
-```
-
-运行开发版：
-
-```bash
-QUOTA_CAPSULE_DEV_GITHUB_ISSUES_URL="https://github.com/<owner>/<private-repo>/issues" npm run mac:run:dev
+npm run mac:run
 ```
 
 ## 隐私边界

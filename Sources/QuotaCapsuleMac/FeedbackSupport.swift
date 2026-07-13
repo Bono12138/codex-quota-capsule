@@ -227,10 +227,10 @@ private func feedbackIssueTargetLine(for store: QuotaStore) -> String {
 
     switch store.copy.locale {
     case .zhHans:
-        return "GitHub Issues：当前开发版没有配置内部 Issue 地址，请优先起草邮件"
+        return "GitHub Issues：公开反馈地址暂不可用，请优先起草邮件"
     case .zhHant:
-        return "GitHub Issues：目前開發版沒有設定內部 Issue 位址，請優先起草 Email"
+        return "GitHub Issues：公開回饋位址暫時無法使用，請優先起草 Email"
     case .en:
-        return "GitHub Issues: no internal Issue URL is configured for this development build; draft an email first"
+        return "GitHub Issues: the public feedback URL is unavailable; draft an email first"
     }
 }

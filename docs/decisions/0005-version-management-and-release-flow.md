@@ -1,5 +1,7 @@
 # Decision 0005: Version Management And Release Flow
 
+Status: Superseded by Decision 0006 on 2026-07-13. Retained as historical context only.
+
 Date: 2026-07-07
 
 ## Decision

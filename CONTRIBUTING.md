@@ -1,43 +1,57 @@
 # Contributing
 
-Quota Capsule welcomes contributions for Codex and other agent products.
+Quota Capsule welcomes public contributions for Codex and other agent products.
+
+## One Repository
+
+`Bono12138/codex-quota-capsule` is the only source of truth. Work on a short-lived branch, open a pull request, and delete the branch after merge. Do not create a parallel source repository or copy changes through a staging tree.
 
 ## Good First Areas
 
-- Mock data scenarios for different quota windows.
+- Weekly forecast fixtures for sparse, bursty, idle, stale, and reset states.
 - Provider source adapters.
-- UI states and copy packs.
-- Windows packaging tests.
-- Documentation and privacy review.
+- Accessibility and multilingual copy review.
+- Installation, privacy, and release-audit tests.
+- Documentation improvements.
 
-## Planning And Triage
+## Project Boundaries
 
-- Track executable bugs and feature work in GitHub Issues.
-- Use `docs/product/bug-triage-and-release-blockers.md` for priority and release-blocker rules.
-- Use `docs/product/feature-roadmap.md` for accepted, deferred, and rejected product direction.
-- Do not duplicate full issue status in Markdown docs.
+- Shared quota types and prediction logic: `packages/core` and `Sources/QuotaCapsuleCore`.
+- Codex-specific source code: `packages/source-codex` and the native Codex client.
+- Native macOS shell: `Sources/QuotaCapsuleMac`.
+- Public product decisions: `docs/decisions`.
+- Current operations: `docs/operations`.
 
-## Adapter Rules
+Provider adapters must run locally by default, return structured data or structured errors, mark stale data explicitly, and never log credentials or automate upstream account actions.
 
-Provider adapters must:
+## Development Flow
 
-- Run locally by default.
-- Return structured data or a structured error.
-- Avoid logging secrets, cookies, account identifiers, or raw credentialed files.
-- Mark stale data as stale.
-- Never automate quota resets or upstream account actions.
+1. Create `codex/<short-feature-name>` from current public `main`.
+2. Write a failing regression or feature test.
+3. Implement the smallest change that makes it pass.
+4. Update user-facing and engineering documentation in the same branch.
+5. Run the complete checks below.
+6. Confirm every commit uses the intended contributor identity.
+7. Open a pull request and wait for required CI.
 
-## Project Layout
-
-- Put shared quota types and prediction logic in `packages/core`.
-- Put Codex-specific code in `packages/source-codex`.
-- Put future provider adapters under `packages/source-<provider>`.
-- Put desktop shell code in `apps/desktop`.
-
-## Before Opening A PR
+## Required Checks
 
 ```bash
 npm test
 npm run build
 npm run lint
+npm run audit:repository
+npm run audit:weekly-only
+swift test
+swift run QuotaCapsuleCoreSpec
+swift build --product QuotaCapsuleMac
+git diff --check
 ```
+
+UI changes also require deterministic state screenshots and a real macOS interaction pass. Build success alone is not product acceptance.
+
+## Privacy
+
+Never commit credentials, auth state, authenticated raw responses, prompt/session text, code content, local databases, crash logs, absolute personal paths, or private repository addresses. Public documents should preserve decisions and reproducible evidence without exposing private working context.
+
+See [docs/README.md](docs/README.md), [ADR 0006](docs/decisions/0006-single-public-repository-and-app.md), and the [release checklist](docs/operations/release-checklist.md).

@@ -7,7 +7,7 @@
 本版已经形成最小闭环：
 
 - macOS app 本地记录 quota snapshot 和产品事件到 SQLite。
-- app 按发布通道读取 analytics endpoint：内测版使用 `QUOTA_CAPSULE_PUBLIC_ANALYTICS_ENDPOINT`，开发版使用 `QUOTA_CAPSULE_DEV_ANALYTICS_ENDPOINT`，开发版也兼容旧的 `QUOTA_CAPSULE_ANALYTICS_ENDPOINT`。
+- 唯一 Beta app 只读取 `QUOTA_CAPSULE_PUBLIC_ANALYTICS_ENDPOINT`；未设置时不向远程 collector 发送事件。
 - `packages/analytics-collector` 提供一个 Node collector，可本地运行，也可部署到后端服务。
 - collector 接收 `POST /v1/events`，校验事件 schema，拒绝明显敏感字段，写入 NDJSON。
 - collector 提供 `GET /healthz`。
@@ -18,16 +18,10 @@
 PORT=8787 QUOTA_CAPSULE_ANALYTICS_FILE=local-state/analytics/events.ndjson npm run analytics:start
 ```
 
-开发版指向本地 collector：
+Beta 指向显式配置的 collector：
 
 ```sh
-QUOTA_CAPSULE_DEV_ANALYTICS_ENDPOINT=http://127.0.0.1:8787/v1/events npm run mac:run:dev
-```
-
-内测版指向公开试用 collector：
-
-```sh
-QUOTA_CAPSULE_PUBLIC_ANALYTICS_ENDPOINT=https://example.com/v1/events npm run mac:run:internal-test
+QUOTA_CAPSULE_PUBLIC_ANALYTICS_ENDPOINT=http://127.0.0.1:8787/v1/events npm run mac:run
 ```
 
 ## 事件层级
@@ -70,7 +64,7 @@ QUOTA_CAPSULE_PUBLIC_ANALYTICS_ENDPOINT=https://example.com/v1/events npm run ma
 - `analytics_consent_changed`
 - `local_history_cleared`
 
-`quota_state_sampled` 会发送周窗口用量、周时间进度、可持续日速度、最近速度区间、预计刷新余量区间、预测状态与置信度，以及胶囊宽度分档和展开状态。它不包含 prompt、session、token、文件路径、项目名、窗口标题、代码或命令。
+`quota_state_sampled` 会发送周窗口用量、周时间进度、可持续日速度、最近速度区间、预计重置余量区间、预测状态与置信度，以及胶囊宽度分档和展开状态。它不包含 prompt、session、token、文件路径、项目名、窗口标题、代码或命令。
 
 ## 明确不采集
 

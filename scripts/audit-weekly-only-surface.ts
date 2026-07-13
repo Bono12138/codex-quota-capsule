@@ -1,7 +1,7 @@
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import { relative, resolve } from "node:path";
 
-import { retiredProductCopyReason } from "./weekly-only-copy-rules";
+import { ambiguousResetCopyReason, retiredProductCopyReason } from "./weekly-only-copy-rules";
 
 const roots = [
   "README.md",
@@ -27,6 +27,8 @@ for (const file of files) {
   const text = readFileSync(resolve(process.cwd(), file), "utf8");
   text.split("\n").forEach((line, index) => {
     if (forbidden.test(line)) failures.push(`${file}:${index + 1}: ${line.trim()}`);
+    const resetReason = ambiguousResetCopyReason(line);
+    if (resetReason) failures.push(`${file}:${index + 1}: ${resetReason}: ${line.trim()}`);
     if (file.endsWith(".md")) {
       const reason = retiredProductCopyReason(line);
       if (reason) failures.push(`${file}:${index + 1}: ${reason}: ${line.trim()}`);

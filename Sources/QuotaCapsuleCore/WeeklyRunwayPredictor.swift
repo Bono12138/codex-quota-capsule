@@ -10,6 +10,35 @@ public struct PaceBand: Equatable, Sendable {
     }
 }
 
+public enum PaceEvidenceKind: String, Codable, Equatable, Sendable {
+    case cycle
+    case recent
+    case activity
+    case historical
+}
+
+public struct PaceEvidence: Equatable, Sendable {
+    public let kind: PaceEvidenceKind
+    public let bandPerDay: PaceBand
+    public let reliability: Double
+    public let transitionCount: Int
+    public let coverageHours: Double
+
+    public init(
+        kind: PaceEvidenceKind,
+        bandPerDay: PaceBand,
+        reliability: Double,
+        transitionCount: Int,
+        coverageHours: Double
+    ) {
+        self.kind = kind
+        self.bandPerDay = bandPerDay
+        self.reliability = reliability
+        self.transitionCount = transitionCount
+        self.coverageHours = coverageHours
+    }
+}
+
 public struct PercentageBand: Equatable, Sendable {
     public let lower: Double
     public let upper: Double
@@ -44,6 +73,7 @@ public enum WeeklyRunwayState: String, Codable, Equatable, Sendable {
     case unavailable
     case exhausted
     case calibrating
+    case earlyEstimate
     case enough
     case watch
     case mayRunOut
@@ -70,6 +100,8 @@ public struct WeeklyRunwayForecast: Equatable, Sendable {
     public let estimatedEmptyAtRange: ExhaustionDateRange?
     public let next24HourBudget: Double?
     public let currentCycleTrend: [WeeklyTrendPoint]
+    public let paceEvidence: [PaceEvidence]
+    public let confidenceReason: String
     public let headline: String
     public let detail: String
     public let qualityExplanation: String
@@ -89,6 +121,8 @@ public struct WeeklyRunwayForecast: Equatable, Sendable {
         estimatedEmptyAtRange: ExhaustionDateRange?,
         next24HourBudget: Double?,
         currentCycleTrend: [WeeklyTrendPoint] = [],
+        paceEvidence: [PaceEvidence] = [],
+        confidenceReason: String = "",
         headline: String = "",
         detail: String = "",
         qualityExplanation: String = ""
@@ -107,6 +141,8 @@ public struct WeeklyRunwayForecast: Equatable, Sendable {
         self.estimatedEmptyAtRange = estimatedEmptyAtRange
         self.next24HourBudget = next24HourBudget
         self.currentCycleTrend = currentCycleTrend
+        self.paceEvidence = paceEvidence
+        self.confidenceReason = confidenceReason
         self.headline = headline
         self.detail = detail
         self.qualityExplanation = qualityExplanation
@@ -114,9 +150,6 @@ public struct WeeklyRunwayForecast: Equatable, Sendable {
 }
 
 public enum WeeklyRunwayPredictor {
-    public static let reservePercent = 5.0
-    private static let minimumPairSeparation: TimeInterval = 30 * 60
-    private static let minimumCoverage: TimeInterval = 6 * 60 * 60
     private static let recentHorizon: TimeInterval = 24 * 60 * 60
 
     public static func predict(
@@ -131,10 +164,18 @@ public enum WeeklyRunwayPredictor {
             return unavailable()
         }
 
+        if quality.state == .calibrating {
+            return calibratingFromAcceptedObservation(
+                quality.observations,
+                windowMinutes: window.windowMinutes,
+                now: now
+            )
+        }
+
         let daysRemaining = window.resetsAt.timeIntervalSince(now) / 86_400
         let elapsed = elapsedPercent(window: window, now: now)
-        let sustainable = max(0, window.remainingPercent - reservePercent) / daysRemaining
-        let budget = min(window.remainingPercent, sustainable)
+        let sustainable = window.remainingPercent / daysRemaining
+        let budget = min(window.remainingPercent, sustainable * min(1, daysRemaining))
         let active = quality.state == .stable ? activeCycleAndSegment(quality.observations) : []
         let last24HourUsage = last24HourUsageBand(active, now: now)
         let trend = trendPoints(active)
@@ -154,11 +195,14 @@ public enum WeeklyRunwayPredictor {
                 projectedRemainingBandAtReset: PercentageBand(lower: 0, upper: 0),
                 estimatedEmptyAtRange: ExhaustionDateRange(earliest: now, latest: now),
                 next24HourBudget: 0,
-                currentCycleTrend: trend
+                currentCycleTrend: trend,
+                confidenceReason: "exhausted"
             )
         }
 
-        guard quality.state != .stale, quality.state != .unavailable else {
+        guard quality.state != .stale,
+              quality.state != .unavailable,
+              quality.state != .unstable else {
             return unavailable(
                 used: window.usedPercent,
                 remaining: window.remainingPercent,
@@ -167,50 +211,66 @@ public enum WeeklyRunwayPredictor {
             )
         }
 
-        guard quality.state == .stable else {
-            return calibrating(
-                window: window,
-                elapsed: elapsed,
-                daysRemaining: daysRemaining,
-                sustainable: sustainable,
-                budget: budget
+        if window.usedPercent == 0 {
+            return WeeklyRunwayForecast(
+                state: .earlyEstimate,
+                confidence: .low,
+                usedPercent: 0,
+                remainingPercent: window.remainingPercent,
+                elapsedPercent: elapsed,
+                daysUntilReset: daysRemaining,
+                sustainableRatePerDay: sustainable,
+                recentRateBandPerDay: nil,
+                cycleRateBandPerDay: nil,
+                last24HourUsageBand: nil,
+                projectedRemainingBandAtReset: nil,
+                estimatedEmptyAtRange: nil,
+                next24HourBudget: budget,
+                currentCycleTrend: trend,
+                paceEvidence: [],
+                confidenceReason: "no-consumption-observed"
             )
         }
 
-        guard let latestObservation = active.last,
-              abs(latestObservation.usedPercent - window.usedPercent) <= 1.5,
-              abs(latestObservation.canonicalResetAt.timeIntervalSince(window.resetsAt)) <= WeeklyQualityEngine.resetClusterTolerance else {
-            return calibrating(
-                window: window,
+        guard let cycleEvidence = WeeklyPaceEvidence.cycle(window: window, now: now) else {
+            return unavailable(
+                used: window.usedPercent,
+                remaining: window.remainingPercent,
                 elapsed: elapsed,
-                daysRemaining: daysRemaining,
-                sustainable: sustainable,
-                budget: budget,
-                last24HourUsageBand: last24HourUsage,
-                trend: trend
-            )
-        }
-        let cycleBand = qualifiedPaceBand(active)
-        let recentObservations = active.filter { now.timeIntervalSince($0.fetchedAt) <= recentHorizon }
-        let recentBand = qualifiedPaceBand(recentObservations)
-
-        guard let cycleBand, let recentBand else {
-            return calibrating(
-                window: window,
-                elapsed: elapsed,
-                daysRemaining: daysRemaining,
-                sustainable: sustainable,
-                budget: budget,
-                cycleBand: cycleBand,
-                last24HourUsageBand: last24HourUsage,
-                trend: trend
+                daysRemaining: daysRemaining
             )
         }
 
-        let pace = PaceBand(
-            lower: min(cycleBand.lower, recentBand.lower),
-            upper: max(cycleBand.upper, recentBand.upper)
-        )
+        var evidence = [cycleEvidence]
+        let historyMatchesLiveWindow = quality.state == .stable
+            && active.last.map {
+                abs($0.usedPercent - window.usedPercent) <= 1.5
+                    && abs($0.canonicalResetAt.timeIntervalSince(window.resetsAt)) <= WeeklyQualityEngine.resetClusterTolerance
+            } == true
+        if historyMatchesLiveWindow {
+            if let recent = WeeklyPaceEvidence.recent(observations: active, now: now) {
+                evidence.append(recent)
+            }
+            if let activity = WeeklyPaceEvidence.activity(observations: active, now: now) {
+                evidence.append(activity)
+            }
+            if let currentCycleID = active.last?.cycleID,
+               let historical = WeeklyPaceEvidence.historical(
+                    observations: quality.observations,
+                    currentCycleID: currentCycleID
+               ) {
+                evidence.append(historical)
+            }
+        }
+
+        guard let pace = WeeklyPaceEvidence.fuse(evidence) else {
+            return unavailable(
+                used: window.usedPercent,
+                remaining: window.remainingPercent,
+                elapsed: elapsed,
+                daysRemaining: daysRemaining
+            )
+        }
         let projected = PercentageBand(
             lower: window.remainingPercent - pace.upper * daysRemaining,
             upper: window.remainingPercent - pace.lower * daysRemaining
@@ -220,14 +280,23 @@ public enum WeeklyRunwayPredictor {
             pace: pace,
             now: now
         )
-        let confidence = forecastConfidence(active, recentBand: recentBand)
+        let transitionCount = historyMatchesLiveWindow
+            ? WeeklyPaceEvidence.countUpwardTransitions(active)
+            : 0
+        let confidence = forecastConfidence(
+            active,
+            evidence: evidence,
+            transitionCount: transitionCount
+        )
         let state: WeeklyRunwayState
-        if projected.lower >= reservePercent {
-            state = .enough
+        if evidence.count == 1 || transitionCount == 0 {
+            state = .earlyEstimate
         } else if projected.upper < 0 {
             state = .mayRunOut
-        } else {
+        } else if projected.lower <= 0 || evidenceContainsMaterialOverspeed(evidence, sustainable: sustainable) {
             state = .watch
+        } else {
+            state = .enough
         }
 
         return WeeklyRunwayForecast(
@@ -238,13 +307,19 @@ public enum WeeklyRunwayPredictor {
             elapsedPercent: elapsed,
             daysUntilReset: daysRemaining,
             sustainableRatePerDay: sustainable,
-            recentRateBandPerDay: recentBand,
-            cycleRateBandPerDay: cycleBand,
+            recentRateBandPerDay: evidence.first(where: { $0.kind == .recent })?.bandPerDay,
+            cycleRateBandPerDay: cycleEvidence.bandPerDay,
             last24HourUsageBand: last24HourUsage,
             projectedRemainingBandAtReset: projected,
             estimatedEmptyAtRange: exhaustion,
             next24HourBudget: budget,
-            currentCycleTrend: trend
+            currentCycleTrend: trend,
+            paceEvidence: evidence,
+            confidenceReason: confidenceReason(
+                confidence: confidence,
+                evidence: evidence,
+                transitionCount: transitionCount
+            )
         )
     }
 
@@ -269,92 +344,51 @@ public enum WeeklyRunwayPredictor {
         return observations.filter { $0.cycleID == last.cycleID && $0.segmentID == last.segmentID }
     }
 
-    private static func qualifiedPaceBand(_ observations: [WeeklyObservation]) -> PaceBand? {
-        guard let first = observations.first,
-              let last = observations.last,
-              last.fetchedAt.timeIntervalSince(first.fetchedAt) >= minimumCoverage,
-              upwardTransitionCount(observations) > 0 else {
-            return nil
-        }
-        return robustPaceBand(observations)
-    }
-
-    private static func robustPaceBand(_ observations: [WeeklyObservation]) -> PaceBand? {
-        struct Candidate {
-            let lower: Double
-            let upper: Double
-            var midpoint: Double { (lower + upper) / 2 }
-        }
-
-        var candidates: [Candidate] = []
-        for earlierIndex in observations.indices {
-            for laterIndex in observations.indices where laterIndex > earlierIndex {
-                let earlier = observations[earlierIndex]
-                let later = observations[laterIndex]
-                let duration = later.fetchedAt.timeIntervalSince(earlier.fetchedAt)
-                guard duration >= minimumPairSeparation else { continue }
-                let first = quantizedInterval(earlier.usedPercent)
-                let second = quantizedInterval(later.usedPercent)
-                let scale = 86_400 / duration
-                candidates.append(Candidate(
-                    lower: max(0, second.lower - first.upper) * scale,
-                    upper: max(0, second.upper - first.lower) * scale
-                ))
-            }
-        }
-        guard !candidates.isEmpty else { return nil }
-
-        if candidates.count >= 5 {
-            let center = median(candidates.map(\.midpoint))
-            let mad = median(candidates.map { abs($0.midpoint - center) })
-            let tolerance = max(0.01, 3 * mad)
-            candidates = candidates.filter { abs($0.midpoint - center) <= tolerance }
-        }
-        guard !candidates.isEmpty else { return nil }
-        return PaceBand(
-            lower: median(candidates.map(\.lower)),
-            upper: median(candidates.map(\.upper))
-        )
-    }
-
-    private static func quantizedInterval(_ value: Double) -> PercentageBand {
-        let roundedInteger = value.rounded()
-        if abs(value - roundedInteger) < 0.000_001 {
-            return PercentageBand(lower: value, upper: min(100, value + 1))
-        }
-
-        let resolution: Double
-        if abs(value * 10 - (value * 10).rounded()) < 0.000_001 {
-            resolution = 0.1
-        } else if abs(value * 100 - (value * 100).rounded()) < 0.000_001 {
-            resolution = 0.01
-        } else {
-            resolution = 0.001
-        }
-        return PercentageBand(
-            lower: max(0, value - resolution / 2),
-            upper: min(100, value + resolution / 2)
-        )
-    }
-
-    private static func upwardTransitionCount(_ observations: [WeeklyObservation]) -> Int {
-        zip(observations, observations.dropFirst()).reduce(into: 0) { count, pair in
-            if pair.1.usedPercent > pair.0.usedPercent {
-                count += 1
-            }
-        }
-    }
-
     private static func forecastConfidence(
         _ observations: [WeeklyObservation],
-        recentBand: PaceBand
+        evidence: [PaceEvidence],
+        transitionCount: Int
     ) -> ForecastConfidence {
-        guard let first = observations.first, let last = observations.last else { return .low }
+        guard evidence.count > 1,
+              transitionCount > 0,
+              let first = observations.first,
+              let last = observations.last else {
+            return .low
+        }
         let coverage = last.fetchedAt.timeIntervalSince(first.fetchedAt)
-        if coverage >= recentHorizon && upwardTransitionCount(observations) >= 3 {
+        if coverage >= recentHorizon,
+           transitionCount >= 3,
+           evidenceAgreement(evidence) <= 0.5 {
             return .high
         }
         return .medium
+    }
+
+    private static func evidenceAgreement(_ evidence: [PaceEvidence]) -> Double {
+        let midpoints = evidence.map { ($0.bandPerDay.lower + $0.bandPerDay.upper) / 2 }
+        guard let lower = midpoints.min(), let upper = midpoints.max() else { return .infinity }
+        return (upper - lower) / max(1, midpoints.reduce(0, +) / Double(midpoints.count))
+    }
+
+    private static func evidenceContainsMaterialOverspeed(
+        _ evidence: [PaceEvidence],
+        sustainable: Double
+    ) -> Bool {
+        guard sustainable > 0 else { return true }
+        return evidence.contains {
+            $0.reliability >= 0.20
+                && ($0.bandPerDay.lower + $0.bandPerDay.upper) / 2 > sustainable * 1.15
+        }
+    }
+
+    private static func confidenceReason(
+        confidence: ForecastConfidence,
+        evidence: [PaceEvidence],
+        transitionCount: Int
+    ) -> String {
+        if evidence.count == 1 { return "cycle-only" }
+        if confidence == .high { return "multi-source-agreement" }
+        return "transitions:\(transitionCount)"
     }
 
     private static func exhaustionRange(
@@ -381,8 +415,8 @@ public enum WeeklyRunwayPredictor {
               latest.fetchedAt > baseline.fetchedAt else {
             return nil
         }
-        let first = quantizedInterval(baseline.usedPercent)
-        let last = quantizedInterval(latest.usedPercent)
+        let first = WeeklyPaceEvidence.quantizedInterval(baseline.usedPercent)
+        let last = WeeklyPaceEvidence.quantizedInterval(latest.usedPercent)
         return PercentageBand(
             lower: max(0, last.lower - first.upper),
             upper: max(0, last.upper - first.lower)
@@ -430,6 +464,36 @@ public enum WeeklyRunwayPredictor {
             estimatedEmptyAtRange: nil,
             next24HourBudget: budget,
             currentCycleTrend: trend
+        )
+    }
+
+    private static func calibratingFromAcceptedObservation(
+        _ observations: [WeeklyObservation],
+        windowMinutes: Int,
+        now: Date
+    ) -> WeeklyRunwayForecast {
+        guard let accepted = observations.last else { return unavailable() }
+        let window = QuotaWindow(
+            label: "weekly",
+            windowMinutes: windowMinutes,
+            usedPercent: accepted.usedPercent,
+            remainingPercent: accepted.remainingPercent,
+            resetsAt: accepted.canonicalResetAt
+        )
+        guard isValid(window, now: now) else { return unavailable() }
+        let daysRemaining = window.resetsAt.timeIntervalSince(now) / 86_400
+        let elapsed = elapsedPercent(window: window, now: now)
+        let sustainable = window.remainingPercent / daysRemaining
+        let budget = min(window.remainingPercent, sustainable * min(1, daysRemaining))
+        let active = activeCycleAndSegment(observations)
+        return calibrating(
+            window: window,
+            elapsed: elapsed,
+            daysRemaining: daysRemaining,
+            sustainable: sustainable,
+            budget: budget,
+            last24HourUsageBand: last24HourUsageBand(active, now: now),
+            trend: trendPoints(active)
         )
     }
 

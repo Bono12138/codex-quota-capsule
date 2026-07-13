@@ -1,6 +1,6 @@
 import { expect, test } from "vitest";
 
-import { retiredProductCopyReason } from "./weekly-only-copy-rules";
+import { ambiguousResetCopyReason, retiredProductCopyReason } from "./weekly-only-copy-rules";
 
 test("rejects retired English weekly state labels regardless of case", () => {
   for (const copy of ["Safe", "WATCH", "danger", "Unknown"]) {
@@ -25,4 +25,13 @@ test("rejects retired Chinese weekly state sequences and badge examples", () => 
 
 test("does not confuse ordinary safety and attention copy with state labels", () => {
   expect(retiredProductCopyReason("保留安全边界，并注意：这只是预测。")).toBeNull();
+});
+
+test("rejects quota reset copy that calls the reset a data refresh", () => {
+  expect(ambiguousResetCopyReason('return "本周额度已用尽，刷新后会自动恢复"'))
+    .toBe("quota reset is mislabeled as refresh");
+  expect(ambiguousResetCopyReason("周额度刷新：周一 08:00"))
+    .toBe("quota reset is mislabeled as refresh");
+  expect(ambiguousResetCopyReason("数据更新于 13:49，下次自动刷新约 47 秒后"))
+    .toBeNull();
 });
