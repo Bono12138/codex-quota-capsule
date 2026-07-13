@@ -191,7 +191,7 @@ QUOTA_CAPSULE_DEV_ANALYTICS_ENDPOINT="http://127.0.0.1:8787/v1/events" npm run m
 
 ## 故障排查
 
-如果胶囊显示“未知”：
+如果胶囊显示“数据暂不可用”：
 
 1. 打开终端，确认：
 

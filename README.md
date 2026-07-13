@@ -25,11 +25,11 @@ Quota Capsule stays visible on the desktop and in the menu bar, then turns weekl
 额度胶囊常驻桌面和菜单栏，把周额度速度转换成六个明确状态和未来 24 小时建议：
 
 - Calibrating / 正在校准：有效历史还不足 6 小时，暂不下结论。
-- Enough / 够用：按近期与本周速度，预计能带着至少 5% 余量到刷新。
+- On track / 够用：按近期与本周速度，预计能带着至少 5% 余量到刷新。
 - Running fast / 偏快：仍可能撑到刷新，但余量区间已经偏薄。
 - May run out / 可能不够：快、慢两种估计都可能在刷新前见底。
 - Exhausted / 已用尽：本周额度已经用完，等待刷新恢复。
-- Unavailable / 数据暂不可用：实时读取失败或数据过期，只保留最后成功百分比，不给速度结论。
+- Data unavailable / 数据暂不可用：实时读取失败或数据过期，只保留最后成功百分比，不给速度结论。
 
 ## Who It Is For / 适合谁
 
@@ -79,12 +79,12 @@ npm run mac:install:internal-test
 - By default, quota data is read and computed locally.
 - Product events are not uploaded unless an analytics endpoint is explicitly configured.
 - Prompt text, session text, code content, private file paths, account credentials, auth tokens, and cookies stay on this Mac.
-- Missing or stale quota data is shown as `unknown`.
+- Missing or stale quota data is shown as `Data unavailable`, with stale percentages clearly marked.
 
 - 默认本地读取、本地计算。
 - 未显式配置 analytics endpoint 时，不上传产品事件。
 - prompt 正文、session 正文、代码内容、私有文件路径、账号凭据、auth token、cookie 留在本机。
-- 缺失或过期数据显示为 `unknown`。
+- 缺失或过期数据显示为“数据暂不可用”，过期百分比会被明确标记。
 
 ## Local Channels / 本机版本通道
 

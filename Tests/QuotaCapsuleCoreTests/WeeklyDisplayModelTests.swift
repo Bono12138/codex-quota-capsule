@@ -92,6 +92,18 @@ struct WeeklyDisplayModelTests {
         #expect(models.allSatisfy { !$0.defaultText.contains("5 小时") && !$0.defaultText.contains("5 小時") })
     }
 
+    @Test("English status labels use the approved six-state vocabulary")
+    func englishStatusVocabulary() {
+        let copy = QuotaCopy(locale: .en)
+
+        #expect(copy.weeklyStatusLabel(.unavailable) == "Data unavailable")
+        #expect(copy.weeklyStatusLabel(.exhausted) == "Exhausted")
+        #expect(copy.weeklyStatusLabel(.calibrating) == "Calibrating")
+        #expect(copy.weeklyStatusLabel(.enough) == "On track")
+        #expect(copy.weeklyStatusLabel(.watch) == "Running fast")
+        #expect(copy.weeklyStatusLabel(.mayRunOut) == "May run out")
+    }
+
     @Test("onboarding teaches the weekly decision hierarchy")
     func onboardingTeachesWeeklyHierarchy() {
         let copy = QuotaCopy(locale: .zhHans)

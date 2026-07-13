@@ -90,10 +90,10 @@ public struct QuotaCopy: Equatable, Sendable {
         case (.zhHant, .enough): "夠用"
         case (.zhHant, .watch): "偏快"
         case (.zhHant, .mayRunOut): "可能不夠"
-        case (.en, .unavailable): "Unavailable"
+        case (.en, .unavailable): "Data unavailable"
         case (.en, .exhausted): "Exhausted"
         case (.en, .calibrating): "Calibrating"
-        case (.en, .enough): "Enough"
+        case (.en, .enough): "On track"
         case (.en, .watch): "Running fast"
         case (.en, .mayRunOut): "May run out"
         }

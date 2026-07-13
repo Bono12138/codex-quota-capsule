@@ -110,7 +110,7 @@ QUOTA_CAPSULE_DEV_GITHUB_ISSUES_URL="https://github.com/<owner>/<private-repo>/i
 - 未配置 analytics endpoint 时，不上传产品事件。
 - 配置 analytics endpoint 后，基础诊断和产品改进数据按授权分层发送。
 - prompt 正文、session 正文、代码内容、私有文件路径、账号凭据、auth token、cookie 留在本机。
-- 缺失或过期数据显示为 `unknown`。
+- 缺失或过期数据显示为“数据暂不可用”，过期百分比会被明确标记。
 
 ## 项目结构
 

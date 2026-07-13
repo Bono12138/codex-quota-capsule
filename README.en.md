@@ -20,11 +20,11 @@ Heavy Codex users often run several coding tasks at the same time and repeatedly
 Quota Capsule stays small, visible, and direct with six honest states:
 
 - Calibrating: fewer than six hours of valid history, so no runway claim yet.
-- Enough: the pace should reach reset with at least a 5% reserve.
+- On track: the pace should reach reset with at least a 5% reserve.
 - Running fast: it may still last, but the forecast margin is thin.
 - May run out: both the fast and slow estimates can exhaust before reset.
 - Exhausted: this week's quota is gone and will recover at reset.
-- Unavailable: the live read failed or expired; frozen percentages remain visible without a pace claim.
+- Data unavailable: the live read failed or expired; frozen percentages remain visible without a pace claim.
 
 ## Who It Is For
 
@@ -105,7 +105,7 @@ QUOTA_CAPSULE_DEV_GITHUB_ISSUES_URL="https://github.com/<owner>/<private-repo>/i
 - Product events are not uploaded unless an analytics endpoint is configured.
 - If an analytics endpoint is configured, basic diagnostics and product improvement data are sent in separate tiers.
 - Prompt text, session text, code content, private file paths, account credentials, auth tokens, and cookies stay on this Mac.
-- Missing or stale data is shown as `unknown`.
+- Missing or stale data is shown as `Data unavailable`, with stale percentages clearly marked.
 
 ## Project Structure
 

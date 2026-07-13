@@ -3,8 +3,8 @@
 ## P0：先把核心体验做出来
 
 - Provider-neutral quota model：额度窗口、刷新时间、已用比例、数据可靠性等核心模型不能绑死 Codex。
-- Prediction engine：输出 `safe`、`watch`、`danger`、`unknown`。
-- Mock scenarios：覆盖够用、注意、可能用完、校准中、已用尽、数据过期和 source error。
+- Prediction engine：输出 `enough`、`running_fast`、`may_run_out`、`exhausted`、`calibrating`、`unavailable`。
+- Mock scenarios：覆盖够用、偏快、可能不够、校准中、已用尽、数据过期和 source error。
 - 只读 Codex 本地 source probe。
 - `codex app-server` rate-limit 读取方案验证。
 - Mac 桌面悬浮小胶囊原型：先用 mock 数据把真实常驻体验做顺。
@@ -39,7 +39,7 @@
 ## 公开发布阻塞项
 
 - Codex source 不能可靠读取。
-- 读取失败时仍然显示 safe/green。
+- 读取失败时仍然显示绿色“够用”。
 - App 不能干净退出。
 - 安装后不能清楚卸载。
 - 隐私边界没有写清楚。
