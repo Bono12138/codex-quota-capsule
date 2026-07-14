@@ -642,7 +642,26 @@ struct PanelQuickActionsView: View {
         }
         .help(store.copy.codexFeedbackHint)
 
+        languageMenu
         moreActionsMenu
+    }
+
+    private var languageMenu: some View {
+        Menu {
+            Button("简体中文") {
+                store.selectLocale(.zhHans)
+            }
+            Button("繁體中文") {
+                store.selectLocale(.zhHant)
+            }
+            Button("English") {
+                store.selectLocale(.en)
+            }
+        } label: {
+            panelActionLabel(title: store.copy.languageMenuTitle, symbol: "globe")
+        }
+        .buttonStyle(.plain)
+        .help(store.copy.languageMenuTitle)
     }
 
     private var moreActionsMenu: some View {
@@ -653,18 +672,6 @@ struct PanelQuickActionsView: View {
 
             Button(store.copy.toggleCapsuleAction) {
                 NotificationCenter.default.post(name: .quotaCapsuleTogglePanel, object: nil)
-            }
-
-            Section(store.copy.languageMenuTitle) {
-                Button("简体中文 · \(store.copy.languageSimplifiedAssistiveLabel)") {
-                    store.selectLocale(.zhHans)
-                }
-                Button("繁體中文 · \(store.copy.languageTraditionalAssistiveLabel)") {
-                    store.selectLocale(.zhHant)
-                }
-                Button("English · \(store.copy.languageEnglishAssistiveLabel)") {
-                    store.selectLocale(.en)
-                }
             }
 
             Button(store.copy.userGuideAction) {

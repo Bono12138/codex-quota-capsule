@@ -752,7 +752,7 @@ public struct QuotaCopy: Equatable, Sendable {
                 "桌面悬浮胶囊、菜单栏短状态和展开详情面板。",
                 "自动刷新、手动刷新和读取失败时保留上次成功数据。",
                 "靠边停靠迷你形态、胶囊宽度调整和三语界面。",
-                "展开面板提供刷新、反馈和更多操作；语言、引导、作者、关于和退出收在更多操作里。",
+                "展开面板直接提供刷新、反馈、Language / 语言和更多操作；引导、作者、关于和退出收在更多操作里。",
                 "本地历史记录、基础诊断和可选产品改进数据。"
             ]
         case .zhHant:
@@ -761,7 +761,7 @@ public struct QuotaCopy: Equatable, Sendable {
                 "桌面懸浮膠囊、選單列短狀態和展開詳細面板。",
                 "自動重新整理、手動重新整理，讀取失敗時保留上次成功資料。",
                 "靠邊停靠迷你形態、膠囊寬度調整和三語介面。",
-                "展開面板提供重新整理、回饋和更多操作；語言、引導、作者、關於和退出收在更多操作裡。",
+                "展開面板直接提供重新整理、回饋、Language / 語言和更多操作；引導、作者、關於和退出收在更多操作裡。",
                 "本機歷史記錄、基礎診斷和可選產品改善資料。"
             ]
         case .en:
@@ -770,7 +770,7 @@ public struct QuotaCopy: Equatable, Sendable {
                 "Desktop floating capsule, short menu bar status, and detail panel.",
                 "Auto refresh, manual refresh, and last-success fallback after read failures.",
                 "Edge-docked mini state, adjustable capsule width, and three interface languages.",
-                "Refresh, feedback, and More actions in the detail panel; language, guide, author, about, and quit live under More actions.",
+                "The detail panel provides Refresh, Feedback, and Language directly; guide, author, about, and quit remain under More actions.",
                 "Local history, basic diagnostics, and optional product improvement analytics."
             ]
         }
@@ -1511,9 +1511,9 @@ public struct QuotaCopy: Equatable, Sendable {
 
     public var onboardingMenuStepBody: String {
         switch locale {
-        case .zhHans: "菜单栏显示周速度状态和本周已用比例。展开面板提供刷新、提交反馈和更多操作；找不到菜单栏时，更多操作里也能进入语言、联系作者、关于反馈和退出。"
-        case .zhHant: "選單列顯示週速度狀態和本週已用比例。展開面板提供重新整理、送出回饋和更多操作；找不到選單列時，更多操作裡也能進入語言、聯絡作者、關於回饋和退出。"
-        case .en: "The menu bar shows weekly pace status and weekly usage. The detail panel provides refresh, send feedback, and More actions; More actions keeps language, contact, about, and quit available when the menu bar is hard to find."
+        case .zhHans: "菜单栏显示周速度状态和本周已用比例。展开面板直接提供刷新、提交反馈、Language / 语言和更多操作；找不到菜单栏时，也能直接切换语言，并从更多操作进入联系作者、关于反馈和退出。"
+        case .zhHant: "選單列顯示週速度狀態和本週已用比例。展開面板直接提供重新整理、送出回饋、Language / 語言和更多操作；找不到選單列時，也能直接切換語言，並從更多操作進入聯絡作者、關於回饋和退出。"
+        case .en: "The menu bar shows weekly pace status and weekly usage. The detail panel provides Refresh, Feedback, Language, and More actions directly; contact, about, and quit remain available under More actions."
         }
     }
 
