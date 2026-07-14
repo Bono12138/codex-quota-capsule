@@ -12,6 +12,11 @@ All notable user-visible and repository-governance changes are recorded here.
 - Add a regression guard that rejects nested `Menu` layers in the ticking floating-panel action surface.
 - Correct the previous acceptance claim: the 0.3.1 check covered the separate AppKit status menu and sampled only the endpoints, not the recorded pointer path through the SwiftUI panel submenu.
 
+### Documentation
+
+- Replace missing 2026-07-01 competitor references with a public, source-linked 2026-07-14 market snapshot covering current window behavior, eleven maintained direct or adjacent tools, differentiated positioning, and honest product gaps.
+- Add a Chinese colleague brief that can be forwarded without overstating Quota Capsule's maturity or uniqueness.
+
 ## 0.3.1-beta.1 — 2026-07-14
 
 ### Changed
