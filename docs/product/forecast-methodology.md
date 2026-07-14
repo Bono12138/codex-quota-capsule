@@ -121,6 +121,16 @@ When the latest data is stale or a refresh fails, the app may keep the last succ
 
 The stale surface also hides the pace-comparison sentence and forecast trend band; old percentages remain visibly labelled as the last successful reading rather than current guidance.
 
+## Reset-credit facts are separate from the forecast
+
+`rateLimitResetCredits.availableCount` is the authoritative current count. Per-credit details may be absent or capped, so the interface distinguishes a count-only response from a complete empty bank and explicitly states how many expiry details were not returned.
+
+Normal UI shows each returned available credit's expiry in the Mac's local time through the minute. The local database retains provider timestamps at second precision. Opaque upstream IDs are SHA-256 hashed immediately; raw IDs, descriptions, and referral payloads are neither modeled nor stored. Reset-credit history remains on this Mac until the user clears local history.
+
+A reset credit that disappears after its expiry is classified as expired. A pre-expiry reset-credit disappearance remains unknown unless one complete bank transition and an accepted weekly reset in the same refresh support the conservative label likely redeemed. These are local classifications, not provider facts.
+
+Available credits do not change the weekly risk state, color, pace, or budget before an actual reset is confirmed. Redemption controls and optimal-use recommendations are outside this release and are governed separately by `docs/research/reset-credit-timing-optimization.md`.
+
 ## Cross-runtime parity and change control
 
 Swift is the native macOS runtime and TypeScript supports the reference/demo runtime. Both consume `fixtures/weekly-runway-cases.json` and `fixtures/weekly-pace-equivalence.json`. They must agree on quality state, forecast state, polling-invariant pace evidence, budget rules, and edge cases.

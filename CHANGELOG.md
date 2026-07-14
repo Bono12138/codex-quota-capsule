@@ -10,6 +10,12 @@ All notable user-visible and repository-governance changes are recorded here.
 - Fuse three or more independent pace estimates with a median/MAD consensus, while retaining conservative one- and two-source behavior and lowering confidence when sources disagree across the decision boundary.
 - Replace normalized daily-rate jargon on the main surface with the actual observed duration and allowance change.
 - Explain cross-zero reset projections honestly instead of clamping negative outcomes into a misleading `0%–Y%` range.
+- Treat reset-credit count, nullable/capped details, and weekly pace as separate facts so credits never create false safety.
+
+### Added
+
+- Show every returned available reset credit at the bottom of the expanded panel, sorted by local expiry time and displayed through the minute.
+- Keep privacy-safe local reset-credit history with SHA-256 identity fingerprints, provider timestamps, coalesced bank runs, and conservative expired/likely-redeemed/unknown lifecycle labels.
 
 ### Fixed
 

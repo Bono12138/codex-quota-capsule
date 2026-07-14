@@ -27,6 +27,12 @@ test("does not confuse ordinary safety and attention copy with state labels", ()
   expect(retiredProductCopyReason("保留安全边界，并注意：这只是预测。")).toBeNull();
 });
 
+test("allows reset-credit lifecycle and privacy terms without weakening weekly labels", () => {
+  expect(retiredProductCopyReason("Reset-credit history stays privacy-safe and a disappearance may remain unknown.")).toBeNull();
+  expect(retiredProductCopyReason("重置券未到期消失时保持 unknown。")).toBeNull();
+  expect(retiredProductCopyReason("Weekly state: unknown")).toBe("retired English weekly state label");
+});
+
 test("rejects quota reset copy that calls the reset a data refresh", () => {
   expect(ambiguousResetCopyReason('return "本周额度已用尽，刷新后会自动恢复"'))
     .toBe("quota reset is mislabeled as refresh");

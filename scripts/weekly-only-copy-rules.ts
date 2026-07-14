@@ -12,6 +12,7 @@ export function ambiguousResetCopyReason(line: string): string | null {
 export function retiredProductCopyReason(line: string): string | null {
   if (/^\s*(?:[-*]\s*)?`(?:state|status)`\s*[:：]/i.test(line)) return null;
   const prose = line.replace(/`[^`]*`/g, "");
+  if (/reset[- ]credit|重置券/i.test(prose)) return null;
   if (retiredEnglishState.test(prose) || supersededEnglishDisplayLabel.test(prose)) {
     return "retired English weekly state label";
   }

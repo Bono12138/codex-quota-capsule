@@ -79,11 +79,13 @@ npm run mac:install
 - By default, quota data is read and computed locally.
 - Product events are not uploaded unless an analytics endpoint is explicitly configured.
 - Prompt text, session text, code content, private file paths, account credentials, auth tokens, and cookies stay on this Mac.
+- Reset-credit raw IDs, descriptions, and referral payloads are not stored; only a SHA-256 identity fingerprint and safe timestamps/status facts remain in local history until the user clears it.
 - Missing or stale quota data is shown as `Data unavailable`, with stale percentages clearly marked.
 
 - 默认本地读取、本地计算。
 - 未显式配置 analytics endpoint 时，不上传产品事件。
 - prompt 正文、session 正文、代码内容、私有文件路径、账号凭据、auth token、cookie 留在本机。
+- 重置券原始 ID、描述和 referral 内容不落盘；仅用 SHA-256 指纹去重，并在用户清空本地历史前保存安全时间与状态事实。
 - 缺失或过期数据显示为“数据暂不可用”，过期百分比会被明确标记。
 
 ## One App / 唯一应用
@@ -103,6 +105,7 @@ The first public beta is a macOS app built from source. It currently includes:
 - Separate weekly-reset, last-successful-read, and next-automatic-read timing.
 - Current-cycle trend with a sustainable line, forecast band, and reset marker.
 - Local history snapshots.
+- Current reset-credit count, per-credit local expiry minute, and privacy-safe local lifecycle history at the bottom of the expanded panel.
 - Multilingual UI.
 - Feedback links for GitHub Issues, email, X, and Douyin.
 
@@ -115,6 +118,7 @@ The first public beta is a macOS app built from source. It currently includes:
 - 分开显示周额度重置、上次成功读取和下次自动读取。
 - 带可持续线、预测区间和重置标记的当前周期趋势。
 - 本地历史快照。
+- 展开面板最下方显示重置券权威数量、逐张本地到期分钟，并保存隐私安全的本机生命周期历史。
 - 多语言界面。
 - GitHub Issues、邮箱、X、抖音反馈入口。
 
