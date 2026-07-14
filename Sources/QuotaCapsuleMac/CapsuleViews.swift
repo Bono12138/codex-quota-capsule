@@ -603,6 +603,13 @@ struct WeeklyTrendChartView: View {
 struct PanelQuickActionsView: View {
     @ObservedObject var store: QuotaStore
     @Binding var assistedFeedbackMessage: String
+    @State private var menuCopy: QuotaCopy
+
+    init(store: QuotaStore, assistedFeedbackMessage: Binding<String>) {
+        self.store = store
+        _assistedFeedbackMessage = assistedFeedbackMessage
+        _menuCopy = State(initialValue: store.copy)
+    }
 
     private var columns: [GridItem] {
         [GridItem(.adaptive(minimum: 128), spacing: 7)]
@@ -628,6 +635,9 @@ struct PanelQuickActionsView: View {
         }
         .padding(.vertical, 2)
         .frame(maxWidth: .infinity, alignment: .leading)
+        .onChange(of: store.copy) { _, nextCopy in
+            menuCopy = nextCopy
+        }
     }
 
     @ViewBuilder
@@ -642,40 +652,47 @@ struct PanelQuickActionsView: View {
         }
         .help(store.copy.codexFeedbackHint)
 
+        languageMenu
         moreActionsMenu
+    }
+
+    private var languageMenu: some View {
+        Menu {
+            Button("简体中文") {
+                store.selectLocale(.zhHans)
+            }
+            Button("繁體中文") {
+                store.selectLocale(.zhHant)
+            }
+            Button("English") {
+                store.selectLocale(.en)
+            }
+        } label: {
+            panelActionLabel(title: store.copy.languageMenuTitle, symbol: "globe")
+        }
+        .buttonStyle(.plain)
+        .help(store.copy.languageMenuTitle)
     }
 
     private var moreActionsMenu: some View {
         Menu {
-            Button(store.copy.openStatusMenuAction) {
+            Button(menuCopy.openStatusMenuAction) {
                 NotificationCenter.default.post(name: .quotaCapsuleShowStatusMenu, object: nil)
             }
 
-            Button(store.copy.toggleCapsuleAction) {
+            Button(menuCopy.toggleCapsuleAction) {
                 NotificationCenter.default.post(name: .quotaCapsuleTogglePanel, object: nil)
             }
 
-            Section(store.copy.languageMenuTitle) {
-                Button("简体中文 · \(store.copy.languageSimplifiedAssistiveLabel)") {
-                    store.selectLocale(.zhHans)
-                }
-                Button("繁體中文 · \(store.copy.languageTraditionalAssistiveLabel)") {
-                    store.selectLocale(.zhHant)
-                }
-                Button("English · \(store.copy.languageEnglishAssistiveLabel)") {
-                    store.selectLocale(.en)
-                }
-            }
-
-            Button(store.copy.userGuideAction) {
+            Button(menuCopy.userGuideAction) {
                 NotificationCenter.default.post(name: .quotaCapsuleShowOnboarding, object: nil)
             }
 
-            Button(store.copy.contactAuthorTitle) {
+            Button(menuCopy.contactAuthorTitle) {
                 NotificationCenter.default.post(name: .quotaCapsuleShowContactAuthor, object: nil)
             }
 
-            Button(store.copy.aboutFeedbackTitle) {
+            Button(menuCopy.aboutFeedbackTitle) {
                 NotificationCenter.default.post(name: .quotaCapsuleShowAboutFeedback, object: nil)
             }
 
@@ -684,7 +701,7 @@ struct PanelQuickActionsView: View {
             Button(role: .destructive) {
                 NSApp.terminate(nil)
             } label: {
-                Label(store.copy.quitAction, systemImage: "power")
+                Label(menuCopy.quitAction, systemImage: "power")
             }
         } label: {
             panelActionLabel(title: store.copy.moreActionsTitle, symbol: "ellipsis.circle")

@@ -8,9 +8,11 @@ All notable user-visible and repository-governance changes are recorded here.
 
 ### Fixed
 
-- Remove the floating panel's hover-dependent language submenu and place all three language actions directly in the More Actions menu.
-- Add a regression guard that rejects nested `Menu` layers in the ticking floating-panel action surface.
+- Remove the floating panel's hover-dependent language submenu and expose a globe-labelled `Language` menu as a first-level action beside More Actions.
+- Keep 简体中文、繁體中文 and English as direct actions inside the one-layer Language menu, while More Actions retains the remaining tools.
+- Add regression guards that reject nested `Menu` layers and require the first-level Language label to remain discoverable in all three interface locales.
 - Correct the previous acceptance claim: the 0.3.1 check covered the separate AppKit status menu and sampled only the endpoints, not the recorded pointer path through the SwiftUI panel submenu.
+- Correct the PR #20 acceptance scope: removing flicker did not make a language selector hidden behind localized More Actions understandable to a user who cannot read the active locale.
 
 ### Documentation
 
