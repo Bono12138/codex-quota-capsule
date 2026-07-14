@@ -274,22 +274,22 @@ Update `docs/operations/release-evidence/v0.3.2-beta.1.md` with counts, duration
 - Consumes: clean branch, installed acceptance evidence, required `node` and `macos-swift` checks.
 - Produces: merged public source, prerelease tag, downloadable artifact, and one supported installed app.
 
-- [ ] **Step 1: Push and open a ready PR**
+- [x] **Step 1: Push and open a ready PR**
 
 The PR describes the accessibility root cause, the sibling-menu design, TDD evidence, installed interaction evidence, and why PR #20 alone was insufficient.
 
-- [ ] **Step 2: Wait for required checks and squash-merge**
+- [x] **Step 2: Wait for required checks and squash-merge**
 
 Require `node` and `macos-swift` to pass. Confirm every commit and the squash merge map only to GitHub user `Bono12138`.
 
-- [ ] **Step 3: Re-run the full gate on exact merged `main`**
+- [x] **Step 3: Re-run the full gate on exact merged `main`**
 
 Pull protected `main`, run Task 4 Step 1 again, package and install again, and confirm `QuotaCapsuleGitCommit` equals the merged-main short hash with an empty source-patch fingerprint.
 
-- [ ] **Step 4: Create and verify the prerelease**
+- [x] **Step 4: Create and verify the prerelease**
 
 Create tag `v0.3.2-beta.1`, wait for tag CI, publish a GitHub prerelease with the exact merged-main ZIP, and compare the local SHA-256 with the asset downloaded back from GitHub.
 
-- [ ] **Step 5: Clean transient artifacts and report links**
+- [x] **Step 5: Clean transient artifacts and report links**
 
 Remove generated `dist/beta/Quota Capsule Beta.app` after the release ZIP is verified, retain only `/Applications/Quota Capsule Beta.app`, verify GitHub contributors still lists only `Bono12138`, and report the PR, release, competitor research, colleague brief, CI, checksum, and remaining honest limitations.
