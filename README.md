@@ -124,6 +124,8 @@ The first public beta is a macOS app built from source. It currently includes:
 
 算法公式、边界和变更规则见 [Forecast Methodology / 预测方法](docs/product/forecast-methodology.md)。
 
+最新市场比较见 [Competitor Landscape / 竞品更新](docs/research/competitor-landscape-2026-07-14.md)。给同事或合作者的简短介绍见 [Colleague Project Brief / 项目介绍](docs/distribution/colleague-project-brief.md)。
+
 ## Roadmap / 路线图
 
 - Better onboarding and in-product guidance.

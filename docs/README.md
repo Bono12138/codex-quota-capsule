@@ -19,8 +19,10 @@ This index maps maintained product knowledge. Code and current documents must ag
 ## Research And Distribution
 
 - `research/data-source-probe.md` — current source evidence and limitations.
+- `research/competitor-landscape-2026-07-14.md` — current OpenAI quota-window evidence, live competitor matrix, and differentiated positioning.
 - `research/reset-credit-timing-optimization.md` — reset-credit facts, optimization model, and the boundary between shipped display/history and deferred advice.
 - `distribution/codex-assisted-distribution-strategy.md` — public installation and trust model.
+- `distribution/colleague-project-brief.md` — shareable Chinese explanation of the project, its advantages, and honest limitations.
 - `distribution/public-launch-materials.md` — maintained public launch assets.
 - `distribution/quota-anxiety-psychology-notes.md` — user problem research.
 

@@ -56,7 +56,7 @@
    展示桌面胶囊、菜单栏状态、展开详情、颜色状态和“能撑到几点/刷新余量/周预测”等关键画面。重点是“扫一眼就知道能不能继续工作”，少讲内部实现。
 
 6. 115-145 秒：市场调研和差异  
-   提到 QuotaGem、ClaudeBar、Codex Quota Viewer、codex-quota、opencode-quota 等项目。表达为：已有工具证明了用量可视化有需求；Quota Capsule 选择把默认体验放在桌面常驻、低打断、直接判断上。
+   提到 CodexBar、ClaudeBar、`usage`、codexU、onWatch、Quota Float 等当前活跃项目。表达为：已有工具在多 provider、历史分析、账号管理、跨平台和悬浮形态上各有优势；Quota Capsule 选择把默认体验收窄为 Weekly Only、低打断、带置信度的续航判断和未来 24 小时预算。
 
 7. 145-170 秒：开源和分发方式  
    解释这是公开内测，首发走 GitHub + Codex-assisted 安装提示词。强调用户让自己的 Codex clone、测试、构建和启动，敏感信息留在本机。
@@ -84,7 +84,7 @@
 
 最近我自己在高强度使用 Codex 和各种 agent 工具的时候，遇到一个很具体的问题：我经常同时跑好几个任务，也会反复去看 usage 或 quota 页面。但一个简单的百分比其实不够用。比如还剩 40%，这到底安全不安全？按我现在这个速度，能不能撑到下一次刷新？如果撑不到，大概几点会见底？
 
-我后来做了一些调研，也看了不少相关项目。比如 QuotaGem、ClaudeBar、Codex Quota Viewer、codex-quota、opencode-quota，还有一些浏览器插件或命令行工具。它们证明了 quota 可视化确实有需求，也有不少做得很认真。但我自己的感受是，有些更像 dashboard，有些偏账号或 session 管理，有些主要在终端里用。它们都很有价值，但我的需求更轻：我只想在工作时扫一眼，就知道现在还能不能继续干活。
+我后来做了一些调研，也持续跟踪 CodexBar、ClaudeBar、usage、codexU、onWatch、Quota Float 等项目。它们已经证明 quota 可视化和节奏管理是真需求，而且有的在多 provider、历史报告、账号管理、burn-rate 预测或跨平台上做得比我更完整。我的取舍不是再堆一个大 dashboard，而是把问题收窄：我只想在工作时扫一眼，就知道本周额度照这个速度能不能撑到重置，以及未来 24 小时还能放心用多少。
 
 所以我做了 Quota Capsule，中文我暂时叫它“额度胶囊”。
 
@@ -104,7 +104,7 @@
 
 我做了一个 Codex 额度续航小工具，叫 Quota Capsule，中文暂时叫“额度胶囊”。
 
-它解决的问题很简单：还剩 40% 周额度时，我到底能不能撑到下一次刷新？它会常驻 Mac 桌面和菜单栏，把 Codex 周速度变成正在校准、够用、偏快、可能不够、已用尽、数据暂不可用这些直接判断，并给出未来 24 小时建议。
+它解决的问题很简单：还剩 40% 周额度时，我到底能不能撑到下一次刷新？它会常驻 Mac 桌面和菜单栏，把 Codex 周速度变成初步判断、够用、偏快、可能不够、已用尽、数据暂不可用这些直接判断，并给出未来 24 小时建议。
 
 项目完全开源。早期安装方式是把 GitHub 里的提示词交给自己的 Codex，让 Codex 帮你在本机 clone、构建和启动。prompt、session、token、代码内容都留在本机。
 
@@ -165,17 +165,9 @@ npm run audit:repository
 
 ## 当前市场调研引用
 
-已经记录在本仓库：
+当前公开、可复核的研究：
 
-- `docs/research/competitors/2026-07-01-competitor-visual-and-product-archive.md`
-- `docs/research/competitors/2026-07-01-competitor-trial-stage.md`
+- `docs/research/competitor-landscape-2026-07-14.md`
+- `docs/distribution/colleague-project-brief.md`
 
-可在公开视频中点名但不使用第三方截图的项目：
-
-- QuotaGem: https://github.com/gyozalab/QuotaGem
-- ClaudeBar: https://github.com/tddworks/ClaudeBar
-- Codex Quota Viewer: https://github.com/Half-Melon/Codex-Quota-Viewer
-- codex-quota / CQ: https://github.com/deLiseLINO/codex-quota
-- opencode-quota: https://github.com/slkiser/opencode-quota
-
-公开视频里只讲产品形态和差异，不把未确认授权的竞品截图放进公开仓库。
+2026-07-01 的旧竞品试用和第三方截图只保留在本机归档，不再作为公开仓库的当前结论。公开视频可以引用新研究中的项目链接和公开 README 事实，但不把未确认授权的第三方截图复制进公开仓库，也不把“当前只返回周窗口”表述为 OpenAI 的永久承诺。
