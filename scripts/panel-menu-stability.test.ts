@@ -31,4 +31,14 @@ test("the floating panel exposes sibling one-layer language and More menus", () 
   expect(languageMenu).toContain("store.selectLocale(.en)");
   expect(moreActionsMenu.match(/\bMenu\s*\{/g) ?? []).toHaveLength(1);
   expect(moreActionsMenu).not.toContain("store.selectLocale(");
+  expect(panelActions).toContain("@State private var menuCopy: QuotaCopy");
+  expect(panelActions).toContain(".onChange(of: store.copy)");
+  expect(moreActionsMenu).toContain("Button(menuCopy.openStatusMenuAction)");
+  expect(moreActionsMenu).toContain("Button(menuCopy.toggleCapsuleAction)");
+  expect(moreActionsMenu).toContain("Button(menuCopy.userGuideAction)");
+  expect(moreActionsMenu).toContain("Button(menuCopy.contactAuthorTitle)");
+  expect(moreActionsMenu).toContain("Button(menuCopy.aboutFeedbackTitle)");
+  expect(moreActionsMenu).toContain("Label(menuCopy.quitAction, systemImage: \"power\")");
+  expect(moreActionsMenu).not.toContain("Button(store.copy.");
+  expect(moreActionsMenu).not.toContain("Label(store.copy.quitAction");
 });
