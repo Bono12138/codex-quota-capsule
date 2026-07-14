@@ -157,6 +157,14 @@ struct WeeklyDisplayModelTests {
         #expect(models.allSatisfy { !$0.defaultText.contains("5 小时") && !$0.defaultText.contains("5 小時") })
     }
 
+    @Test("panel language entry stays discoverable in every locale")
+    func panelLanguageEntryStaysDiscoverable() {
+        for locale in [QuotaLocale.zhHans, .zhHant, .en] {
+            let copy = QuotaCopy(locale: locale)
+            #expect(copy.languageMenuTitle.contains("Language"))
+        }
+    }
+
     @Test("English status labels include the evidence-driven early estimate")
     func englishStatusVocabulary() {
         let copy = QuotaCopy(locale: .en)
