@@ -558,6 +558,7 @@ final class QuotaStore: ObservableObject {
                         sourceStatus: .ok,
                         fetchedAt: previousSnapshot.fetchedAt,
                         weeklyWindow: acceptedWindow,
+                        resetCreditBank: previousSnapshot.resetCreditBank,
                         errorMessage: nil
                     )
                 }

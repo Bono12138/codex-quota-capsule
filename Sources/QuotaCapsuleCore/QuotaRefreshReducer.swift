@@ -86,6 +86,7 @@ public enum QuotaRefreshReducer {
                 sourceStatus: .stale,
                 fetchedAt: currentSnapshot.fetchedAt,
                 weeklyWindow: currentSnapshot.weeklyWindow,
+                resetCreditBank: currentSnapshot.resetCreditBank,
                 errorMessage: cleanedError
             )
             return QuotaRefreshReduction(

@@ -1,11 +1,12 @@
 import { execFile } from "node:child_process";
+import { createHash } from "node:crypto";
 import { spawn, type ChildProcessWithoutNullStreams } from "node:child_process";
 import { constants } from "node:fs";
 import { access } from "node:fs/promises";
 import { homedir } from "node:os";
 import { StringDecoder } from "node:string_decoder";
 import { promisify } from "node:util";
-import type { AgentQuotaSnapshot, QuotaWindow } from "@quota-capsule/core";
+import type { AgentQuotaSnapshot, QuotaWindow, ResetCredit, ResetCreditBankSummary, ResetCreditStatus } from "@quota-capsule/core";
 
 const execFileAsync = promisify(execFile);
 
@@ -153,6 +154,7 @@ export function parseCodexRateLimits(
   options: CodexRateLimitParseOptions,
 ): AgentQuotaSnapshot {
   const rateLimits = readObject(readObject(result).rateLimits);
+  const resetCreditBank = parseResetCreditBank(readObject(result).rateLimitResetCredits, options.fetchedAt);
   const windows = ["primary", "secondary"]
     .map((key) => parseRateLimitWindow(rateLimits[key]))
     .filter((window): window is QuotaWindow => Boolean(window));
@@ -169,6 +171,7 @@ export function parseCodexRateLimits(
       provider: "codex",
       sourceStatus: "error",
       fetchedAt: options.fetchedAt,
+      ...(resetCreditBank ? { resetCreditBank } : {}),
       errorMessage: "codex app-server rateLimits did not include any usable windows.",
     };
   }
@@ -178,7 +181,90 @@ export function parseCodexRateLimits(
     sourceStatus: "ok",
     fetchedAt: options.fetchedAt,
     weeklyWindow,
+    ...(resetCreditBank ? { resetCreditBank } : {}),
   };
+}
+
+function parseResetCreditBank(value: unknown, fetchedAt: Date): ResetCreditBankSummary | undefined {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return undefined;
+  const bank = value as Record<string, unknown>;
+  const availableCount = readNumber(bank.availableCount);
+  if (availableCount === null || !Number.isInteger(availableCount) || availableCount < 0 || availableCount > 1_000_000) {
+    return undefined;
+  }
+  if (bank.credits == null) {
+    return { availableCount, credits: null, detailState: "countOnly", fetchedAt };
+  }
+  if (!Array.isArray(bank.credits)) {
+    return { availableCount, credits: null, detailState: "countOnly", fetchedAt };
+  }
+  const credits = bank.credits
+    .map(parseResetCredit)
+    .filter((credit): credit is ResetCredit => credit !== null)
+    .sort(compareResetCredits);
+  const validatedAvailableCount = credits.filter((credit) => credit.status === "available").length;
+  return {
+    availableCount,
+    credits,
+    detailState: validatedAvailableCount < availableCount ? "capped" : "complete",
+    fetchedAt,
+  };
+}
+
+function parseResetCredit(value: unknown): ResetCredit | null {
+  const row = readObject(value);
+  const rawId = opaqueId(row.id);
+  const resetType = trimmedNonemptyString(row.resetType, 120);
+  if (!rawId || !resetType) return null;
+  const grantedAt = parseOptionalTimestamp(row, "grantedAt");
+  const expiresAt = parseOptionalTimestamp(row, "expiresAt");
+  if (grantedAt === undefined || expiresAt === undefined) return null;
+  const rawStatus = typeof row.status === "string" ? row.status : "";
+  const status: ResetCreditStatus = ["available", "redeeming", "redeemed"].includes(rawStatus)
+    ? rawStatus as ResetCreditStatus
+    : "unknown";
+  return {
+    fingerprint: resetCreditFingerprint(rawId),
+    resetType,
+    status,
+    grantedAt,
+    grantTimeSource: grantedAt ? "provider" : "unknown",
+    expiresAt,
+    title: trimmedNonemptyString(row.title, 120),
+  };
+}
+
+function parseOptionalTimestamp(row: Record<string, unknown>, key: string): Date | null | undefined {
+  const value = row[key];
+  if (value == null) return null;
+  const seconds = readNumber(value);
+  if (seconds === null || seconds < 946_684_800 || seconds > 4_102_444_800) return undefined;
+  return new Date(seconds * 1_000);
+}
+
+function trimmedNonemptyString(value: unknown, maximumLength: number): string | null {
+  if (typeof value !== "string") return null;
+  const trimmed = value.trim();
+  return trimmed.length === 0 ? null : [...trimmed].slice(0, maximumLength).join("");
+}
+
+function opaqueId(value: unknown): string | null {
+  if (typeof value !== "string" || value.trim().length === 0 || Buffer.byteLength(value, "utf8") > 16_384) return null;
+  return value;
+}
+
+function resetCreditFingerprint(rawId: string): string {
+  return createHash("sha256").update(rawId, "utf8").digest("hex");
+}
+
+function compareResetCredits(left: ResetCredit, right: ResetCredit): number {
+  const leftExpiry = left.expiresAt?.getTime() ?? Number.POSITIVE_INFINITY;
+  const rightExpiry = right.expiresAt?.getTime() ?? Number.POSITIVE_INFINITY;
+  if (leftExpiry !== rightExpiry) return leftExpiry - rightExpiry;
+  const leftGrant = left.grantedAt?.getTime() ?? Number.POSITIVE_INFINITY;
+  const rightGrant = right.grantedAt?.getTime() ?? Number.POSITIVE_INFINITY;
+  if (leftGrant !== rightGrant) return leftGrant - rightGrant;
+  return left.fingerprint.localeCompare(right.fingerprint);
 }
 
 class ProcessCodexAppServerTransport implements CodexAppServerTransport {

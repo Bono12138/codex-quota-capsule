@@ -8,11 +8,33 @@ export type QuotaWindow = {
   resetsAt: Date;
 };
 
+export type ResetCreditStatus = "available" | "redeeming" | "redeemed" | "unknown";
+export type ResetCreditDetailState = "countOnly" | "complete" | "capped";
+export type ResetCreditGrantTimeSource = "provider" | "inferredExpiryMinus30Days" | "unknown";
+
+export type ResetCredit = {
+  fingerprint: string;
+  resetType: string;
+  status: ResetCreditStatus;
+  grantedAt: Date | null;
+  grantTimeSource: ResetCreditGrantTimeSource;
+  expiresAt: Date | null;
+  title: string | null;
+};
+
+export type ResetCreditBankSummary = {
+  availableCount: number;
+  credits: ResetCredit[] | null;
+  detailState: ResetCreditDetailState;
+  fetchedAt: Date;
+};
+
 export type AgentQuotaSnapshot = {
   provider: string;
   sourceStatus: SourceStatus;
   fetchedAt: Date;
   weeklyWindow?: QuotaWindow;
+  resetCreditBank?: ResetCreditBankSummary;
   errorMessage?: string;
 };
 

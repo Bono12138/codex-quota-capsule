@@ -106,11 +106,173 @@ struct WeeklySourceTests {
         #expect(snapshot.weeklyWindow == nil)
     }
 
+    @Test("reset credit details preserve count, nullable expiry, and safe identity")
+    func parserReadsResetCreditBank() throws {
+        let snapshot = CodexRateLimitParser.parse(
+            result: [
+                "rateLimits": ["primary": window(used: 18, minutes: 10_080, resetOffset: 500_000)],
+                "rateLimitResetCredits": [
+                    "availableCount": 3,
+                    "credits": [
+                        [
+                            "id": "fake-credit-a",
+                            "resetType": "codexRateLimits",
+                            "status": "available",
+                            "grantedAt": now.timeIntervalSince1970 - 86_400,
+                            "expiresAt": now.timeIntervalSince1970 + 86_400,
+                            "title": "  Full reset  ",
+                            "description": "must be ignored"
+                        ],
+                        [
+                            "id": "fake-credit-b",
+                            "resetType": "codexRateLimits",
+                            "status": "unknown",
+                            "grantedAt": now.timeIntervalSince1970 - 43_200,
+                            "expiresAt": NSNull(),
+                            "title": NSNull(),
+                            "description": NSNull()
+                        ]
+                    ]
+                ]
+            ],
+            fetchedAt: now
+        )
+
+        let bank = try #require(snapshot.resetCreditBank)
+        #expect(bank.availableCount == 3)
+        #expect(bank.fetchedAt == now)
+        #expect(bank.detailState == .capped)
+        #expect(bank.credits?.count == 2)
+        #expect(bank.credits?.first?.fingerprint.count == 64)
+        #expect(bank.credits?.first?.fingerprint != "fake-credit-a")
+        #expect(bank.credits?.first?.title == "Full reset")
+        #expect(bank.credits?.last?.expiresAt == nil)
+    }
+
+    @Test("reset credit detail absence is distinct from an empty complete bank")
+    func parserDistinguishesCountOnlyAndEmptyDetails() throws {
+        let countOnly = CodexRateLimitParser.parse(
+            result: resetCreditPayload(availableCount: 2, credits: NSNull()),
+            fetchedAt: now
+        )
+        let empty = CodexRateLimitParser.parse(
+            result: resetCreditPayload(availableCount: 0, credits: []),
+            fetchedAt: now
+        )
+
+        #expect(countOnly.resetCreditBank?.detailState == .countOnly)
+        #expect(countOnly.resetCreditBank?.credits == nil)
+        #expect(empty.resetCreditBank?.detailState == .complete)
+        #expect(empty.resetCreditBank?.credits == [])
+    }
+
+    @Test("nullable grant time is retained but malformed timestamps reject only their rows")
+    func parserValidatesResetCreditTimesPerRow() throws {
+        let snapshot = CodexRateLimitParser.parse(
+            result: resetCreditPayload(
+                availableCount: 3,
+                credits: [
+                    [
+                        "id": "fake-no-grant",
+                        "resetType": "codexRateLimits",
+                        "status": "available",
+                        "grantedAt": NSNull(),
+                        "expiresAt": now.timeIntervalSince1970 + 90_000
+                    ],
+                    [
+                        "id": "fake-bad-grant",
+                        "resetType": "codexRateLimits",
+                        "status": "available",
+                        "grantedAt": "not-a-time",
+                        "expiresAt": now.timeIntervalSince1970 + 100_000
+                    ],
+                    [
+                        "id": "fake-bad-expiry",
+                        "resetType": "codexRateLimits",
+                        "status": "available",
+                        "grantedAt": now.timeIntervalSince1970,
+                        "expiresAt": -1
+                    ]
+                ]
+            ),
+            fetchedAt: now
+        )
+
+        let bank = try #require(snapshot.resetCreditBank)
+        #expect(bank.credits?.count == 1)
+        #expect(bank.credits?.first?.grantedAt == nil)
+        #expect(bank.credits?.first?.grantTimeSource == .unknown)
+        #expect(bank.detailState == .capped)
+    }
+
+    @Test("a missing reset credit bank stays absent")
+    func parserKeepsMissingResetCreditBankAbsent() {
+        let snapshot = CodexRateLimitParser.parse(
+            result: ["rateLimits": ["primary": window(used: 18, minutes: 10_080, resetOffset: 500_000)]],
+            fetchedAt: now
+        )
+
+        #expect(snapshot.resetCreditBank == nil)
+    }
+
+    @Test("a failed refresh preserves the last accepted reset credit bank")
+    func staleReducerPreservesResetCreditBank() {
+        let bank = ResetCreditBankSummary(
+            availableCount: 2,
+            credits: nil,
+            detailState: .countOnly,
+            fetchedAt: now
+        )
+        let current = AgentQuotaSnapshot(
+            provider: "codex",
+            sourceStatus: .ok,
+            fetchedAt: now,
+            weeklyWindow: QuotaWindow(
+                label: "weekly",
+                windowMinutes: 10_080,
+                usedPercent: 18,
+                remainingPercent: 82,
+                resetsAt: now.addingTimeInterval(500_000)
+            ),
+            resetCreditBank: bank,
+            errorMessage: nil
+        )
+        let failure = AgentQuotaSnapshot(
+            provider: "codex",
+            sourceStatus: .error,
+            fetchedAt: now.addingTimeInterval(60),
+            weeklyWindow: nil,
+            errorMessage: "temporary failure"
+        )
+
+        let reduced = QuotaRefreshReducer.reduce(
+            currentSnapshot: current,
+            currentLastRefreshText: "10:00",
+            newSnapshot: failure,
+            now: failure.fetchedAt,
+            attemptText: "10:01"
+        )
+
+        #expect(reduced.snapshot.sourceStatus == .stale)
+        #expect(reduced.snapshot.resetCreditBank == bank)
+        #expect(reduced.latestAttemptSnapshot.resetCreditBank == nil)
+    }
+
     private func window(used: Double, minutes: Int, resetOffset: TimeInterval) -> [String: Any] {
         [
             "usedPercent": used,
             "windowDurationMins": minutes,
             "resetsAt": now.addingTimeInterval(resetOffset).timeIntervalSince1970
+        ]
+    }
+
+    private func resetCreditPayload(availableCount: Int, credits: Any) -> [String: Any] {
+        [
+            "rateLimits": ["primary": window(used: 18, minutes: 10_080, resetOffset: 500_000)],
+            "rateLimitResetCredits": [
+                "availableCount": availableCount,
+                "credits": credits
+            ]
         ]
     }
 }
