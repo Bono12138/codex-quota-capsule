@@ -28,6 +28,7 @@ export {
   activitySegments,
   countUpwardTransitions,
   cycleEvidence,
+  forecastConfidenceForEvidence,
   fusePaceEvidence,
   historicalEvidence,
   quantizedInterval,

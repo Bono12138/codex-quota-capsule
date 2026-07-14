@@ -196,6 +196,72 @@ struct WeeklyPaceEvidenceTests {
         ) == nil)
     }
 
+    @Test("three-source fusion resists one wide outlier")
+    func fusionUsesMedianMAD() throws {
+        let fused = try #require(WeeklyPaceEvidence.fuse([
+            evidence(.cycle, 46, 50),
+            evidence(.recent, 48, 54),
+            evidence(.activity, 5, 92)
+        ]))
+
+        #expect(abs(fused.lower - 45.5) < 0.000_001)
+        #expect(abs(fused.upper - 51.5) < 0.000_001)
+    }
+
+    @Test("two-source fusion returns the honest hull")
+    func twoSourceFusionUsesHull() throws {
+        let fused = try #require(WeeklyPaceEvidence.fuse([
+            evidence(.cycle, 8, 10),
+            evidence(.recent, 14, 18)
+        ]))
+
+        #expect(fused == PaceBand(lower: 8, upper: 18))
+    }
+
+    @Test("decision disagreement forces low confidence")
+    func decisionDisagreementIsLowConfidence() {
+        let paths = [
+            evidence(.cycle, 7, 9),
+            evidence(.recent, 11, 13),
+            evidence(.activity, 16, 18)
+        ]
+
+        #expect(WeeklyPaceEvidence.confidence(
+            evidence: paths,
+            coverageHours: 24,
+            transitionCount: 3,
+            sustainable: 12
+        ) == .low)
+    }
+
+    @Test("agreement needs coverage before confidence rises")
+    func agreementUsesCoverageThresholds() {
+        let paths = [
+            evidence(.cycle, 8, 10),
+            evidence(.recent, 9, 11),
+            evidence(.activity, 10, 12)
+        ]
+
+        #expect(WeeklyPaceEvidence.confidence(
+            evidence: paths,
+            coverageHours: 2.99,
+            transitionCount: 1,
+            sustainable: 14
+        ) == .low)
+        #expect(WeeklyPaceEvidence.confidence(
+            evidence: paths,
+            coverageHours: 3,
+            transitionCount: 1,
+            sustainable: 14
+        ) == .medium)
+        #expect(WeeklyPaceEvidence.confidence(
+            evidence: paths,
+            coverageHours: 24,
+            transitionCount: 3,
+            sustainable: 14
+        ) == .high)
+    }
+
     private func window(used: Double, resetDays: Double) -> QuotaWindow {
         QuotaWindow(
             label: "weekly",
@@ -221,6 +287,16 @@ struct WeeklyPaceEvidenceTests {
             remainingPercent: 100 - used,
             cycleID: cycleID,
             segmentID: 0
+        )
+    }
+
+    private func evidence(_ kind: PaceEvidenceKind, _ lower: Double, _ upper: Double) -> PaceEvidence {
+        PaceEvidence(
+            kind: kind,
+            bandPerDay: PaceBand(lower: lower, upper: upper),
+            reliability: 0.6,
+            transitionCount: 2,
+            coverageHours: 8
         )
     }
 }

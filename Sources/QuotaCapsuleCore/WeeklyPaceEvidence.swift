@@ -241,11 +241,65 @@ public enum WeeklyPaceEvidence {
     }
 
     public static func fuse(_ evidence: [PaceEvidence]) -> PaceBand? {
-        guard !evidence.isEmpty else { return nil }
-        return PaceBand(
-            lower: weightedQuantile(evidence.map { ($0.bandPerDay.lower, $0.reliability) }, quantile: 0.25),
-            upper: weightedQuantile(evidence.map { ($0.bandPerDay.upper, $0.reliability) }, quantile: 0.75)
-        )
+        let valid = evidence.filter {
+            $0.reliability.isFinite && $0.reliability > 0
+                && $0.coverageHours.isFinite && $0.coverageHours >= 0
+                && $0.bandPerDay.lower.isFinite && $0.bandPerDay.upper.isFinite
+                && $0.bandPerDay.lower >= 0
+                && $0.bandPerDay.upper >= $0.bandPerDay.lower
+        }
+        guard !valid.isEmpty else { return nil }
+        if valid.count == 1 { return valid[0].bandPerDay }
+        if valid.count == 2 {
+            return PaceBand(
+                lower: min(valid[0].bandPerDay.lower, valid[1].bandPerDay.lower),
+                upper: max(valid[0].bandPerDay.upper, valid[1].bandPerDay.upper)
+            )
+        }
+
+        let midpoints = valid.map { ($0.bandPerDay.lower + $0.bandPerDay.upper) / 2 }
+        let center = median(midpoints)
+        let within = median(valid.map { ($0.bandPerDay.upper - $0.bandPerDay.lower) / 2 })
+        let disagreement = 1.4826 * median(midpoints.map { abs($0 - center) })
+        let halfWidth = max(within, disagreement)
+        return PaceBand(lower: max(0, center - halfWidth), upper: center + halfWidth)
+    }
+
+    public static func confidence(
+        evidence: [PaceEvidence],
+        coverageHours: Double,
+        transitionCount: Int,
+        sustainable: Double
+    ) -> ForecastConfidence {
+        let valid = evidence.filter {
+            $0.reliability.isFinite && $0.reliability > 0
+                && $0.coverageHours.isFinite && $0.coverageHours >= 0
+                && $0.bandPerDay.lower.isFinite && $0.bandPerDay.upper.isFinite
+                && $0.bandPerDay.lower >= 0
+                && $0.bandPerDay.upper >= $0.bandPerDay.lower
+        }
+        guard sustainable.isFinite, sustainable > 0,
+              coverageHours.isFinite, coverageHours >= 0,
+              valid.count >= 2, transitionCount > 0 else {
+            return .low
+        }
+        let decisions = Set(valid.map { paceDecision($0, sustainable: sustainable) })
+        guard decisions.count == 1 else { return .low }
+
+        let midpoints = valid.map { ($0.bandPerDay.lower + $0.bandPerDay.upper) / 2 }
+        let average = midpoints.reduce(0, +) / Double(midpoints.count)
+        let agreement = ((midpoints.max() ?? 0) - (midpoints.min() ?? 0)) / max(1, average)
+        if coverageHours >= 24,
+           transitionCount >= 3,
+           valid.count >= 3,
+           agreement <= 0.5 {
+            return .high
+        }
+        if coverageHours >= 3,
+           valid.map(\.reliability).max() ?? 0 >= 0.25 {
+            return .medium
+        }
+        return .low
     }
 
     public static func countUpwardTransitions(_ observations: [WeeklyObservation]) -> Int {
@@ -254,6 +308,13 @@ public enum WeeklyPaceEvidence {
                 count += 1
             }
         }
+    }
+
+    private static func paceDecision(_ evidence: PaceEvidence, sustainable: Double) -> Int {
+        let midpoint = (evidence.bandPerDay.lower + evidence.bandPerDay.upper) / 2
+        if midpoint < sustainable * 0.90 { return -1 }
+        if midpoint > sustainable * 1.10 { return 1 }
+        return 0
     }
 
     static func quantizedInterval(_ value: Double) -> PercentageBand {
@@ -299,20 +360,6 @@ public enum WeeklyPaceEvidence {
             lower: median(candidates.map(\.lower)),
             upper: median(candidates.map(\.upper))
         )
-    }
-
-    private static func weightedQuantile(
-        _ values: [(value: Double, weight: Double)],
-        quantile: Double
-    ) -> Double {
-        let ordered = values.sorted { $0.value < $1.value }
-        let total = ordered.reduce(0) { $0 + max(0.001, $1.weight) }
-        var cumulative = 0.0
-        for item in ordered {
-            cumulative += max(0.001, item.weight)
-            if cumulative >= total * quantile { return item.value }
-        }
-        return ordered.last?.value ?? 0
     }
 
     private static func median(_ values: [Double]) -> Double {

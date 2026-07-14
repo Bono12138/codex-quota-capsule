@@ -13,6 +13,7 @@ import {
   activityEvidence,
   countUpwardTransitions,
   cycleEvidence,
+  forecastConfidenceForEvidence,
   fusePaceEvidence,
   historicalEvidence,
   quantizedInterval,
@@ -250,7 +251,12 @@ export function predictWeeklyRunway(
     upper: window.remainingPercent - pace.lower * daysRemaining,
   };
   const transitionCount = historyMatchesLiveWindow ? countUpwardTransitions(active) : 0;
-  const confidence = forecastConfidence(active, evidence, transitionCount);
+  const firstActive = active[0];
+  const lastActive = active.at(-1);
+  const activeCoverageHours = firstActive && lastActive
+    ? Math.max(0, lastActive.fetchedAt.getTime() - firstActive.fetchedAt.getTime()) / 3_600_000
+    : 0;
+  const confidence = forecastConfidenceForEvidence(evidence, activeCoverageHours, transitionCount, sustainable);
   const state = evidence.length === 1 || transitionCount === 0
     ? "earlyEstimate"
     : projected.upper < 0
@@ -410,26 +416,6 @@ function exhaustionRange(remainingPercent: number, pace: PaceBand, now: Date): {
     earliest: new Date(now.getTime() + (remainingPercent / pace.upper) * 86_400_000),
     latest: pace.lower > 0 ? new Date(now.getTime() + (remainingPercent / pace.lower) * 86_400_000) : null,
   };
-}
-
-function forecastConfidence(
-  observations: WeeklyObservation[],
-  evidence: WeeklyRunwayForecast["paceEvidence"],
-  transitionCount: number,
-): WeeklyRunwayForecast["confidence"] {
-  const first = observations[0];
-  const last = observations.at(-1);
-  if (evidence.length <= 1 || transitionCount === 0 || !first || !last) return "low";
-  const coverage = last.fetchedAt.getTime() - first.fetchedAt.getTime();
-  return coverage >= RECENT_HORIZON_MS && transitionCount >= 3 && evidenceAgreement(evidence) <= 0.5 ? "high" : "medium";
-}
-
-function evidenceAgreement(evidence: WeeklyRunwayForecast["paceEvidence"]): number {
-  const midpoints = evidence.map((item) => (item.bandPerDay.lower + item.bandPerDay.upper) / 2);
-  const lower = Math.min(...midpoints);
-  const upper = Math.max(...midpoints);
-  const average = midpoints.reduce((sum, value) => sum + value, 0) / midpoints.length;
-  return (upper - lower) / Math.max(1, average);
 }
 
 function evidenceContainsMaterialOverspeed(

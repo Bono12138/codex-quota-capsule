@@ -1,4 +1,4 @@
-import type { PaceBand, PaceEvidence, PercentageBand, QuotaWindow, WeeklyObservation } from "./model";
+import type { ForecastConfidence, PaceBand, PaceEvidence, PercentageBand, QuotaWindow, WeeklyObservation } from "./model";
 
 const DAY_MS = 86_400_000;
 const MINIMUM_PAIR_MS = 30 * 60_000;
@@ -207,11 +207,47 @@ export function historicalEvidence(observations: WeeklyObservation[], currentCyc
 }
 
 export function fusePaceEvidence(evidence: PaceEvidence[]): PaceBand | null {
-  if (!evidence.length) return null;
-  return {
-    lower: weightedQuantile(evidence.map((item) => [item.bandPerDay.lower, item.reliability]), 0.25),
-    upper: weightedQuantile(evidence.map((item) => [item.bandPerDay.upper, item.reliability]), 0.75),
-  };
+  const valid = evidence.filter((item) => Number.isFinite(item.reliability) && item.reliability > 0
+    && Number.isFinite(item.coverageHours) && item.coverageHours >= 0
+    && Number.isFinite(item.bandPerDay.lower) && Number.isFinite(item.bandPerDay.upper)
+    && item.bandPerDay.lower >= 0 && item.bandPerDay.upper >= item.bandPerDay.lower);
+  if (!valid.length) return null;
+  if (valid.length === 1) return valid[0].bandPerDay;
+  if (valid.length === 2) {
+    return {
+      lower: Math.min(valid[0].bandPerDay.lower, valid[1].bandPerDay.lower),
+      upper: Math.max(valid[0].bandPerDay.upper, valid[1].bandPerDay.upper),
+    };
+  }
+  const midpoints = valid.map((item) => (item.bandPerDay.lower + item.bandPerDay.upper) / 2);
+  const center = median(midpoints);
+  const within = median(valid.map((item) => (item.bandPerDay.upper - item.bandPerDay.lower) / 2));
+  const disagreement = 1.4826 * median(midpoints.map((midpoint) => Math.abs(midpoint - center)));
+  const halfWidth = Math.max(within, disagreement);
+  return { lower: Math.max(0, center - halfWidth), upper: center + halfWidth };
+}
+
+export function forecastConfidenceForEvidence(
+  evidence: PaceEvidence[],
+  coverageHours: number,
+  transitionCount: number,
+  sustainable: number,
+): ForecastConfidence {
+  const valid = evidence.filter((item) => Number.isFinite(item.reliability) && item.reliability > 0
+    && Number.isFinite(item.coverageHours) && item.coverageHours >= 0
+    && Number.isFinite(item.bandPerDay.lower) && Number.isFinite(item.bandPerDay.upper)
+    && item.bandPerDay.lower >= 0 && item.bandPerDay.upper >= item.bandPerDay.lower);
+  if (!Number.isFinite(sustainable) || sustainable <= 0
+    || !Number.isFinite(coverageHours) || coverageHours < 0
+    || valid.length < 2 || transitionCount <= 0) return "low";
+  if (new Set(valid.map((item) => paceDecision(item, sustainable))).size !== 1) return "low";
+
+  const midpoints = valid.map((item) => (item.bandPerDay.lower + item.bandPerDay.upper) / 2);
+  const average = midpoints.reduce((sum, value) => sum + value, 0) / midpoints.length;
+  const agreement = (Math.max(...midpoints) - Math.min(...midpoints)) / Math.max(1, average);
+  if (coverageHours >= 24 && transitionCount >= 3 && valid.length >= 3 && agreement <= 0.5) return "high";
+  if (coverageHours >= 3 && Math.max(...valid.map((item) => item.reliability)) >= 0.25) return "medium";
+  return "low";
 }
 
 export function countUpwardTransitions(observations: WeeklyObservation[]): number {
@@ -220,6 +256,13 @@ export function countUpwardTransitions(observations: WeeklyObservation[]): numbe
     if (observations[index].usedPercent > observations[index - 1].usedPercent) count += 1;
   }
   return count;
+}
+
+function paceDecision(evidence: PaceEvidence, sustainable: number): number {
+  const midpoint = (evidence.bandPerDay.lower + evidence.bandPerDay.upper) / 2;
+  if (midpoint < sustainable * 0.90) return -1;
+  if (midpoint > sustainable * 1.10) return 1;
+  return 0;
 }
 
 export function quantizedInterval(value: number): PercentageBand {
@@ -251,17 +294,6 @@ function robustBand(observations: WeeklyObservation[]): PaceBand | null {
     lower: median(candidates.map((item) => item.lower)),
     upper: median(candidates.map((item) => item.upper)),
   } : null;
-}
-
-function weightedQuantile(values: Array<[number, number]>, quantile: number): number {
-  const ordered = values.slice().sort((left, right) => left[0] - right[0]);
-  const total = ordered.reduce((sum, item) => sum + Math.max(0.001, item[1]), 0);
-  let cumulative = 0;
-  for (const item of ordered) {
-    cumulative += Math.max(0.001, item[1]);
-    if (cumulative >= total * quantile) return item[0];
-  }
-  return ordered.at(-1)?.[0] ?? 0;
 }
 
 function median(values: number[]): number {

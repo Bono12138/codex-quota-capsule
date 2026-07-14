@@ -283,10 +283,17 @@ public enum WeeklyRunwayPredictor {
         let transitionCount = historyMatchesLiveWindow
             ? WeeklyPaceEvidence.countUpwardTransitions(active)
             : 0
-        let confidence = forecastConfidence(
-            active,
+        let activeCoverageHours: Double
+        if let first = active.first, let last = active.last {
+            activeCoverageHours = max(0, last.fetchedAt.timeIntervalSince(first.fetchedAt)) / 3_600
+        } else {
+            activeCoverageHours = 0
+        }
+        let confidence = WeeklyPaceEvidence.confidence(
             evidence: evidence,
-            transitionCount: transitionCount
+            coverageHours: activeCoverageHours,
+            transitionCount: transitionCount,
+            sustainable: sustainable
         )
         let state: WeeklyRunwayState
         if evidence.count == 1 || transitionCount == 0 {
@@ -342,32 +349,6 @@ public enum WeeklyRunwayPredictor {
     private static func activeCycleAndSegment(_ observations: [WeeklyObservation]) -> [WeeklyObservation] {
         guard let last = observations.last else { return [] }
         return observations.filter { $0.cycleID == last.cycleID && $0.segmentID == last.segmentID }
-    }
-
-    private static func forecastConfidence(
-        _ observations: [WeeklyObservation],
-        evidence: [PaceEvidence],
-        transitionCount: Int
-    ) -> ForecastConfidence {
-        guard evidence.count > 1,
-              transitionCount > 0,
-              let first = observations.first,
-              let last = observations.last else {
-            return .low
-        }
-        let coverage = last.fetchedAt.timeIntervalSince(first.fetchedAt)
-        if coverage >= recentHorizon,
-           transitionCount >= 3,
-           evidenceAgreement(evidence) <= 0.5 {
-            return .high
-        }
-        return .medium
-    }
-
-    private static func evidenceAgreement(_ evidence: [PaceEvidence]) -> Double {
-        let midpoints = evidence.map { ($0.bandPerDay.lower + $0.bandPerDay.upper) / 2 }
-        guard let lower = midpoints.min(), let upper = midpoints.max() else { return .infinity }
-        return (upper - lower) / max(1, midpoints.reduce(0, +) / Double(midpoints.count))
     }
 
     private static func evidenceContainsMaterialOverspeed(
