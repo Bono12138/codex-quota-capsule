@@ -1,7 +1,7 @@
 # Adaptive Weekly Forecast Methodology
 
 Status: current product contract
-Updated: 2026-07-13
+Updated: 2026-07-14
 Applies to: `v0.3.0-beta.1` and later until superseded
 
 ## Product question
@@ -46,11 +46,11 @@ Cycle evidence is available from the first valid reading. The cycle start is `re
 
 ### Recent evidence
 
-Recent evidence uses cleaned observations from the latest 24 hours. It requires at least one real upward transition but never requires a fixed number of elapsed hours. Pairwise slopes separated by at least 30 minutes are calculated with quantized bounds; median and median-absolute-deviation filtering limit outlier influence. Repeated flat polling adds elapsed idle time but does not inflate transition count.
+Recent evidence uses cleaned observations from the latest 24 hours. It requires at least one real upward transition but never requires a fixed number of elapsed hours. Pairwise slopes separated by at least 30 minutes are calculated with quantized bounds; median and median-absolute-deviation filtering limit outlier influence. Repeated flat polling adds elapsed idle time but does not inflate transition count or measurement uncertainty.
 
 ### Activity evidence
 
-Activity evidence uses at most the latest 72 hours of the current clean segment and classifies observed intervals:
+Activity evidence uses at most the latest 72 hours of the current clean segment. Each monotonic segment contributes one endpoint measurement interval, regardless of how often the same flat percentage was polled inside that segment. A downward correction closes the segment and begins a new one. The estimator then classifies observed intervals:
 
 - an upward transition within three hours is an active-burst interval;
 - an upward transition observed over three to twelve hours is ordinary use;
@@ -64,12 +64,13 @@ Historical prior evidence is optional and deliberately weak. A completed cycle m
 
 ## Robust fusion and disagreement
 
-Evidence is ordered by pace and fused with reliability-weighted quantiles:
+The fusion rule depends on how many independent estimators are available:
 
-- the lower forecast bound uses the weighted 25th percentile;
-- the upper forecast bound uses the weighted 75th percentile.
+- one source is preserved unchanged and remains low confidence;
+- two sources use the full hull of both pace bands;
+- three or more sources use the median midpoint and the widest of the median source half-width or `1.4826 × MAD(midpoints)`.
 
-This preserves meaningful disagreement between cycle, recent, activity, and historical estimates. One burst cannot dominate, but a slow recent pace also cannot erase heavy cycle-wide use. Confidence remains lower when estimators disagree.
+This median/MAD consensus prevents one burst from dominating while still widening when the independent estimators materially disagree. Confidence is low whenever evidence sources cross the sustainable-survival decision boundary. High confidence additionally requires at least 24 hours of clean coverage, three real transitions, at least three agreeing sources, and a narrow relative spread.
 
 ## Budget and projection math
 
@@ -87,7 +88,9 @@ next-24-hour budget = (remaining / hours to reset) * min(24, hours to reset)
 projected remaining at reset = R - P * H
 ```
 
-The product rounds the next-24-hour budget down for display. It does not subtract an arbitrary hidden buffer; uncertainty is represented by the forecast interval and confidence explanation.
+The projected interval is kept raw, including negative values. A range such as `[-20%, 44%]` means the faster evidence may exhaust the allowance before reset while the slower evidence may leave up to 44%; it must not be clamped into the misleading display `0%–44%`.
+
+The product rounds the next-24-hour budget down for display. It does not subtract an arbitrary hidden buffer; uncertainty is represented by the forecast interval and confidence explanation. The main surface describes the directly observed period and percentage change, for example “近 8 小时已用约 16%–18%”. A normalized `%/day` comparison is a diagnostic explanation only and never the primary user value.
 
 ## Outcome states
 
@@ -102,13 +105,13 @@ The calibrating state is a short, visible data-quality transition rather than a 
 
 A first accepted 0% reading is the exception to cycle-rate projection: quantization still preserves the possible [0, 0.5] measurement interval internally, but the UI says that no consumption has been observed and shows the next-24-hour budget without converting a few minutes of uncertainty into a pace warning. During candidate confirmation, the predictor creates a neutral calibrating presentation from the last accepted observation; it never computes a pace or risk verdict from the candidate.
 
-For activity evidence, uncertainty is propagated through the first and last endpoints of each continuous upward run. If the source reports 5% → 9%, the actual increase interval is [8.5 - 5.5, 9.5 - 4.5] = [3, 5], not [3.5, 4.5]. A continuous 5% → 6% → 7% run uses the shared middle reading only once and therefore becomes [1, 3], not the contradictory sum [0, 2] + [0, 2]. Separate runs are accumulated conservatively.
+For activity evidence, uncertainty is propagated through the first and last endpoints of each clean monotonic segment. If the source reports 5% → 9%, the actual increase interval is [8.5 - 5.5, 9.5 - 4.5] = [3, 5], not [3.5, 4.5]. A continuous 5% → 6% → 7% run uses the shared middle reading only once and therefore becomes [1, 3], not the contradictory sum [0, 2] + [0, 2]. Polling 5%, 5%, 5%, 9% produces the same band as polling only 5%, 9%; flat polls do not repeatedly spend the ±0.5-point endpoint uncertainty. Separate correction-delimited segments are accumulated conservatively.
 
 ## Confidence
 
-- Low confidence: cycle-only evidence or no real current-cycle transition.
-- Medium confidence: at least one real transition and multiple usable estimators.
-- High confidence: at least three spread transitions, at least 24 hours of clean coverage, fresh data, and agreement between estimators.
+- Low confidence: cycle-only evidence, no real current-cycle transition, a single source, or evidence sources disagree across a decision boundary.
+- Medium confidence: at least two agreeing estimators, one real transition, at least three hours of clean coverage, and usable reliability.
+- High confidence: at least three agreeing estimators, at least three spread transitions, at least 24 hours of clean coverage, fresh data, and narrow relative spread.
 
 The UI explains the reason in words, such as cycle-only evidence, observed transition count, or multi-source agreement. Color is never the only confidence or risk signal.
 
@@ -120,7 +123,7 @@ The stale surface also hides the pace-comparison sentence and forecast trend ban
 
 ## Cross-runtime parity and change control
 
-Swift is the native macOS runtime and TypeScript supports the reference/demo runtime. Both consume `fixtures/weekly-runway-cases.json` and must agree on quality state, forecast state, evidence behavior, budget rules, and edge cases.
+Swift is the native macOS runtime and TypeScript supports the reference/demo runtime. Both consume `fixtures/weekly-runway-cases.json` and `fixtures/weekly-pace-equivalence.json`. They must agree on quality state, forecast state, polling-invariant pace evidence, budget rules, and edge cases.
 
 Every algorithm change must include, in the same pull request:
 

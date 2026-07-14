@@ -2,6 +2,20 @@
 
 All notable user-visible and repository-governance changes are recorded here.
 
+## Unreleased
+
+### Changed
+
+- Make weekly pace evidence invariant to duplicate and flat polling frequency by measuring each clean monotonic segment once.
+- Fuse three or more independent pace estimates with a median/MAD consensus, while retaining conservative one- and two-source behavior and lowering confidence when sources disagree across the decision boundary.
+- Replace normalized daily-rate jargon on the main surface with the actual observed duration and allowance change.
+- Explain cross-zero reset projections honestly instead of clamping negative outcomes into a misleading `0%–Y%` range.
+
+### Fixed
+
+- Keep the status menu and language submenu stable while open by applying immutable presentation snapshots and deferring the latest background update until menu tracking ends.
+- Add shared Swift/TypeScript polling-equivalence fixtures so sparse and dense observations of the same real change cannot silently diverge again.
+
 ## 0.3.0-beta.1 — 2026-07-13
 
 ### Changed

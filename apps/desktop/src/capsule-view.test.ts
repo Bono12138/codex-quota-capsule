@@ -14,6 +14,7 @@ function forecast(overrides: Partial<WeeklyRunwayForecast> = {}): WeeklyRunwayFo
     recentRateBandPerDay: { lower: 6, upper: 8 },
     cycleRateBandPerDay: { lower: 5, upper: 8 },
     last24HourUsageBand: { lower: 4, upper: 6 },
+    observedUsage: null,
     projectedRemainingBandAtReset: { lower: 16, upper: 23 },
     estimatedEmptyAtRange: null,
     next24HourBudget: 12,
