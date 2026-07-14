@@ -46,6 +46,29 @@ struct WeeklyFixtureParityTests {
         let expected: Expected
     }
 
+    private struct PaceEquivalenceFixture: Decodable {
+        struct Sample: Decodable {
+            let hoursBeforeNow: Double
+            let usedPercent: Double
+        }
+
+        struct ExpectedBand: Decodable {
+            let lower: Double
+            let upper: Double
+        }
+
+        struct Case: Decodable {
+            let id: String
+            let now: String
+            let sparse: [Sample]
+            let polled: [Sample]
+            let expectedIncreaseBand: ExpectedBand
+        }
+
+        let version: Int
+        let cases: [Case]
+    }
+
     @Test("shared JSON cases produce the exact native results")
     func sharedCasesMatchNativeEngine() throws {
         let url = URL(fileURLWithPath: FileManager.default.currentDirectoryPath)
@@ -123,6 +146,40 @@ struct WeeklyFixtureParityTests {
             if testCase.expected.exhaustionAtNow == true {
                 #expect(forecast.estimatedEmptyAtRange?.earliest == now, "exhausted lower bound mismatch in \(testCase.id)")
                 #expect(forecast.estimatedEmptyAtRange?.latest == now, "exhausted upper bound mismatch in \(testCase.id)")
+            }
+        }
+    }
+
+    @Test("polling-equivalence JSON produces identical native activity bands")
+    func pollingEquivalenceMatchesNativeEngine() throws {
+        let url = URL(fileURLWithPath: FileManager.default.currentDirectoryPath)
+            .appendingPathComponent("fixtures/weekly-pace-equivalence.json")
+        let fixture = try JSONDecoder().decode(PaceEquivalenceFixture.self, from: Data(contentsOf: url))
+        #expect(fixture.version == 1)
+
+        for testCase in fixture.cases {
+            let now = try parseDate(testCase.now)
+            let expected = PaceBand(
+                lower: testCase.expectedIncreaseBand.lower,
+                upper: testCase.expectedIncreaseBand.upper
+            )
+            for samples in [testCase.sparse, testCase.polled] {
+                let observations = samples.map { sample in
+                    WeeklyObservation(
+                        fetchedAt: now.addingTimeInterval(-sample.hoursBeforeNow * 3_600),
+                        canonicalResetAt: now.addingTimeInterval(6 * 86_400),
+                        usedPercent: sample.usedPercent,
+                        remainingPercent: 100 - sample.usedPercent,
+                        cycleID: 0,
+                        segmentID: 0
+                    )
+                }
+                let summary = try #require(
+                    WeeklyPaceEvidence.activitySegments(observations: observations, now: now),
+                    "missing activity summary in \(testCase.id)"
+                )
+                #expect(abs(summary.observedIncreaseBand.lower - expected.lower) < 0.000_001)
+                #expect(abs(summary.observedIncreaseBand.upper - expected.upper) < 0.000_001)
             }
         }
     }

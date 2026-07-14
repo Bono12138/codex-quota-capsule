@@ -3,8 +3,10 @@ import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 import {
   analyzeWeeklyQuality,
+  activitySegments,
   predictWeeklyRunway,
   type AgentQuotaSnapshot,
+  type WeeklyObservation,
   type WeeklyQuotaReading,
 } from "../src/index";
 
@@ -35,6 +37,17 @@ type FixtureCase = {
 const fixture = JSON.parse(
   readFileSync(resolve(process.cwd(), "fixtures/weekly-runway-cases.json"), "utf8"),
 ) as { now: string; cases: FixtureCase[] };
+
+type PaceEquivalenceFixture = {
+  version: number;
+  cases: Array<{
+    id: string;
+    now: string;
+    sparse: Array<{ hoursBeforeNow: number; usedPercent: number }>;
+    polled: Array<{ hoursBeforeNow: number; usedPercent: number }>;
+    expectedIncreaseBand: { lower: number; upper: number };
+  }>;
+};
 
 describe("shared weekly runway fixtures", () => {
   for (const testCase of fixture.cases) {
@@ -106,6 +119,33 @@ describe("shared weekly runway fixtures", () => {
       }
     });
   }
+});
+
+describe("shared polling-equivalence fixtures", () => {
+  it("produces identical activity bands for sparse and polled histories", () => {
+    const equivalence = JSON.parse(
+      readFileSync(resolve(process.cwd(), "fixtures/weekly-pace-equivalence.json"), "utf8"),
+    ) as PaceEquivalenceFixture;
+    expect(equivalence.version).toBe(1);
+
+    for (const testCase of equivalence.cases) {
+      const now = new Date(testCase.now);
+      for (const samples of [testCase.sparse, testCase.polled]) {
+        const observations: WeeklyObservation[] = samples.map((sample) => ({
+          fetchedAt: new Date(now.getTime() - sample.hoursBeforeNow * 3_600_000),
+          canonicalResetAt: new Date(now.getTime() + 6 * 86_400_000),
+          usedPercent: sample.usedPercent,
+          remainingPercent: 100 - sample.usedPercent,
+          cycleID: 0,
+          segmentID: 0,
+          qualityFlags: [],
+        }));
+        const band = activitySegments(observations, now)?.observedIncreaseBand;
+        expect(band?.lower, `${testCase.id} lower`).toBeCloseTo(testCase.expectedIncreaseBand.lower, 6);
+        expect(band?.upper, `${testCase.id} upper`).toBeCloseTo(testCase.expectedIncreaseBand.upper, 6);
+      }
+    }
+  });
 });
 
 function midpoint(band: { lower: number; upper: number } | null): number {

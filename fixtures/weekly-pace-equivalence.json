@@ -1,0 +1,29 @@
+{
+  "version": 1,
+  "cases": [
+    {
+      "id": "flat-polls-preserve-endpoint-uncertainty",
+      "now": "2030-01-01T08:00:00Z",
+      "sparse": [
+        { "hoursBeforeNow": 8, "usedPercent": 1 },
+        { "hoursBeforeNow": 0, "usedPercent": 18 }
+      ],
+      "polled": [
+        { "hoursBeforeNow": 8, "usedPercent": 1 },
+        { "hoursBeforeNow": 7.3333333333, "usedPercent": 1 },
+        { "hoursBeforeNow": 6.6666666667, "usedPercent": 4 },
+        { "hoursBeforeNow": 6, "usedPercent": 4 },
+        { "hoursBeforeNow": 5.3333333333, "usedPercent": 7 },
+        { "hoursBeforeNow": 4.6666666667, "usedPercent": 7 },
+        { "hoursBeforeNow": 4, "usedPercent": 10 },
+        { "hoursBeforeNow": 3.3333333333, "usedPercent": 10 },
+        { "hoursBeforeNow": 2.6666666667, "usedPercent": 13 },
+        { "hoursBeforeNow": 2, "usedPercent": 13 },
+        { "hoursBeforeNow": 1.3333333333, "usedPercent": 16 },
+        { "hoursBeforeNow": 0.6666666667, "usedPercent": 16 },
+        { "hoursBeforeNow": 0, "usedPercent": 18 }
+      ],
+      "expectedIncreaseBand": { "lower": 16, "upper": 18 }
+    }
+  ]
+}
