@@ -655,7 +655,17 @@ struct PanelQuickActionsView: View {
                 NotificationCenter.default.post(name: .quotaCapsuleTogglePanel, object: nil)
             }
 
-            languageSubmenu
+            Section(store.copy.languageMenuTitle) {
+                Button("简体中文 · \(store.copy.languageSimplifiedAssistiveLabel)") {
+                    store.selectLocale(.zhHans)
+                }
+                Button("繁體中文 · \(store.copy.languageTraditionalAssistiveLabel)") {
+                    store.selectLocale(.zhHant)
+                }
+                Button("English · \(store.copy.languageEnglishAssistiveLabel)") {
+                    store.selectLocale(.en)
+                }
+            }
 
             Button(store.copy.userGuideAction) {
                 NotificationCenter.default.post(name: .quotaCapsuleShowOnboarding, object: nil)
@@ -680,22 +690,6 @@ struct PanelQuickActionsView: View {
             panelActionLabel(title: store.copy.moreActionsTitle, symbol: "ellipsis.circle")
         }
         .buttonStyle(.plain)
-    }
-
-    private var languageSubmenu: some View {
-        Menu {
-            Button("简体中文 · \(store.copy.languageSimplifiedAssistiveLabel)") {
-                store.selectLocale(.zhHans)
-            }
-            Button("繁體中文 · \(store.copy.languageTraditionalAssistiveLabel)") {
-                store.selectLocale(.zhHant)
-            }
-            Button("English · \(store.copy.languageEnglishAssistiveLabel)") {
-                store.selectLocale(.en)
-            }
-        } label: {
-            Label(store.copy.languageMenuTitle, systemImage: "globe")
-        }
     }
 
     private func quickActionButton(title: String, symbol: String, action: @escaping () -> Void) -> some View {

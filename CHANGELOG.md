@@ -4,6 +4,14 @@ All notable user-visible and repository-governance changes are recorded here.
 
 ## Unreleased
 
+## 0.3.2-beta.1 — 2026-07-14
+
+### Fixed
+
+- Remove the floating panel's hover-dependent language submenu and place all three language actions directly in the More Actions menu.
+- Add a regression guard that rejects nested `Menu` layers in the ticking floating-panel action surface.
+- Correct the previous acceptance claim: the 0.3.1 check covered the separate AppKit status menu and sampled only the endpoints, not the recorded pointer path through the SwiftUI panel submenu.
+
 ## 0.3.1-beta.1 — 2026-07-14
 
 ### Changed
