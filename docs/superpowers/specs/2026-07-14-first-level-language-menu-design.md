@@ -1,7 +1,7 @@
 # First-Level Language Menu Design
 
 Date: 2026-07-14
-Status: approved design, pending implementation
+Status: implemented and branch-validated; publication pending
 Release target: `v0.3.2-beta.1`
 
 ## Problem

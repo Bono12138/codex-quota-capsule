@@ -30,7 +30,7 @@
 - Consumes: `PanelQuickActionsView`, `QuotaCopy.languageMenuTitle`.
 - Produces: a source-architecture contract for sibling `languageMenu` and `moreActionsMenu`, plus a three-locale discoverability contract.
 
-- [ ] **Step 1: Replace the panel menu regression with sibling-menu assertions**
+- [x] **Step 1: Replace the panel menu regression with sibling-menu assertions**
 
 Use the following Vitest body after extracting `panelActions`:
 
@@ -54,7 +54,7 @@ expect(moreActionsMenu.match(/\bMenu\s*\{/g) ?? []).toHaveLength(1);
 expect(moreActionsMenu).not.toContain("store.selectLocale(");
 ```
 
-- [ ] **Step 2: Add a three-locale title test**
+- [x] **Step 2: Add a three-locale title test**
 
 Add this Swift Testing case to the existing weekly display copy suite:
 
@@ -68,7 +68,7 @@ func panelLanguageEntryStaysDiscoverable() {
 }
 ```
 
-- [ ] **Step 3: Run focused tests and confirm RED**
+- [x] **Step 3: Run focused tests and confirm RED**
 
 Run:
 
@@ -79,7 +79,7 @@ swift test --filter panelLanguageEntryStaysDiscoverable
 
 Expected: the Vitest case fails because `PanelQuickActionsView` has only one menu and no `languageMenu`; the locale-copy case passes because the existing labels already include `Language`.
 
-- [ ] **Step 4: Commit the failing regression**
+- [x] **Step 4: Commit the failing regression**
 
 ```bash
 git add scripts/panel-menu-stability.test.ts Tests/QuotaCapsuleCoreTests/WeeklyDisplayModelTests.swift
@@ -99,7 +99,7 @@ git commit -m "Test first-level language discovery"
 - Consumes: `QuotaStore.selectLocale(_:)`, `QuotaCopy.languageMenuTitle`, existing adaptive `primaryActions` layout.
 - Produces: `private var languageMenu: some View`, a peer of `moreActionsMenu`.
 
-- [ ] **Step 1: Insert the language control into `primaryActions`**
+- [x] **Step 1: Insert the language control into `primaryActions`**
 
 Place it between feedback and More actions:
 
@@ -108,7 +108,7 @@ Place it between feedback and More actions:
         moreActionsMenu
 ```
 
-- [ ] **Step 2: Implement the one-layer language menu**
+- [x] **Step 2: Implement the one-layer language menu**
 
 Add immediately before `moreActionsMenu`:
 
@@ -132,11 +132,11 @@ Add immediately before `moreActionsMenu`:
     }
 ```
 
-- [ ] **Step 3: Delete the language section from `moreActionsMenu`**
+- [x] **Step 3: Delete the language section from `moreActionsMenu`**
 
 Remove the complete `Section(store.copy.languageMenuTitle)` block and its three locale buttons. Keep all status, visibility, guide, author, about, and quit actions unchanged.
 
-- [ ] **Step 4: Update shipped three-locale feature and onboarding copy**
+- [x] **Step 4: Update shipped three-locale feature and onboarding copy**
 
 Change the relevant strings so each locale says that Language is first-level and More contains the remaining tools. Use these meanings exactly:
 
@@ -146,7 +146,7 @@ zh-Hant: 展開面板直接提供重新整理、回饋、Language / 語言和更
 en: The detail panel provides Refresh, Feedback, and Language directly; guide, author, about, and quit remain under More actions.
 ```
 
-- [ ] **Step 5: Run focused tests and confirm GREEN**
+- [x] **Step 5: Run focused tests and confirm GREEN**
 
 ```bash
 npx vitest run scripts/panel-menu-stability.test.ts
@@ -156,7 +156,7 @@ swift build --product QuotaCapsuleMac
 
 Expected: all focused tests pass and the macOS product builds.
 
-- [ ] **Step 6: Commit the implementation**
+- [x] **Step 6: Commit the implementation**
 
 ```bash
 git add Sources/QuotaCapsuleMac/CapsuleViews.swift Sources/QuotaCapsuleCore/QuotaLocale.swift
@@ -177,19 +177,19 @@ git commit -m "Expose language in panel actions"
 - Consumes: the approved design and implemented panel hierarchy.
 - Produces: current documentation that can be audited against the shipped UI.
 
-- [ ] **Step 1: Replace obsolete three-action and More-hosted-language rules**
+- [x] **Step 1: Replace obsolete three-action and More-hosted-language rules**
 
 The current acceptance rules must require four peer actions and state that Language is directly visible. Replace validation instructions that look for language inside More actions with instructions that open the first-level Language menu in all three locales.
 
-- [ ] **Step 2: Add the discoverability defect to the P1 release blockers**
+- [x] **Step 2: Add the discoverability defect to the P1 release blockers**
 
 Record that a language selector hidden behind locale-dependent copy blocks release because a user unable to read the active locale cannot recover.
 
-- [ ] **Step 3: Update release evidence and changelog**
+- [x] **Step 3: Update release evidence and changelog**
 
 Record that PR #20 removed the nested-menu flicker but the owner identified a remaining discoverability issue before tagging. State that `v0.3.2-beta.1` remains unreleased until the first-level language control passes installed-app acceptance.
 
-- [ ] **Step 4: Run document gates**
+- [x] **Step 4: Run document gates**
 
 ```bash
 npm run audit:repository
@@ -199,7 +199,7 @@ git diff --check
 
 Expected: all three commands pass.
 
-- [ ] **Step 5: Commit the aligned contract**
+- [x] **Step 5: Commit the aligned contract**
 
 ```bash
 git add CHANGELOG.md docs/product/acceptance-criteria.md docs/product/bug-triage-and-release-blockers.md docs/operations/release-evidence/v0.3.2-beta.1.md
@@ -218,7 +218,7 @@ git commit -m "Document first-level language access"
 - Consumes: branch implementation and current local Codex app-server state.
 - Produces: repeatable automated output plus installed-app accessibility evidence.
 
-- [ ] **Step 1: Run the complete gate with fail-fast semantics**
+- [x] **Step 1: Run the complete gate with fail-fast semantics**
 
 ```bash
 set -e
@@ -238,7 +238,7 @@ unzip -t "dist/beta/Quota-Capsule-Beta-macOS.zip"
 
 Expected: 106 or more Node/Vitest tests, 90 or more Swift tests, both builds, all audits, signature verification, and archive integrity pass.
 
-- [ ] **Step 2: Install the branch candidate atomically**
+- [x] **Step 2: Install the branch candidate atomically**
 
 ```bash
 npm run mac:install
@@ -249,15 +249,15 @@ ps -p "$(pgrep -n -x QuotaCapsuleBeta)" -o pid=,command=
 
 Expected: one process runs from `/Applications`, version is `0.3.2`, and the embedded commit/source-patch fingerprint matches the candidate.
 
-- [ ] **Step 3: Inspect all three locales and normal/narrow widths**
+- [x] **Step 3: Inspect all three locales and normal/narrow widths**
 
 Use macOS accessibility inspection to verify the first-level globe/Language control is visible, exposes all three direct choices, and More actions contains no language choices. Repeat after selecting Simplified Chinese, Traditional Chinese, and English; resize to the minimum supported width and confirm adaptive wrapping remains readable.
 
-- [ ] **Step 4: Hold each menu across a real automatic read**
+- [x] **Step 4: Hold each menu across a real automatic read**
 
 Keep Language open across one successful automatic-read interval, then repeat for More actions. Sample accessibility state continuously and record that the menu remains present, selectable, and single-layer before and after the data timestamp/countdown changes.
 
-- [ ] **Step 5: Commit only durable source evidence**
+- [x] **Step 5: Commit only durable source evidence**
 
 Update `docs/operations/release-evidence/v0.3.2-beta.1.md` with counts, duration, visible actions, installed commit, and result. Do not commit screenshots, raw authenticated responses, local paths, account data, or runtime databases.
 
