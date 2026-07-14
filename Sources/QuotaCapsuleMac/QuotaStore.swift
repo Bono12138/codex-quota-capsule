@@ -537,6 +537,9 @@ final class QuotaStore: ObservableObject {
         lastErrorText = reduction.lastErrorText
         let attemptSnapshot = reduction.latestAttemptSnapshot
         if attemptSnapshot.sourceStatus == .ok {
+            if let resetCreditBank = attemptSnapshot.resetCreditBank {
+                historyStore.recordResetCreditBank(resetCreditBank)
+            }
             historyStore.recordWeeklySnapshot(attemptSnapshot)
             let readings = historyStore.recentWeeklyReadings(now: now)
             let forecastReduction = QuotaRefreshReducer.reduceForecastResult(
@@ -550,6 +553,9 @@ final class QuotaStore: ObservableObject {
             isConfirmingQuotaChange = !forecastReduction.shouldAdoptLiveSnapshot
             if forecastReduction.shouldAdoptLiveSnapshot {
                 lastSuccessfulReadAt = now
+                if forecastReduction.acceptedResetTransition {
+                    historyStore.confirmLikelyResetCreditRedemption(at: now)
+                }
             } else {
                 lastRefreshText = previousLastRefreshText
                 if let acceptedWindow = previousSnapshot.weeklyWindow {

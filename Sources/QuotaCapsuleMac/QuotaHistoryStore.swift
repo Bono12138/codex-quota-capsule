@@ -75,7 +75,8 @@ final class QuotaHistoryStore {
     init(
         configuration: AppConfiguration,
         fileManager: FileManager = .default,
-        userDefaults: UserDefaults = .standard
+        userDefaults: UserDefaults = .standard,
+        databaseURLOverride: URL? = nil
     ) {
         self.configuration = configuration
         let supportURL = QuotaHistoryStore.applicationSupportURL(
@@ -88,7 +89,16 @@ final class QuotaHistoryStore {
             attributes: [.posixPermissions: 0o700]
         )
         try? fileManager.setAttributes([.posixPermissions: 0o700], ofItemAtPath: supportURL.path)
-        databaseURL = supportURL.appendingPathComponent("QuotaCapsule.sqlite")
+        if let databaseURLOverride {
+            databaseURL = databaseURLOverride
+            try? fileManager.createDirectory(
+                at: databaseURLOverride.deletingLastPathComponent(),
+                withIntermediateDirectories: true,
+                attributes: [.posixPermissions: 0o700]
+            )
+        } else {
+            databaseURL = supportURL.appendingPathComponent("QuotaCapsule.sqlite")
+        }
 
         let installKey = configuration.userDefaultsKey("analytics.installID")
         let installID: String
@@ -135,6 +145,112 @@ final class QuotaHistoryStore {
         let captureID = insertCapture(snapshot)
         guard captureID > 0 else { return }
         insertRawWeeklyWindow(captureID: captureID, snapshot: snapshot, window: weeklyWindow)
+    }
+
+    func recordResetCreditBank(_ bank: ResetCreditBankSummary) {
+        guard database != nil else { return }
+        execute("BEGIN IMMEDIATE TRANSACTION")
+        defer { execute("COMMIT") }
+
+        for credit in bank.credits ?? [] {
+            upsertResetCredit(credit, observedAt: bank.fetchedAt)
+        }
+        coalesceResetCreditBankRun(bank)
+        if bank.detailState == .complete, let credits = bank.credits {
+            classifyMissingResetCredits(currentFingerprints: Set(credits.map(\.fingerprint)), observedAt: bank.fetchedAt)
+        }
+    }
+
+    func resetCreditHistory() -> [ResetCreditHistoryRecord] {
+        let sql = """
+        SELECT fingerprint, reset_type, safe_title, granted_at, grant_time_source,
+               expires_at, first_seen_at, last_seen_at, latest_status, lifecycle, sample_count
+        FROM reset_credits
+        ORDER BY first_seen_at ASC, fingerprint ASC
+        """
+        guard let statement = prepare(sql) else { return [] }
+        defer { sqlite3_finalize(statement) }
+        var records: [ResetCreditHistoryRecord] = []
+        while sqlite3_step(statement) == SQLITE_ROW {
+            records.append(ResetCreditHistoryRecord(
+                fingerprint: sqliteText(statement, column: 0),
+                resetType: sqliteText(statement, column: 1),
+                safeTitle: columnText(statement, 2),
+                grantedAt: sqliteOptionalDouble(statement, column: 3).map(Date.init(timeIntervalSince1970:)),
+                grantTimeSource: ResetCreditGrantTimeSource(rawValue: sqliteText(statement, column: 4)) ?? .unknown,
+                expiresAt: sqliteOptionalDouble(statement, column: 5).map(Date.init(timeIntervalSince1970:)),
+                firstSeenAt: Date(timeIntervalSince1970: sqlite3_column_double(statement, 6)),
+                lastSeenAt: Date(timeIntervalSince1970: sqlite3_column_double(statement, 7)),
+                latestStatus: ResetCreditStatus(rawValue: sqliteText(statement, column: 8)) ?? .unknown,
+                lifecycle: ResetCreditLifecycle(rawValue: sqliteText(statement, column: 9)) ?? .disappearedUnknown,
+                sampleCount: Int(sqlite3_column_int(statement, 10))
+            ))
+        }
+        return records
+    }
+
+    func resetCreditBankRuns() -> [ResetCreditBankRun] {
+        let sql = """
+        SELECT signature, first_observed_at, last_observed_at, sample_count,
+               available_count, detail_count, detail_state
+        FROM reset_credit_bank_runs
+        ORDER BY id ASC
+        """
+        guard let statement = prepare(sql) else { return [] }
+        defer { sqlite3_finalize(statement) }
+        var runs: [ResetCreditBankRun] = []
+        while sqlite3_step(statement) == SQLITE_ROW {
+            let detailCount = sqlite3_column_type(statement, 5) == SQLITE_NULL
+                ? nil
+                : Int(sqlite3_column_int(statement, 5))
+            runs.append(ResetCreditBankRun(
+                signature: sqliteText(statement, column: 0),
+                firstObservedAt: Date(timeIntervalSince1970: sqlite3_column_double(statement, 1)),
+                lastObservedAt: Date(timeIntervalSince1970: sqlite3_column_double(statement, 2)),
+                sampleCount: Int(sqlite3_column_int(statement, 3)),
+                availableCount: Int(sqlite3_column_int(statement, 4)),
+                detailCount: detailCount,
+                detailState: ResetCreditDetailState(rawValue: sqliteText(statement, column: 6)) ?? .countOnly
+            ))
+        }
+        return runs
+    }
+
+    func confirmLikelyResetCreditRedemption(at observedAt: Date) {
+        let sql = """
+        SELECT id, first_observed_at, last_observed_at, available_count, detail_state
+        FROM reset_credit_bank_runs
+        ORDER BY id DESC
+        LIMIT 2
+        """
+        guard let statement = prepare(sql) else { return }
+        defer { sqlite3_finalize(statement) }
+        var rows: [(first: Double, last: Double, count: Int, state: String)] = []
+        while sqlite3_step(statement) == SQLITE_ROW {
+            rows.append((
+                first: sqlite3_column_double(statement, 1),
+                last: sqlite3_column_double(statement, 2),
+                count: Int(sqlite3_column_int(statement, 3)),
+                state: sqliteText(statement, column: 4)
+            ))
+        }
+        guard rows.count == 2 else { return }
+        let current = rows[0]
+        let previous = rows[1]
+        guard current.state == ResetCreditDetailState.complete.rawValue,
+              previous.state == ResetCreditDetailState.complete.rawValue,
+              current.count == previous.count - 1,
+              abs(current.last - observedAt.timeIntervalSince1970) <= 300 else {
+            return
+        }
+
+        let candidates = disappearedResetCreditFingerprints(
+            lastSeenFrom: previous.first,
+            through: previous.last,
+            observedAt: observedAt
+        )
+        guard candidates.count == 1, let fingerprint = candidates.first else { return }
+        updateResetCreditLifecycle(.likelyRedeemed, fingerprint: fingerprint)
     }
 
     func recentWeeklyReadings(
@@ -294,6 +410,8 @@ final class QuotaHistoryStore {
     }
 
     func clearAll() {
+        execute("DELETE FROM reset_credit_bank_runs")
+        execute("DELETE FROM reset_credits")
         execute("DELETE FROM quota_windows")
         execute("DELETE FROM captures")
         execute("DELETE FROM product_events")
@@ -394,10 +512,42 @@ final class QuotaHistoryStore {
         )
         """) else { return false }
 
+        guard execute("""
+        CREATE TABLE IF NOT EXISTS reset_credits (
+          fingerprint TEXT PRIMARY KEY,
+          reset_type TEXT NOT NULL,
+          safe_title TEXT,
+          granted_at REAL,
+          grant_time_source TEXT NOT NULL,
+          expires_at REAL,
+          first_seen_at REAL NOT NULL,
+          last_seen_at REAL NOT NULL,
+          latest_status TEXT NOT NULL,
+          lifecycle TEXT NOT NULL,
+          sample_count INTEGER NOT NULL
+        )
+        """) else { return false }
+
+        guard execute("""
+        CREATE TABLE IF NOT EXISTS reset_credit_bank_runs (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          signature TEXT NOT NULL,
+          first_observed_at REAL NOT NULL,
+          last_observed_at REAL NOT NULL,
+          sample_count INTEGER NOT NULL,
+          available_count INTEGER NOT NULL,
+          detail_count INTEGER,
+          detail_state TEXT NOT NULL
+        )
+        """) else { return false }
+
         guard execute("CREATE INDEX IF NOT EXISTS idx_captures_captured_at ON captures(captured_at)"),
               execute("CREATE INDEX IF NOT EXISTS idx_windows_type_time ON quota_windows(window_type, resets_at)"),
               execute("CREATE INDEX IF NOT EXISTS idx_events_name_time ON product_events(event_name, event_time)"),
-              execute("CREATE INDEX IF NOT EXISTS idx_events_upload ON product_events(upload_status, id)") else {
+              execute("CREATE INDEX IF NOT EXISTS idx_events_upload ON product_events(upload_status, id)"),
+              execute("CREATE INDEX IF NOT EXISTS idx_reset_credits_granted ON reset_credits(granted_at)"),
+              execute("CREATE INDEX IF NOT EXISTS idx_reset_credits_expires ON reset_credits(expires_at)"),
+              execute("CREATE INDEX IF NOT EXISTS idx_reset_bank_runs_last ON reset_credit_bank_runs(last_observed_at)") else {
             return false
         }
 
@@ -434,6 +584,160 @@ final class QuotaHistoryStore {
         DELETE FROM captures
         WHERE source_status = 'success' AND data_age_seconds > 120
         """)
+    }
+
+    private func upsertResetCredit(_ credit: ResetCredit, observedAt: Date) {
+        let lifecycle: ResetCreditLifecycle = credit.status == .redeemed ? .likelyRedeemed : .available
+        let sql = """
+        INSERT INTO reset_credits (
+          fingerprint, reset_type, safe_title, granted_at, grant_time_source, expires_at,
+          first_seen_at, last_seen_at, latest_status, lifecycle, sample_count
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1)
+        ON CONFLICT(fingerprint) DO UPDATE SET
+          reset_type = excluded.reset_type,
+          safe_title = COALESCE(reset_credits.safe_title, excluded.safe_title),
+          granted_at = CASE
+            WHEN reset_credits.grant_time_source = 'provider' THEN reset_credits.granted_at
+            WHEN excluded.grant_time_source = 'provider' THEN excluded.granted_at
+            ELSE COALESCE(reset_credits.granted_at, excluded.granted_at)
+          END,
+          grant_time_source = CASE
+            WHEN reset_credits.grant_time_source = 'provider' THEN reset_credits.grant_time_source
+            WHEN excluded.grant_time_source = 'provider' THEN excluded.grant_time_source
+            WHEN reset_credits.granted_at IS NOT NULL THEN reset_credits.grant_time_source
+            ELSE excluded.grant_time_source
+          END,
+          expires_at = COALESCE(reset_credits.expires_at, excluded.expires_at),
+          last_seen_at = excluded.last_seen_at,
+          latest_status = excluded.latest_status,
+          lifecycle = excluded.lifecycle,
+          sample_count = reset_credits.sample_count + 1
+        """
+        guard let statement = prepare(sql) else { return }
+        defer { sqlite3_finalize(statement) }
+        bindText(statement, 1, credit.fingerprint)
+        bindText(statement, 2, credit.resetType)
+        bindOptionalText(statement, 3, credit.title)
+        bindOptionalDouble(statement, 4, credit.grantedAt?.timeIntervalSince1970)
+        bindText(statement, 5, credit.grantTimeSource.rawValue)
+        bindOptionalDouble(statement, 6, credit.expiresAt?.timeIntervalSince1970)
+        bindDouble(statement, 7, observedAt.timeIntervalSince1970)
+        bindDouble(statement, 8, observedAt.timeIntervalSince1970)
+        bindText(statement, 9, credit.status.rawValue)
+        bindText(statement, 10, lifecycle.rawValue)
+        _ = sqlite3_step(statement)
+    }
+
+    private func coalesceResetCreditBankRun(_ bank: ResetCreditBankSummary) {
+        let pairs = (bank.credits ?? [])
+            .map { "\($0.fingerprint):\($0.status.rawValue)" }
+            .sorted()
+            .joined(separator: "|")
+        let signature = stableHash("\(bank.availableCount)|\(bank.detailState.rawValue)|\(pairs)")
+        let latestSQL = "SELECT id, signature FROM reset_credit_bank_runs ORDER BY id DESC LIMIT 1"
+        var latestID: Int64?
+        var latestSignature: String?
+        if let statement = prepare(latestSQL) {
+            if sqlite3_step(statement) == SQLITE_ROW {
+                latestID = sqlite3_column_int64(statement, 0)
+                latestSignature = sqliteText(statement, column: 1)
+            }
+            sqlite3_finalize(statement)
+        }
+
+        if let latestID, latestSignature == signature {
+            let updateSQL = """
+            UPDATE reset_credit_bank_runs
+            SET last_observed_at = ?, sample_count = sample_count + 1
+            WHERE id = ?
+            """
+            guard let statement = prepare(updateSQL) else { return }
+            defer { sqlite3_finalize(statement) }
+            bindDouble(statement, 1, bank.fetchedAt.timeIntervalSince1970)
+            bindInt64(statement, 2, latestID)
+            _ = sqlite3_step(statement)
+            return
+        }
+
+        let insertSQL = """
+        INSERT INTO reset_credit_bank_runs (
+          signature, first_observed_at, last_observed_at, sample_count,
+          available_count, detail_count, detail_state
+        ) VALUES (?, ?, ?, 1, ?, ?, ?)
+        """
+        guard let statement = prepare(insertSQL) else { return }
+        defer { sqlite3_finalize(statement) }
+        bindText(statement, 1, signature)
+        bindDouble(statement, 2, bank.fetchedAt.timeIntervalSince1970)
+        bindDouble(statement, 3, bank.fetchedAt.timeIntervalSince1970)
+        bindInt(statement, 4, bank.availableCount)
+        bindOptionalInt(statement, 5, bank.credits?.count)
+        bindText(statement, 6, bank.detailState.rawValue)
+        _ = sqlite3_step(statement)
+    }
+
+    private func classifyMissingResetCredits(currentFingerprints: Set<String>, observedAt: Date) {
+        let sql = """
+        SELECT fingerprint, expires_at
+        FROM reset_credits
+        WHERE lifecycle = 'available'
+        """
+        guard let statement = prepare(sql) else { return }
+        var missing: [(fingerprint: String, expiresAt: Date?)] = []
+        while sqlite3_step(statement) == SQLITE_ROW {
+            let fingerprint = sqliteText(statement, column: 0)
+            if !currentFingerprints.contains(fingerprint) {
+                missing.append((
+                    fingerprint,
+                    sqliteOptionalDouble(statement, column: 1).map(Date.init(timeIntervalSince1970:))
+                ))
+            }
+        }
+        sqlite3_finalize(statement)
+
+        for item in missing {
+            let lifecycle = ResetCreditLifecycleClassifier.classifyDisappearance(
+                expiresAt: item.expiresAt,
+                observedAt: observedAt,
+                compatibleResetConfirmed: false
+            )
+            updateResetCreditLifecycle(lifecycle, fingerprint: item.fingerprint)
+        }
+    }
+
+    private func disappearedResetCreditFingerprints(
+        lastSeenFrom: Double,
+        through lastSeenThrough: Double,
+        observedAt: Date
+    ) -> [String] {
+        let sql = """
+        SELECT fingerprint
+        FROM reset_credits
+        WHERE lifecycle = 'disappearedUnknown'
+          AND latest_status = 'available'
+          AND last_seen_at >= ? AND last_seen_at <= ?
+          AND (expires_at IS NULL OR expires_at > ?)
+        ORDER BY fingerprint ASC
+        """
+        guard let statement = prepare(sql) else { return [] }
+        defer { sqlite3_finalize(statement) }
+        bindDouble(statement, 1, lastSeenFrom)
+        bindDouble(statement, 2, lastSeenThrough)
+        bindDouble(statement, 3, observedAt.timeIntervalSince1970)
+        var fingerprints: [String] = []
+        while sqlite3_step(statement) == SQLITE_ROW {
+            fingerprints.append(sqliteText(statement, column: 0))
+        }
+        return fingerprints
+    }
+
+    private func updateResetCreditLifecycle(_ lifecycle: ResetCreditLifecycle, fingerprint: String) {
+        let sql = "UPDATE reset_credits SET lifecycle = ? WHERE fingerprint = ?"
+        guard let statement = prepare(sql) else { return }
+        defer { sqlite3_finalize(statement) }
+        bindText(statement, 1, lifecycle.rawValue)
+        bindText(statement, 2, fingerprint)
+        _ = sqlite3_step(statement)
     }
 
     private func insertCapture(_ snapshot: AgentQuotaSnapshot) -> Int64 {
