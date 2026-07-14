@@ -10,6 +10,56 @@ enum OnboardingFocus {
     case feedback
 }
 
+struct ResetCreditDisplayRow: Identifiable, Equatable {
+    let id: String
+    let text: String
+}
+
+struct ResetCreditPresentation: Equatable {
+    let countText: String
+    let rows: [ResetCreditDisplayRow]
+    let missingDetailsText: String?
+
+    static func make(
+        bank: ResetCreditBankSummary,
+        copy: QuotaCopy,
+        timeZone: TimeZone
+    ) -> ResetCreditPresentation {
+        let available = (bank.credits ?? [])
+            .filter { $0.status == .available }
+            .sorted { lhs, rhs in
+                switch (lhs.expiresAt, rhs.expiresAt) {
+                case let (left?, right?) where left != right: return left < right
+                case (.some, nil): return true
+                case (nil, .some): return false
+                default: return lhs.fingerprint < rhs.fingerprint
+                }
+            }
+        let rows = available.enumerated().map { index, credit in
+            ResetCreditDisplayRow(
+                id: credit.fingerprint,
+                text: copy.resetCreditRow(index: index + 1, expiresAt: credit.expiresAt, timeZone: timeZone)
+            )
+        }
+        let missingDetailsText: String?
+        if bank.availableCount == 0 {
+            missingDetailsText = nil
+        } else if bank.detailState == .countOnly {
+            missingDetailsText = copy.resetCreditDetailsUnavailable
+        } else {
+            let missing = max(0, bank.availableCount - rows.count)
+            missingDetailsText = missing > 0 ? copy.resetCreditDetailsMissing(missing: missing) : nil
+        }
+        return ResetCreditPresentation(
+            countText: bank.availableCount == 0
+                ? copy.noResetCredits
+                : copy.resetCreditCount(available: bank.availableCount),
+            rows: rows,
+            missingDetailsText: missingDetailsText
+        )
+    }
+}
+
 @MainActor
 final class QuotaStore: ObservableObject {
     @Published private(set) var snapshot: AgentQuotaSnapshot
@@ -177,6 +227,24 @@ final class QuotaStore: ObservableObject {
             return copy.unknownValue
         }
         return Self.formatQuotaPercent(weeklyWindow.remainingPercent)
+    }
+
+    var resetCreditCountText: String? {
+        currentResetCreditPresentation?.countText
+    }
+
+    var resetCreditRows: [ResetCreditDisplayRow] {
+        currentResetCreditPresentation?.rows ?? []
+    }
+
+    var resetCreditMissingDetailsText: String? {
+        currentResetCreditPresentation?.missingDetailsText
+    }
+
+    private var currentResetCreditPresentation: ResetCreditPresentation? {
+        snapshot.resetCreditBank.map {
+            ResetCreditPresentation.make(bank: $0, copy: copy, timeZone: .current)
+        }
     }
 
     var weeklyProjectionText: String {

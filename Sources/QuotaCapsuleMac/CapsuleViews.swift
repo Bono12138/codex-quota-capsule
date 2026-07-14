@@ -441,6 +441,41 @@ struct DetailPopoverView: View {
                     .font(.system(size: 10, weight: .bold))
                     .foregroundStyle(.secondary)
             }
+
+            ResetCreditFooterView(store: store)
+        }
+    }
+}
+
+struct ResetCreditFooterView: View {
+    @ObservedObject var store: QuotaStore
+
+    var body: some View {
+        if let countText = store.resetCreditCountText {
+            VStack(alignment: .leading, spacing: 7) {
+                Divider()
+                    .opacity(0.35)
+                Label(store.copy.resetCreditsTitle, systemImage: "ticket")
+                    .font(.system(size: 10, weight: .bold))
+                    .foregroundStyle(.secondary)
+                Text(countText)
+                    .font(.system(size: 10.5, weight: .semibold))
+                    .foregroundStyle(.primary.opacity(0.78))
+                ForEach(store.resetCreditRows) { row in
+                    Text(row.text)
+                        .font(.system(size: 10, weight: .medium))
+                        .monospacedDigit()
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                if let missingText = store.resetCreditMissingDetailsText {
+                    Text(missingText)
+                        .font(.system(size: 9.5, weight: .medium))
+                        .foregroundStyle(.secondary.opacity(0.82))
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
         }
     }
 }

@@ -1565,6 +1565,78 @@ public struct QuotaCopy: Equatable, Sendable {
         }
     }
 
+    public var resetCreditsTitle: String {
+        switch locale {
+        case .zhHans: "重置券"
+        case .zhHant: "重置券"
+        case .en: "Reset credits"
+        }
+    }
+
+    public var noResetCredits: String {
+        switch locale {
+        case .zhHans: "暂无可用重置券"
+        case .zhHant: "暫無可用重置券"
+        case .en: "No reset credits available"
+        }
+    }
+
+    public func resetCreditCount(available: Int) -> String {
+        let count = max(0, available)
+        return switch locale {
+        case .zhHans: "\(count) 张重置券可用"
+        case .zhHant: "\(count) 張重置券可用"
+        case .en: count == 1 ? "1 reset credit available" : "\(count) reset credits available"
+        }
+    }
+
+    public var resetCreditDetailsUnavailable: String {
+        switch locale {
+        case .zhHans: "暂未返回每张券的到期详情"
+        case .zhHant: "暫未傳回每張券的到期詳情"
+        case .en: "Expiry details were not returned"
+        }
+    }
+
+    public func resetCreditDetailsMissing(missing: Int) -> String {
+        let count = max(0, missing)
+        return switch locale {
+        case .zhHans: "另有 \(count) 张未返回到期详情"
+        case .zhHant: "另有 \(count) 張未傳回到期詳情"
+        case .en: count == 1 ? "1 more credit has no expiry details" : "\(count) more credits have no expiry details"
+        }
+    }
+
+    public func resetCreditRow(index: Int, expiresAt: Date?, timeZone: TimeZone) -> String {
+        let safeIndex = max(1, index)
+        guard let expiresAt else {
+            return switch locale {
+            case .zhHans: "重置券 \(safeIndex) · 未提供到期时间"
+            case .zhHant: "重置券 \(safeIndex) · 未提供到期時間"
+            case .en: "Reset credit \(safeIndex) · Expiry time unavailable"
+            }
+        }
+
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = timeZone
+        let components = calendar.dateComponents([.month, .day, .hour, .minute], from: expiresAt)
+        let month = components.month ?? 1
+        let day = components.day ?? 1
+        let hour = components.hour ?? 0
+        let minute = components.minute ?? 0
+        let clock = String(format: "%02d:%02d", hour, minute)
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        formatter.timeZone = timeZone
+        formatter.dateFormat = "MMM d"
+        let englishDate = formatter.string(from: expiresAt)
+        return switch locale {
+        case .zhHans: "重置券 \(safeIndex) · \(month) 月 \(day) 日 \(clock) 到期"
+        case .zhHant: "重置券 \(safeIndex) · \(month) 月 \(day) 日 \(clock) 到期"
+        case .en: "Reset credit \(safeIndex) · Expires \(englishDate) at \(clock)"
+        }
+    }
+
     public var clearLocalHistoryAction: String {
         switch locale {
         case .zhHans: "清空本地历史"

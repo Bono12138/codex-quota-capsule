@@ -220,6 +220,26 @@ struct WeeklyDisplayModelTests {
         #expect(model.metrics[2].value == "≤13%")
     }
 
+    @Test("reset credit rows use local time through minutes")
+    func resetCreditRowsUseMinutePrecision() throws {
+        let timeZone = try #require(TimeZone(identifier: "Asia/Shanghai"))
+        let expiry = try Date.ISO8601FormatStyle().parse("2026-07-18T00:33:54Z")
+        let copy = QuotaCopy(locale: .zhHans)
+
+        #expect(copy.resetCreditRow(index: 1, expiresAt: expiry, timeZone: timeZone) == "重置券 1 · 7 月 18 日 08:33 到期")
+        #expect(!copy.resetCreditRow(index: 1, expiresAt: expiry, timeZone: timeZone).contains("08:33:54"))
+        #expect(copy.resetCreditRow(index: 2, expiresAt: nil, timeZone: timeZone) == "重置券 2 · 未提供到期时间")
+    }
+
+    @Test("capped details admit missing expiry rows")
+    func cappedBankCopyIsHonest() {
+        let copy = QuotaCopy(locale: .zhHans)
+
+        #expect(copy.resetCreditCount(available: 4) == "4 张重置券可用")
+        #expect(copy.resetCreditDetailsMissing(missing: 2) == "另有 2 张未返回到期详情")
+        #expect(copy.noResetCredits == "暂无可用重置券")
+    }
+
     @Test("stale presentation freezes percentages and suppresses runway claims")
     func stalePresentationIsNonReassuring() {
         let model = CapsuleDisplayModel.makeStale(
