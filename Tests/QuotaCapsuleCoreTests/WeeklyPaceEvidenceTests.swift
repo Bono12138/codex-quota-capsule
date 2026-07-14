@@ -99,6 +99,45 @@ struct WeeklyPaceEvidenceTests {
         #expect(abs(evidence.bandPerDay.upper - 36) < 0.000_001)
     }
 
+    @Test("flat polls do not add endpoint uncertainty")
+    func flatPollsDoNotWidenActivityBand() throws {
+        let sparse = [
+            observation(at: now.addingTimeInterval(-8 * 3_600), used: 1),
+            observation(at: now, used: 18)
+        ]
+        let polled = [1.0, 1, 4, 4, 7, 7, 10, 10, 13, 13, 16, 16, 18].enumerated().map { index, used in
+            observation(
+                at: now.addingTimeInterval(Double(index - 12) * 40 * 60),
+                used: used
+            )
+        }
+
+        let sparseSummary = try #require(WeeklyPaceEvidence.activitySegments(observations: sparse, now: now))
+        let polledSummary = try #require(WeeklyPaceEvidence.activitySegments(observations: polled, now: now))
+
+        #expect(sparseSummary.observedIncreaseBand == PaceBand(lower: 16, upper: 18))
+        #expect(polledSummary.observedIncreaseBand == sparseSummary.observedIncreaseBand)
+    }
+
+    @Test("duplicates do not change activity uncertainty")
+    func duplicatePollsDoNotChangeActivityBand() throws {
+        let base = observations(values: [5, 6, 7], spacingHours: 1)
+        let duplicated = [base[0], base[1], base[1], base[2]]
+        let baseSummary = try #require(WeeklyPaceEvidence.activitySegments(observations: base, now: now))
+        let duplicateSummary = try #require(WeeklyPaceEvidence.activitySegments(observations: duplicated, now: now))
+
+        #expect(baseSummary.observedIncreaseBand == PaceBand(lower: 1, upper: 3))
+        #expect(duplicateSummary.observedIncreaseBand == baseSummary.observedIncreaseBand)
+    }
+
+    @Test("a correction starts a new measurement segment")
+    func correctionStartsNewMeasurementSegment() throws {
+        let samples = observations(values: [5, 9, 8, 10], spacingHours: 1)
+        let summary = try #require(WeeklyPaceEvidence.activitySegments(observations: samples, now: now))
+
+        #expect(summary.observedIncreaseBand == PaceBand(lower: 4, upper: 8))
+    }
+
     @Test("activity segmentation distinguishes bursts, ordinary use, and idle gaps")
     func activitySegmentationClassifiesObservedTime() throws {
         let samples = [

@@ -130,17 +130,15 @@ public enum WeeklyPaceEvidence {
         var observedIncreaseLower = 0.0
         var observedIncreaseUpper = 0.0
         var lastTransitionAt: Date?
-        var increaseRunStart: WeeklyObservation?
-        var increaseRunEnd: WeeklyObservation?
+        var measurementStart = first
+        var measurementEnd = first
 
-        func flushIncreaseRun() {
-            guard let start = increaseRunStart, let end = increaseRunEnd else { return }
-            let startInterval = quantizedInterval(start.usedPercent)
-            let endInterval = quantizedInterval(end.usedPercent)
+        func flushMeasurement() {
+            guard measurementEnd.usedPercent > measurementStart.usedPercent else { return }
+            let startInterval = quantizedInterval(measurementStart.usedPercent)
+            let endInterval = quantizedInterval(measurementEnd.usedPercent)
             observedIncreaseLower += max(0, endInterval.lower - startInterval.upper)
             observedIncreaseUpper += max(0, endInterval.upper - startInterval.lower)
-            increaseRunStart = nil
-            increaseRunEnd = nil
         }
 
         for (earlier, later) in zip(eligible, eligible.dropFirst()) {
@@ -148,10 +146,6 @@ public enum WeeklyPaceEvidence {
             guard gap > 0 else { continue }
             if later.usedPercent > earlier.usedPercent {
                 transitions += 1
-                if increaseRunStart == nil {
-                    increaseRunStart = earlier
-                }
-                increaseRunEnd = later
                 lastTransitionAt = later.fetchedAt
                 if gap <= burstGap {
                     active += gap
@@ -162,11 +156,17 @@ public enum WeeklyPaceEvidence {
                     idle += gap - burstGap
                 }
             } else {
-                flushIncreaseRun()
                 idle += gap
             }
+            if later.usedPercent < earlier.usedPercent {
+                flushMeasurement()
+                measurementStart = later
+                measurementEnd = later
+            } else {
+                measurementEnd = later
+            }
         }
-        flushIncreaseRun()
+        flushMeasurement()
 
         let trailingIdle = max(0, now.timeIntervalSince(last.fetchedAt))
         idle += trailingIdle

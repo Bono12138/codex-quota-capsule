@@ -80,6 +80,31 @@ describe("adaptive weekly pace evidence", () => {
     expect(evidence.bandPerDay.upper).toBeCloseTo(36, 9);
   });
 
+  it("does not add endpoint uncertainty for flat polls", () => {
+    const sparse = [
+      observation(new Date(now.getTime() - 8 * 3_600_000), 1),
+      observation(now, 18),
+    ];
+    const polled = [1, 1, 4, 4, 7, 7, 10, 10, 13, 13, 16, 16, 18].map((used, index) =>
+      observation(new Date(now.getTime() + (index - 12) * 40 * 60_000), used));
+
+    expect(activitySegments(sparse, now)?.observedIncreaseBand).toEqual({ lower: 16, upper: 18 });
+    expect(activitySegments(polled, now)?.observedIncreaseBand).toEqual({ lower: 16, upper: 18 });
+  });
+
+  it("does not change activity uncertainty for duplicate polls", () => {
+    const base = observations([5, 6, 7], 1);
+    const duplicated = [base[0], base[1], base[1], base[2]];
+
+    expect(activitySegments(base, now)?.observedIncreaseBand).toEqual({ lower: 1, upper: 3 });
+    expect(activitySegments(duplicated, now)?.observedIncreaseBand).toEqual({ lower: 1, upper: 3 });
+  });
+
+  it("starts a new measurement segment after a correction", () => {
+    expect(activitySegments(observations([5, 9, 8, 10], 1), now)?.observedIncreaseBand)
+      .toEqual({ lower: 4, upper: 8 });
+  });
+
   it("segments active bursts, ordinary use, and idle gaps", () => {
     const samples = [
       observation(new Date(now.getTime() - 30 * 3_600_000), 5),
