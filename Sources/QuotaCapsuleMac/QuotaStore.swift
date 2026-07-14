@@ -10,6 +10,56 @@ enum OnboardingFocus {
     case feedback
 }
 
+struct ResetCreditDisplayRow: Identifiable, Equatable {
+    let id: String
+    let text: String
+}
+
+struct ResetCreditPresentation: Equatable {
+    let countText: String
+    let rows: [ResetCreditDisplayRow]
+    let missingDetailsText: String?
+
+    static func make(
+        bank: ResetCreditBankSummary,
+        copy: QuotaCopy,
+        timeZone: TimeZone
+    ) -> ResetCreditPresentation {
+        let available = (bank.credits ?? [])
+            .filter { $0.status == .available }
+            .sorted { lhs, rhs in
+                switch (lhs.expiresAt, rhs.expiresAt) {
+                case let (left?, right?) where left != right: return left < right
+                case (.some, nil): return true
+                case (nil, .some): return false
+                default: return lhs.fingerprint < rhs.fingerprint
+                }
+            }
+        let rows = available.enumerated().map { index, credit in
+            ResetCreditDisplayRow(
+                id: credit.fingerprint,
+                text: copy.resetCreditRow(index: index + 1, expiresAt: credit.expiresAt, timeZone: timeZone)
+            )
+        }
+        let missingDetailsText: String?
+        if bank.availableCount == 0 {
+            missingDetailsText = nil
+        } else if bank.detailState == .countOnly {
+            missingDetailsText = copy.resetCreditDetailsUnavailable
+        } else {
+            let missing = max(0, bank.availableCount - rows.count)
+            missingDetailsText = missing > 0 ? copy.resetCreditDetailsMissing(missing: missing) : nil
+        }
+        return ResetCreditPresentation(
+            countText: bank.availableCount == 0
+                ? copy.noResetCredits
+                : copy.resetCreditCount(available: bank.availableCount),
+            rows: rows,
+            missingDetailsText: missingDetailsText
+        )
+    }
+}
+
 @MainActor
 final class QuotaStore: ObservableObject {
     @Published private(set) var snapshot: AgentQuotaSnapshot
@@ -31,6 +81,7 @@ final class QuotaStore: ObservableObject {
     @Published private(set) var isConfirmingQuotaChange = false
     @Published private(set) var nextAutomaticReadAt: Date?
     @Published private(set) var currentTime = Date()
+    @Published private(set) var statusBarPresentation: StatusBarPresentation
 
     private var refreshTask: Task<Void, Never>?
     private var clockTask: Task<Void, Never>?
@@ -97,7 +148,14 @@ final class QuotaStore: ObservableObject {
             locale: locale
         )
         runwayForecast = initialForecast
-        displayModel = CapsuleDisplayModel.make(forecast: initialForecast, locale: locale)
+        let initialDisplayModel = CapsuleDisplayModel.make(forecast: initialForecast, locale: locale)
+        displayModel = initialDisplayModel
+        statusBarPresentation = StatusBarPresentation.make(
+            copy: initialCopy,
+            statusText: initialDisplayModel.statusLabel,
+            menuBarText: initialDisplayModel.statusLabel,
+            compactUsedValueText: nil
+        )
         lastRefreshText = initialCopy.notRefreshed
         lastAttemptText = initialCopy.notAttempted
 
@@ -149,6 +207,7 @@ final class QuotaStore: ObservableObject {
         }
 
         isRefreshing = true
+        refreshStatusBarPresentation()
         recordEvent(name: "quota_refresh_started", surface: "menu_bar", requiresConsent: false)
         let locale = self.locale
         Task.detached(priority: .utility) {
@@ -158,6 +217,7 @@ final class QuotaStore: ObservableObject {
             await MainActor.run {
                 self.applyRefreshResult(snapshot, now: now)
                 self.isRefreshing = false
+                self.refreshStatusBarPresentation()
             }
         }
     }
@@ -167,6 +227,24 @@ final class QuotaStore: ObservableObject {
             return copy.unknownValue
         }
         return Self.formatQuotaPercent(weeklyWindow.remainingPercent)
+    }
+
+    var resetCreditCountText: String? {
+        currentResetCreditPresentation?.countText
+    }
+
+    var resetCreditRows: [ResetCreditDisplayRow] {
+        currentResetCreditPresentation?.rows ?? []
+    }
+
+    var resetCreditMissingDetailsText: String? {
+        currentResetCreditPresentation?.missingDetailsText
+    }
+
+    private var currentResetCreditPresentation: ResetCreditPresentation? {
+        snapshot.resetCreditBank.map {
+            ResetCreditPresentation.make(bank: $0, copy: copy, timeZone: .current)
+        }
     }
 
     var weeklyProjectionText: String {
@@ -199,11 +277,20 @@ final class QuotaStore: ObservableObject {
         )
     }
 
-    var paceComparisonText: String {
+    var observedUsageText: String {
+        guard snapshot.sourceStatus == .ok,
+              displayModel.showsLivePaceDetails,
+              let observedUsage = runwayForecast.observedUsage else {
+            return ""
+        }
+        return copy.observedUsage(observedUsage)
+    }
+
+    var diagnosticPaceComparisonText: String {
         guard snapshot.sourceStatus == .ok, displayModel.showsLivePaceDetails else {
             return ""
         }
-        return copy.paceComparison(
+        return copy.diagnosticPaceComparison(
             observed: runwayForecast.recentRateBandPerDay ?? runwayForecast.cycleRateBandPerDay,
             sustainablePerDay: runwayForecast.sustainableRatePerDay
         )
@@ -518,6 +605,9 @@ final class QuotaStore: ObservableObject {
         lastErrorText = reduction.lastErrorText
         let attemptSnapshot = reduction.latestAttemptSnapshot
         if attemptSnapshot.sourceStatus == .ok {
+            if let resetCreditBank = attemptSnapshot.resetCreditBank {
+                historyStore.recordResetCreditBank(resetCreditBank)
+            }
             historyStore.recordWeeklySnapshot(attemptSnapshot)
             let readings = historyStore.recentWeeklyReadings(now: now)
             let forecastReduction = QuotaRefreshReducer.reduceForecastResult(
@@ -531,6 +621,9 @@ final class QuotaStore: ObservableObject {
             isConfirmingQuotaChange = !forecastReduction.shouldAdoptLiveSnapshot
             if forecastReduction.shouldAdoptLiveSnapshot {
                 lastSuccessfulReadAt = now
+                if forecastReduction.acceptedResetTransition {
+                    historyStore.confirmLikelyResetCreditRedemption(at: now)
+                }
             } else {
                 lastRefreshText = previousLastRefreshText
                 if let acceptedWindow = previousSnapshot.weeklyWindow {
@@ -539,12 +632,14 @@ final class QuotaStore: ObservableObject {
                         sourceStatus: .ok,
                         fetchedAt: previousSnapshot.fetchedAt,
                         weeklyWindow: acceptedWindow,
+                        resetCreditBank: previousSnapshot.resetCreditBank,
                         errorMessage: nil
                     )
                 }
             }
         }
         displayModel = makeDisplayModel()
+        refreshStatusBarPresentation()
         if attemptSnapshot.sourceStatus == .ok, !isConfirmingQuotaChange {
             recordQuotaStateSample()
         }
@@ -639,6 +734,16 @@ final class QuotaStore: ObservableObject {
         displayModel = makeDisplayModel()
         lastRefreshText = lastRefreshText == QuotaCopy(locale: .zhHans).notRefreshed ? copy.notRefreshed : lastRefreshText
         lastAttemptText = lastAttemptText == QuotaCopy(locale: .zhHans).notAttempted ? copy.notAttempted : lastAttemptText
+        refreshStatusBarPresentation()
+    }
+
+    private func refreshStatusBarPresentation() {
+        statusBarPresentation = StatusBarPresentation.make(
+            copy: copy,
+            statusText: visibleStatusText,
+            menuBarText: visibleMenuBarText,
+            compactUsedValueText: compactUsedValueText
+        )
     }
 
     private func makeDisplayModel() -> CapsuleDisplayModel {

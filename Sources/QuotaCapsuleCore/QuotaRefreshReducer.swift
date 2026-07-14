@@ -11,10 +11,16 @@ public struct QuotaRefreshReduction: Equatable, Sendable {
 public struct WeeklyForecastRefreshReduction: Equatable, Sendable {
     public let forecast: WeeklyRunwayForecast
     public let shouldAdoptLiveSnapshot: Bool
+    public let acceptedResetTransition: Bool
 
-    public init(forecast: WeeklyRunwayForecast, shouldAdoptLiveSnapshot: Bool) {
+    public init(
+        forecast: WeeklyRunwayForecast,
+        shouldAdoptLiveSnapshot: Bool,
+        acceptedResetTransition: Bool = false
+    ) {
         self.forecast = forecast
         self.shouldAdoptLiveSnapshot = shouldAdoptLiveSnapshot
+        self.acceptedResetTransition = acceptedResetTransition
     }
 }
 
@@ -45,10 +51,14 @@ public enum QuotaRefreshReducer {
         guard newSnapshot.sourceStatus == .ok, newSnapshot.weeklyWindow != nil else {
             return WeeklyForecastRefreshReduction(
                 forecast: currentForecast,
-                shouldAdoptLiveSnapshot: false
+                shouldAdoptLiveSnapshot: false,
+                acceptedResetTransition: false
             )
         }
         let quality = WeeklyQualityEngine.analyze(weeklyReadings, now: now)
+        let acceptedResetTransition = quality.state == .stable
+            && quality.flags.contains(.resetCandidate)
+            && (quality.observations.map(\.cycleID).max() ?? 0) > (quality.observations.map(\.cycleID).min() ?? 0)
         return WeeklyForecastRefreshReduction(
             forecast: WeeklyRunwayPredictor.predict(
                 snapshot: newSnapshot,
@@ -56,7 +66,8 @@ public enum QuotaRefreshReducer {
                 now: now,
                 locale: locale
             ),
-            shouldAdoptLiveSnapshot: quality.state != .calibrating
+            shouldAdoptLiveSnapshot: quality.state != .calibrating,
+            acceptedResetTransition: acceptedResetTransition
         )
     }
 
@@ -86,6 +97,7 @@ public enum QuotaRefreshReducer {
                 sourceStatus: .stale,
                 fetchedAt: currentSnapshot.fetchedAt,
                 weeklyWindow: currentSnapshot.weeklyWindow,
+                resetCreditBank: currentSnapshot.resetCreditBank,
                 errorMessage: cleanedError
             )
             return QuotaRefreshReduction(

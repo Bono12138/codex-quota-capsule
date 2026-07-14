@@ -110,7 +110,7 @@ public struct QuotaCopy: Equatable, Sendable {
         }
     }
 
-    public func paceComparison(observed: PaceBand?, sustainablePerDay: Double?) -> String {
+    public func diagnosticPaceComparison(observed: PaceBand?, sustainablePerDay: Double?) -> String {
         guard let observed,
               observed.lower.isFinite,
               observed.upper.isFinite,
@@ -123,10 +123,64 @@ public struct QuotaCopy: Equatable, Sendable {
         let upper = Self.shortNumber(max(0, observed.upper))
         let sustainable = Self.shortNumber(sustainablePerDay)
         return switch locale {
-        case .zhHans: "观察速度 \(lower)–\(upper)%/天 · 可持续上限 \(sustainable)%/天"
-        case .zhHant: "觀察速度 \(lower)–\(upper)%/天 · 可持續上限 \(sustainable)%/天"
-        case .en: "Observed \(lower)–\(upper)%/day · sustainable up to \(sustainable)%/day"
+        case .zhHans: "诊断：归一化速度 \(lower)–\(upper)%/天 · 可持续上限 \(sustainable)%/天"
+        case .zhHant: "診斷：正規化速度 \(lower)–\(upper)%/天 · 可持續上限 \(sustainable)%/天"
+        case .en: "Diagnostic: normalized pace \(lower)–\(upper)%/day · sustainable up to \(sustainable)%/day"
         }
+    }
+
+    public func observedUsage(_ summary: ObservedUsageSummary) -> String {
+        guard summary.coverageSeconds.isFinite,
+              summary.coverageSeconds > 0,
+              summary.increaseBand.lower.isFinite,
+              summary.increaseBand.upper.isFinite else {
+            return ""
+        }
+        let totalMinutes = max(1, Int((summary.coverageSeconds / 60).rounded()))
+        let hours = totalMinutes / 60
+        let minutes = totalMinutes % 60
+        let lower = Int(max(0, summary.increaseBand.lower).rounded())
+        let upper = Int(max(0, summary.increaseBand.upper).rounded())
+        let duration: String
+        switch locale {
+        case .zhHans:
+            duration = hours > 0
+                ? minutes > 0 ? "\(hours) 小时 \(minutes) 分钟" : "\(hours) 小时"
+                : "\(minutes) 分钟"
+            return "近 \(duration)已用约 \(lower)%–\(upper)%"
+        case .zhHant:
+            duration = hours > 0
+                ? minutes > 0 ? "\(hours) 小時 \(minutes) 分鐘" : "\(hours) 小時"
+                : "\(minutes) 分鐘"
+            return "近 \(duration)已用約 \(lower)%–\(upper)%"
+        case .en:
+            duration = hours > 0
+                ? minutes > 0 ? "\(hours)h \(minutes)m" : "\(hours)h"
+                : "\(minutes)m"
+            return "About \(lower)%–\(upper)% used over the last \(duration)"
+        }
+    }
+
+    public func forecastResetBandValue(_ band: PercentageBand?) -> String {
+        guard let band, band.lower.isFinite, band.upper.isFinite else { return accumulatingValue }
+        let lower = min(band.lower, band.upper)
+        let upper = max(band.lower, band.upper)
+        if upper < 0 {
+            return switch locale {
+            case .zhHans: "可能在重置前用完"
+            case .zhHant: "可能在重設前用完"
+            case .en: "May run out before reset"
+            }
+        }
+        if lower < 0 {
+            let maximum = Int(upper.rounded())
+            return switch locale {
+            case .zhHans: "较快情景可能提前用完；较慢情景最多剩 \(maximum)%"
+            case .zhHant: "較快情境可能提前用完；較慢情境最多剩 \(maximum)%"
+            case .en: "Faster scenario may run out; slower scenario leaves at most \(maximum)%"
+            }
+        }
+        return "\(Int(lower.rounded()))%–\(Int(upper.rounded()))%"
     }
 
     public var accumulatingValue: String {
@@ -1508,6 +1562,78 @@ public struct QuotaCopy: Equatable, Sendable {
         case .zhHans: "本地历史数据"
         case .zhHant: "本機歷史資料"
         case .en: "Local history"
+        }
+    }
+
+    public var resetCreditsTitle: String {
+        switch locale {
+        case .zhHans: "重置券"
+        case .zhHant: "重置券"
+        case .en: "Reset credits"
+        }
+    }
+
+    public var noResetCredits: String {
+        switch locale {
+        case .zhHans: "暂无可用重置券"
+        case .zhHant: "暫無可用重置券"
+        case .en: "No reset credits available"
+        }
+    }
+
+    public func resetCreditCount(available: Int) -> String {
+        let count = max(0, available)
+        return switch locale {
+        case .zhHans: "\(count) 张重置券可用"
+        case .zhHant: "\(count) 張重置券可用"
+        case .en: count == 1 ? "1 reset credit available" : "\(count) reset credits available"
+        }
+    }
+
+    public var resetCreditDetailsUnavailable: String {
+        switch locale {
+        case .zhHans: "暂未返回每张券的到期详情"
+        case .zhHant: "暫未傳回每張券的到期詳情"
+        case .en: "Expiry details were not returned"
+        }
+    }
+
+    public func resetCreditDetailsMissing(missing: Int) -> String {
+        let count = max(0, missing)
+        return switch locale {
+        case .zhHans: "另有 \(count) 张未返回到期详情"
+        case .zhHant: "另有 \(count) 張未傳回到期詳情"
+        case .en: count == 1 ? "1 more credit has no expiry details" : "\(count) more credits have no expiry details"
+        }
+    }
+
+    public func resetCreditRow(index: Int, expiresAt: Date?, timeZone: TimeZone) -> String {
+        let safeIndex = max(1, index)
+        guard let expiresAt else {
+            return switch locale {
+            case .zhHans: "重置券 \(safeIndex) · 未提供到期时间"
+            case .zhHant: "重置券 \(safeIndex) · 未提供到期時間"
+            case .en: "Reset credit \(safeIndex) · Expiry time unavailable"
+            }
+        }
+
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = timeZone
+        let components = calendar.dateComponents([.month, .day, .hour, .minute], from: expiresAt)
+        let month = components.month ?? 1
+        let day = components.day ?? 1
+        let hour = components.hour ?? 0
+        let minute = components.minute ?? 0
+        let clock = String(format: "%02d:%02d", hour, minute)
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        formatter.timeZone = timeZone
+        formatter.dateFormat = "MMM d"
+        let englishDate = formatter.string(from: expiresAt)
+        return switch locale {
+        case .zhHans: "重置券 \(safeIndex) · \(month) 月 \(day) 日 \(clock) 到期"
+        case .zhHant: "重置券 \(safeIndex) · \(month) 月 \(day) 日 \(clock) 到期"
+        case .en: "Reset credit \(safeIndex) · Expires \(englishDate) at \(clock)"
         }
     }
 

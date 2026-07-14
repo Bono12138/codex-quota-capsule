@@ -59,6 +59,7 @@ open "/Applications/Quota Capsule Beta.app"
 
 - 桌面胶囊显示周额度判断、周已用比例、时间/用量进度和重置倒计时。
 - 点击展开后可查看未来 24 小时预算、预测区间、速度证据、重置时间和数据更新时间。
+- 展开面板最下方显示当前重置券权威数量，以及 app-server 已返回的每张可用券到期时间（本机时区，精确到分钟）。
 - 菜单栏可手动刷新、显示/隐藏胶囊、打开反馈和退出。
 - 后台每 60 秒自动读取；读取失败时保留最后成功数据并明确标记为旧数据。
 
@@ -66,7 +67,7 @@ open "/Applications/Quota Capsule Beta.app"
 
 ## 隐私边界
 
-应用只读调用本机 Codex app-server 的 `rateLimits/read`，只使用周额度已用比例、窗口时长和重置时间。它不读取或上传 prompt、session、代码、项目路径、token、cookie 或账号凭据。
+应用只读调用本机 Codex app-server 的 `rateLimits/read`，使用周额度窗口和重置券事实。它不读取或上传 prompt、session、代码、项目路径、token、cookie 或账号凭据。重置券原始 ID 会立即转换为 SHA-256 指纹，description/referral 内容不进入模型或数据库；发放、到期和生命周期事实保存在本机，清空本地历史时一并删除。
 
 远程 analytics 默认不会发送到任何地方。只有显式设置下面的 endpoint 后才可能上传允许的产品事件：
 

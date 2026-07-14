@@ -116,11 +116,78 @@ public struct WeeklyQualityResult: Equatable, Sendable {
     }
 }
 
+public enum ResetCreditStatus: String, Codable, Equatable, Sendable {
+    case available
+    case redeeming
+    case redeemed
+    case unknown
+}
+
+public enum ResetCreditDetailState: String, Codable, Equatable, Sendable {
+    case countOnly
+    case complete
+    case capped
+}
+
+public enum ResetCreditGrantTimeSource: String, Codable, Equatable, Sendable {
+    case provider
+    case inferredExpiryMinus30Days
+    case unknown
+}
+
+public struct ResetCredit: Equatable, Sendable {
+    public let fingerprint: String
+    public let resetType: String
+    public let status: ResetCreditStatus
+    public let grantedAt: Date?
+    public let grantTimeSource: ResetCreditGrantTimeSource
+    public let expiresAt: Date?
+    public let title: String?
+
+    public init(
+        fingerprint: String,
+        resetType: String,
+        status: ResetCreditStatus,
+        grantedAt: Date?,
+        grantTimeSource: ResetCreditGrantTimeSource,
+        expiresAt: Date?,
+        title: String?
+    ) {
+        self.fingerprint = fingerprint
+        self.resetType = resetType
+        self.status = status
+        self.grantedAt = grantedAt
+        self.grantTimeSource = grantTimeSource
+        self.expiresAt = expiresAt
+        self.title = title
+    }
+}
+
+public struct ResetCreditBankSummary: Equatable, Sendable {
+    public let availableCount: Int
+    public let credits: [ResetCredit]?
+    public let detailState: ResetCreditDetailState
+    public let fetchedAt: Date
+
+    public init(
+        availableCount: Int,
+        credits: [ResetCredit]?,
+        detailState: ResetCreditDetailState,
+        fetchedAt: Date
+    ) {
+        self.availableCount = availableCount
+        self.credits = credits
+        self.detailState = detailState
+        self.fetchedAt = fetchedAt
+    }
+}
+
 public struct AgentQuotaSnapshot: Equatable, Sendable {
     public let provider: String
     public let sourceStatus: SourceStatus
     public let fetchedAt: Date
     public let weeklyWindow: QuotaWindow?
+    public let resetCreditBank: ResetCreditBankSummary?
     public let errorMessage: String?
 
     public init(
@@ -128,12 +195,14 @@ public struct AgentQuotaSnapshot: Equatable, Sendable {
         sourceStatus: SourceStatus,
         fetchedAt: Date,
         weeklyWindow: QuotaWindow?,
+        resetCreditBank: ResetCreditBankSummary? = nil,
         errorMessage: String?
     ) {
         self.provider = provider
         self.sourceStatus = sourceStatus
         self.fetchedAt = fetchedAt
         self.weeklyWindow = weeklyWindow
+        self.resetCreditBank = resetCreditBank
         self.errorMessage = errorMessage
     }
 

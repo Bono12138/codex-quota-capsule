@@ -100,6 +100,51 @@ struct WeeklyDisplayModelTests {
         #expect(!watch.defaultText.contains("-"))
     }
 
+    @Test("cross-zero projection is described as two scenarios")
+    func crossZeroProjectionIsExplicit() {
+        let model = CapsuleDisplayModel.make(
+            forecast: forecast(state: .watch, projected: PercentageBand(lower: -22, upper: 44)),
+            locale: .zhHans
+        )
+
+        #expect(model.defaultText == "按较快节奏可能提前用完；较慢情景重置时最多剩 44%")
+        #expect(!model.defaultText.contains("0–44"))
+    }
+
+    @Test("positive projection uses whole-percent precision")
+    func positiveProjectionUsesWholePercent() {
+        let model = CapsuleDisplayModel.make(
+            forecast: forecast(projected: PercentageBand(lower: 12.2, upper: 18.8)),
+            locale: .zhHans
+        )
+
+        #expect(model.defaultText == "照最近速度，重置时预计剩 12%–19%")
+    }
+
+    @Test("observed usage names the real coverage period")
+    func observedUsageUsesRealCoverage() {
+        let copy = QuotaCopy(locale: .zhHans)
+        let text = copy.observedUsage(
+            ObservedUsageSummary(
+                coverageSeconds: 8 * 3_600 + 15 * 60,
+                increaseBand: PercentageBand(lower: 16, upper: 18)
+            )
+        )
+
+        #expect(text == "近 8 小时 15 分钟已用约 16%–18%")
+        #expect(!text.contains("/天"))
+    }
+
+    @Test("trend legend keeps negative projection semantics")
+    func trendLegendDoesNotClampNegativeProjection() {
+        let copy = QuotaCopy(locale: .zhHans)
+
+        #expect(copy.forecastResetBandValue(PercentageBand(lower: -22, upper: 44)) == "较快情景可能提前用完；较慢情景最多剩 44%")
+        #expect(copy.forecastResetBandValue(PercentageBand(lower: -22, upper: -4)) == "可能在重置前用完")
+        #expect(copy.forecastResetBandValue(PercentageBand(lower: 12.2, upper: 18.8)) == "12%–19%")
+        #expect(!copy.forecastResetBandValue(PercentageBand(lower: -22, upper: 44)).contains("0–44"))
+    }
+
     @Test("all locales remain Weekly Only")
     func allLocalesAreWeeklyOnly() {
         let models = [QuotaLocale.zhHans, .zhHant, .en].map {
@@ -173,6 +218,26 @@ struct WeeklyDisplayModelTests {
     func budgetRoundsDown() {
         let model = CapsuleDisplayModel.make(forecast: forecast(budget: 13.9), locale: .zhHans)
         #expect(model.metrics[2].value == "≤13%")
+    }
+
+    @Test("reset credit rows use local time through minutes")
+    func resetCreditRowsUseMinutePrecision() throws {
+        let timeZone = try #require(TimeZone(identifier: "Asia/Shanghai"))
+        let expiry = try Date.ISO8601FormatStyle().parse("2026-07-18T00:33:54Z")
+        let copy = QuotaCopy(locale: .zhHans)
+
+        #expect(copy.resetCreditRow(index: 1, expiresAt: expiry, timeZone: timeZone) == "重置券 1 · 7 月 18 日 08:33 到期")
+        #expect(!copy.resetCreditRow(index: 1, expiresAt: expiry, timeZone: timeZone).contains("08:33:54"))
+        #expect(copy.resetCreditRow(index: 2, expiresAt: nil, timeZone: timeZone) == "重置券 2 · 未提供到期时间")
+    }
+
+    @Test("capped details admit missing expiry rows")
+    func cappedBankCopyIsHonest() {
+        let copy = QuotaCopy(locale: .zhHans)
+
+        #expect(copy.resetCreditCount(available: 4) == "4 张重置券可用")
+        #expect(copy.resetCreditDetailsMissing(missing: 2) == "另有 2 张未返回到期详情")
+        #expect(copy.noResetCredits == "暂无可用重置券")
     }
 
     @Test("stale presentation freezes percentages and suppresses runway claims")

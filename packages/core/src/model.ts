@@ -8,11 +8,33 @@ export type QuotaWindow = {
   resetsAt: Date;
 };
 
+export type ResetCreditStatus = "available" | "redeeming" | "redeemed" | "unknown";
+export type ResetCreditDetailState = "countOnly" | "complete" | "capped";
+export type ResetCreditGrantTimeSource = "provider" | "inferredExpiryMinus30Days" | "unknown";
+
+export type ResetCredit = {
+  fingerprint: string;
+  resetType: string;
+  status: ResetCreditStatus;
+  grantedAt: Date | null;
+  grantTimeSource: ResetCreditGrantTimeSource;
+  expiresAt: Date | null;
+  title: string | null;
+};
+
+export type ResetCreditBankSummary = {
+  availableCount: number;
+  credits: ResetCredit[] | null;
+  detailState: ResetCreditDetailState;
+  fetchedAt: Date;
+};
+
 export type AgentQuotaSnapshot = {
   provider: string;
   sourceStatus: SourceStatus;
   fetchedAt: Date;
   weeklyWindow?: QuotaWindow;
+  resetCreditBank?: ResetCreditBankSummary;
   errorMessage?: string;
 };
 
@@ -59,6 +81,7 @@ export type PaceEvidence = {
   coverageHours: number;
 };
 export type PercentageBand = { lower: number; upper: number };
+export type ObservedUsageSummary = { coverageSeconds: number; increaseBand: PercentageBand };
 export type ExhaustionDateRange = { earliest: Date; latest: Date | null };
 export type WeeklyTrendPoint = { at: Date; usedPercent: number };
 export type WeeklyRunwayState = "unavailable" | "exhausted" | "calibrating" | "earlyEstimate" | "enough" | "watch" | "mayRunOut";
@@ -75,6 +98,7 @@ export type WeeklyRunwayForecast = {
   recentRateBandPerDay: PaceBand | null;
   cycleRateBandPerDay: PaceBand | null;
   last24HourUsageBand: PercentageBand | null;
+  observedUsage: ObservedUsageSummary | null;
   projectedRemainingBandAtReset: PercentageBand | null;
   estimatedEmptyAtRange: ExhaustionDateRange | null;
   next24HourBudget: number | null;

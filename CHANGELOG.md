@@ -2,6 +2,28 @@
 
 All notable user-visible and repository-governance changes are recorded here.
 
+## Unreleased
+
+## 0.3.1-beta.1 — 2026-07-14
+
+### Changed
+
+- Make weekly pace evidence invariant to duplicate and flat polling frequency by measuring each clean monotonic segment once.
+- Fuse three or more independent pace estimates with a median/MAD consensus, while retaining conservative one- and two-source behavior and lowering confidence when sources disagree across the decision boundary.
+- Replace normalized daily-rate jargon on the main surface with the actual observed duration and allowance change.
+- Explain cross-zero reset projections honestly instead of clamping negative outcomes into a misleading `0%–Y%` range.
+- Treat reset-credit count, nullable/capped details, and weekly pace as separate facts so credits never create false safety.
+
+### Added
+
+- Show every returned available reset credit at the bottom of the expanded panel, sorted by local expiry time and displayed through the minute.
+- Keep privacy-safe local reset-credit history with SHA-256 identity fingerprints, provider timestamps, coalesced bank runs, and conservative expired/likely-redeemed/unknown lifecycle labels.
+
+### Fixed
+
+- Keep the status menu and language submenu stable while open by applying immutable presentation snapshots and deferring the latest background update until menu tracking ends.
+- Add shared Swift/TypeScript polling-equivalence fixtures so sparse and dense observations of the same real change cannot silently diverge again.
+
 ## 0.3.0-beta.1 — 2026-07-13
 
 ### Changed

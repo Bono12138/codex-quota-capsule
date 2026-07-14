@@ -13,6 +13,7 @@ import {
   activityEvidence,
   countUpwardTransitions,
   cycleEvidence,
+  forecastConfidenceForEvidence,
   fusePaceEvidence,
   historicalEvidence,
   quantizedInterval,
@@ -194,6 +195,7 @@ export function predictWeeklyRunway(
   const budget = Math.min(window.remainingPercent, sustainable * Math.min(1, daysRemaining));
   const active = quality.state === "stable" ? activeCycleAndSegment(quality.observations) : [];
   const last24HourUsage = observedLast24HourUsageBand(active, now);
+  const observedUsage = observedUsageSummary(active);
   const trend = trendPoints(active);
 
   if (window.remainingPercent <= 0) {
@@ -250,7 +252,12 @@ export function predictWeeklyRunway(
     upper: window.remainingPercent - pace.lower * daysRemaining,
   };
   const transitionCount = historyMatchesLiveWindow ? countUpwardTransitions(active) : 0;
-  const confidence = forecastConfidence(active, evidence, transitionCount);
+  const firstActive = active[0];
+  const lastActive = active.at(-1);
+  const activeCoverageHours = firstActive && lastActive
+    ? Math.max(0, lastActive.fetchedAt.getTime() - firstActive.fetchedAt.getTime()) / 3_600_000
+    : 0;
+  const confidence = forecastConfidenceForEvidence(evidence, activeCoverageHours, transitionCount, sustainable);
   const state = evidence.length === 1 || transitionCount === 0
     ? "earlyEstimate"
     : projected.upper < 0
@@ -275,6 +282,7 @@ export function predictWeeklyRunway(
     trend,
     evidence,
     confidenceReason(confidence, evidence.length, transitionCount),
+    observedUsage,
   );
 }
 
@@ -393,6 +401,24 @@ function observedLast24HourUsageBand(observations: WeeklyObservation[], now: Dat
   return { lower: Math.max(0, last.lower - first.upper), upper: Math.max(0, last.upper - first.lower) };
 }
 
+function observedUsageSummary(observations: WeeklyObservation[]): WeeklyRunwayForecast["observedUsage"] {
+  const first = observations[0];
+  const last = observations.at(-1);
+  if (!first || !last || last.fetchedAt.getTime() <= first.fetchedAt.getTime()
+    || last.usedPercent <= first.usedPercent) return null;
+  const start = quantizedInterval(first.usedPercent);
+  const end = quantizedInterval(last.usedPercent);
+  const increaseBand = {
+    lower: Math.max(0, end.lower - start.upper),
+    upper: Math.max(0, end.upper - start.lower),
+  };
+  if (increaseBand.upper <= 0) return null;
+  return {
+    coverageSeconds: (last.fetchedAt.getTime() - first.fetchedAt.getTime()) / 1_000,
+    increaseBand,
+  };
+}
+
 function trendPoints(observations: WeeklyObservation[], limit = 32): Array<{ at: Date; usedPercent: number }> {
   if (observations.length <= limit || limit <= 1) {
     return observations.map((observation) => ({ at: observation.fetchedAt, usedPercent: observation.usedPercent }));
@@ -410,26 +436,6 @@ function exhaustionRange(remainingPercent: number, pace: PaceBand, now: Date): {
     earliest: new Date(now.getTime() + (remainingPercent / pace.upper) * 86_400_000),
     latest: pace.lower > 0 ? new Date(now.getTime() + (remainingPercent / pace.lower) * 86_400_000) : null,
   };
-}
-
-function forecastConfidence(
-  observations: WeeklyObservation[],
-  evidence: WeeklyRunwayForecast["paceEvidence"],
-  transitionCount: number,
-): WeeklyRunwayForecast["confidence"] {
-  const first = observations[0];
-  const last = observations.at(-1);
-  if (evidence.length <= 1 || transitionCount === 0 || !first || !last) return "low";
-  const coverage = last.fetchedAt.getTime() - first.fetchedAt.getTime();
-  return coverage >= RECENT_HORIZON_MS && transitionCount >= 3 && evidenceAgreement(evidence) <= 0.5 ? "high" : "medium";
-}
-
-function evidenceAgreement(evidence: WeeklyRunwayForecast["paceEvidence"]): number {
-  const midpoints = evidence.map((item) => (item.bandPerDay.lower + item.bandPerDay.upper) / 2);
-  const lower = Math.min(...midpoints);
-  const upper = Math.max(...midpoints);
-  const average = midpoints.reduce((sum, value) => sum + value, 0) / midpoints.length;
-  return (upper - lower) / Math.max(1, average);
 }
 
 function evidenceContainsMaterialOverspeed(
@@ -473,10 +479,11 @@ function makeWeeklyForecast(
   currentCycleTrend: Array<{ at: Date; usedPercent: number }> = [],
   paceEvidence: WeeklyRunwayForecast["paceEvidence"] = [],
   confidenceReason = "",
+  observedUsage: WeeklyRunwayForecast["observedUsage"] = null,
 ): WeeklyRunwayForecast {
-  return { state, confidence, usedPercent: window.usedPercent, remainingPercent: window.remainingPercent, elapsedPercent, daysUntilReset, sustainableRatePerDay, recentRateBandPerDay, cycleRateBandPerDay, last24HourUsageBand, projectedRemainingBandAtReset, estimatedEmptyAtRange, next24HourBudget, currentCycleTrend, paceEvidence, confidenceReason };
+  return { state, confidence, usedPercent: window.usedPercent, remainingPercent: window.remainingPercent, elapsedPercent, daysUntilReset, sustainableRatePerDay, recentRateBandPerDay, cycleRateBandPerDay, last24HourUsageBand, observedUsage, projectedRemainingBandAtReset, estimatedEmptyAtRange, next24HourBudget, currentCycleTrend, paceEvidence, confidenceReason };
 }
 
 function unavailableWeeklyForecast(): WeeklyRunwayForecast {
-  return { state: "unavailable", confidence: "low", usedPercent: null, remainingPercent: null, elapsedPercent: null, daysUntilReset: null, sustainableRatePerDay: null, recentRateBandPerDay: null, cycleRateBandPerDay: null, last24HourUsageBand: null, projectedRemainingBandAtReset: null, estimatedEmptyAtRange: null, next24HourBudget: null, currentCycleTrend: [], paceEvidence: [], confidenceReason: "" };
+  return { state: "unavailable", confidence: "low", usedPercent: null, remainingPercent: null, elapsedPercent: null, daysUntilReset: null, sustainableRatePerDay: null, recentRateBandPerDay: null, cycleRateBandPerDay: null, last24HourUsageBand: null, observedUsage: null, projectedRemainingBandAtReset: null, estimatedEmptyAtRange: null, next24HourBudget: null, currentCycleTrend: [], paceEvidence: [], confidenceReason: "" };
 }

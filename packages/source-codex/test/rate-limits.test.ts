@@ -118,4 +118,87 @@ describe("parseCodexRateLimits", () => {
     expect(parsed.weeklyWindow?.usedPercent).toBe(0.9);
     expect(parsed.weeklyWindow?.remainingPercent).toBe(99.1);
   });
+
+  it("parses reset credits without exposing raw identity or descriptions", () => {
+    const fetchedAt = new Date(1_788_270_000_000);
+    const parsed = parseCodexRateLimits(
+      {
+        rateLimits: {
+          primary: { usedPercent: 18, windowDurationMins: 10_080, resetsAt: 1_788_299_735 },
+        },
+        rateLimitResetCredits: {
+          availableCount: 3,
+          credits: [
+            {
+              id: "fake-credit-a",
+              resetType: "codexRateLimits",
+              status: "available",
+              grantedAt: 1_788_183_600,
+              expiresAt: 1_788_356_400,
+              title: "  Full reset  ",
+              description: "must be ignored",
+            },
+            {
+              id: "fake-credit-b",
+              resetType: "codexRateLimits",
+              status: "unknown",
+              grantedAt: 1_788_226_800,
+              expiresAt: null,
+              title: null,
+              description: null,
+            },
+          ],
+        },
+      },
+      { fetchedAt },
+    );
+
+    expect(parsed.resetCreditBank?.availableCount).toBe(3);
+    expect(parsed.resetCreditBank?.detailState).toBe("capped");
+    expect(parsed.resetCreditBank?.credits?.[0].fingerprint).toMatch(/^[0-9a-f]{64}$/);
+    expect(parsed.resetCreditBank?.credits?.[0].fingerprint).not.toBe("fake-credit-a");
+    expect(parsed.resetCreditBank?.credits?.[0].title).toBe("Full reset");
+    expect(parsed.resetCreditBank?.credits?.[0]).not.toHaveProperty("id");
+    expect(parsed.resetCreditBank?.credits?.[0]).not.toHaveProperty("description");
+    expect(parsed.resetCreditBank?.credits?.[1].expiresAt).toBeNull();
+  });
+
+  it("distinguishes count-only, empty, missing, and invalid reset credit details", () => {
+    const fetchedAt = new Date(1_788_270_000_000);
+    const weekly = {
+      primary: { usedPercent: 18, windowDurationMins: 10_080, resetsAt: 1_788_299_735 },
+    };
+
+    const countOnly = parseCodexRateLimits(
+      { rateLimits: weekly, rateLimitResetCredits: { availableCount: 2, credits: null } },
+      { fetchedAt },
+    );
+    const empty = parseCodexRateLimits(
+      { rateLimits: weekly, rateLimitResetCredits: { availableCount: 0, credits: [] } },
+      { fetchedAt },
+    );
+    const missing = parseCodexRateLimits({ rateLimits: weekly }, { fetchedAt });
+    const partiallyInvalid = parseCodexRateLimits(
+      {
+        rateLimits: weekly,
+        rateLimitResetCredits: {
+          availableCount: 3,
+          credits: [
+            { id: "fake-good", resetType: "codexRateLimits", status: "available", grantedAt: null, expiresAt: 1_788_356_400 },
+            { id: "fake-bad-grant", resetType: "codexRateLimits", status: "available", grantedAt: "bad", expiresAt: 1_788_356_400 },
+            { id: "fake-bad-expiry", resetType: "codexRateLimits", status: "available", grantedAt: null, expiresAt: -1 },
+          ],
+        },
+      },
+      { fetchedAt },
+    );
+
+    expect(countOnly.resetCreditBank).toMatchObject({ availableCount: 2, credits: null, detailState: "countOnly" });
+    expect(empty.resetCreditBank).toMatchObject({ availableCount: 0, credits: [], detailState: "complete" });
+    expect(missing.resetCreditBank).toBeUndefined();
+    expect(partiallyInvalid.resetCreditBank?.credits).toHaveLength(1);
+    expect(partiallyInvalid.resetCreditBank?.credits?.[0].grantedAt).toBeNull();
+    expect(partiallyInvalid.resetCreditBank?.credits?.[0].grantTimeSource).toBe("unknown");
+    expect(partiallyInvalid.resetCreditBank?.detailState).toBe("capped");
+  });
 });

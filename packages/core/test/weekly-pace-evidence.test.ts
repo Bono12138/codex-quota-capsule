@@ -4,9 +4,12 @@ import {
   activitySegments,
   countUpwardTransitions,
   cycleEvidence,
+  forecastConfidenceForEvidence,
+  fusePaceEvidence,
   historicalEvidence,
   recentEvidence,
   type QuotaWindow,
+  type PaceEvidenceKind,
   type WeeklyObservation,
 } from "../src";
 
@@ -80,6 +83,31 @@ describe("adaptive weekly pace evidence", () => {
     expect(evidence.bandPerDay.upper).toBeCloseTo(36, 9);
   });
 
+  it("does not add endpoint uncertainty for flat polls", () => {
+    const sparse = [
+      observation(new Date(now.getTime() - 8 * 3_600_000), 1),
+      observation(now, 18),
+    ];
+    const polled = [1, 1, 4, 4, 7, 7, 10, 10, 13, 13, 16, 16, 18].map((used, index) =>
+      observation(new Date(now.getTime() + (index - 12) * 40 * 60_000), used));
+
+    expect(activitySegments(sparse, now)?.observedIncreaseBand).toEqual({ lower: 16, upper: 18 });
+    expect(activitySegments(polled, now)?.observedIncreaseBand).toEqual({ lower: 16, upper: 18 });
+  });
+
+  it("does not change activity uncertainty for duplicate polls", () => {
+    const base = observations([5, 6, 7], 1);
+    const duplicated = [base[0], base[1], base[1], base[2]];
+
+    expect(activitySegments(base, now)?.observedIncreaseBand).toEqual({ lower: 1, upper: 3 });
+    expect(activitySegments(duplicated, now)?.observedIncreaseBand).toEqual({ lower: 1, upper: 3 });
+  });
+
+  it("starts a new measurement segment after a correction", () => {
+    expect(activitySegments(observations([5, 9, 8, 10], 1), now)?.observedIncreaseBand)
+      .toEqual({ lower: 4, upper: 8 });
+  });
+
   it("segments active bursts, ordinary use, and idle gaps", () => {
     const samples = [
       observation(new Date(now.getTime() - 30 * 3_600_000), 5),
@@ -126,6 +154,46 @@ describe("adaptive weekly pace evidence", () => {
     ));
     expect(historicalEvidence([...previous, observation(now, 2, 1)], 1)).toBeNull();
   });
+
+  it("resists one wide outlier when fusing three sources", () => {
+    const fused = fusePaceEvidence([
+      evidence("cycle", 46, 50),
+      evidence("recent", 48, 54),
+      evidence("activity", 5, 92),
+    ])!;
+
+    expect(fused.lower).toBeCloseTo(45.5, 9);
+    expect(fused.upper).toBeCloseTo(51.5, 9);
+  });
+
+  it("returns the honest hull for two sources", () => {
+    expect(fusePaceEvidence([
+      evidence("cycle", 8, 10),
+      evidence("recent", 14, 18),
+    ])).toEqual({ lower: 8, upper: 18 });
+  });
+
+  it("forces low confidence when sources disagree on the decision", () => {
+    const paths = [
+      evidence("cycle", 7, 9),
+      evidence("recent", 11, 13),
+      evidence("activity", 16, 18),
+    ];
+
+    expect(forecastConfidenceForEvidence(paths, 24, 3, 12)).toBe("low");
+  });
+
+  it("requires coverage before agreeing evidence raises confidence", () => {
+    const paths = [
+      evidence("cycle", 8, 10),
+      evidence("recent", 9, 11),
+      evidence("activity", 10, 12),
+    ];
+
+    expect(forecastConfidenceForEvidence(paths, 2.99, 1, 14)).toBe("low");
+    expect(forecastConfidenceForEvidence(paths, 3, 1, 14)).toBe("medium");
+    expect(forecastConfidenceForEvidence(paths, 24, 3, 14)).toBe("high");
+  });
 });
 
 function window(usedPercent: number, resetDays: number): QuotaWindow {
@@ -152,5 +220,15 @@ function observation(fetchedAt: Date, usedPercent: number, cycleID = 0): WeeklyO
     cycleID,
     segmentID: 0,
     qualityFlags: [],
+  };
+}
+
+function evidence(kind: PaceEvidenceKind, lower: number, upper: number) {
+  return {
+    kind,
+    bandPerDay: { lower, upper },
+    reliability: 0.6,
+    transitionCount: 2,
+    coverageHours: 8,
   };
 }

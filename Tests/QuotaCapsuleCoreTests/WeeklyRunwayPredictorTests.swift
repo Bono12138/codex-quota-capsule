@@ -72,6 +72,20 @@ struct WeeklyRunwayPredictorTests {
         #expect(forecast.currentCycleTrend.last?.usedPercent == 30)
     }
 
+    @Test("the observed usage summary uses the actual clean-segment endpoints")
+    func observedUsageUsesActualCoverage() {
+        let forecast = WeeklyRunwayPredictor.predict(
+            snapshot: snapshot(remaining: 65, daysRemaining: 4),
+            quality: quality(values: [25, 30, 35], spacingHours: 24),
+            now: now
+        )
+
+        #expect(forecast.observedUsage == ObservedUsageSummary(
+            coverageSeconds: 48 * 3_600,
+            increaseBand: PercentageBand(lower: 9, upper: 11)
+        ))
+    }
+
     @Test("flat integer readings do not claim a zero pace")
     func flatIntegerReadingsDoNotClaimZeroPace() {
         let forecast = WeeklyRunwayPredictor.predict(
@@ -297,5 +311,39 @@ struct WeeklyRunwayPredictorTests {
         #expect(reduction.forecast.projectedRemainingBandAtReset == nil)
         #expect(reduction.forecast.paceEvidence.isEmpty)
         #expect(!reduction.shouldAdoptLiveSnapshot)
+    }
+
+    @Test("a confirmed reset transition is exposed for conservative credit matching")
+    func confirmedResetTransitionIsExposed() {
+        let previous = WeeklyRunwayPredictor.predict(
+            snapshot: snapshot(remaining: 70, daysRemaining: 4),
+            quality: quality(values: [30], spacingHours: 1),
+            now: now
+        )
+        let oldReset = now.addingTimeInterval(4 * 86_400)
+        let newReset = now.addingTimeInterval(7 * 86_400)
+        let history = [
+            WeeklyQuotaReading(provider: "codex", sourceStatus: .ok, fetchedAt: now.addingTimeInterval(-180), windowMinutes: 10_080, usedPercent: 30, remainingPercent: 70, resetsAt: oldReset, errorMessage: nil),
+            WeeklyQuotaReading(provider: "codex", sourceStatus: .ok, fetchedAt: now.addingTimeInterval(-120), windowMinutes: 10_080, usedPercent: 2, remainingPercent: 98, resetsAt: newReset, errorMessage: nil),
+            WeeklyQuotaReading(provider: "codex", sourceStatus: .ok, fetchedAt: now.addingTimeInterval(-60), windowMinutes: 10_080, usedPercent: 2, remainingPercent: 98, resetsAt: newReset, errorMessage: nil),
+            WeeklyQuotaReading(provider: "codex", sourceStatus: .ok, fetchedAt: now, windowMinutes: 10_080, usedPercent: 2, remainingPercent: 98, resetsAt: newReset, errorMessage: nil),
+        ]
+        let live = AgentQuotaSnapshot(
+            provider: "codex",
+            sourceStatus: .ok,
+            fetchedAt: now,
+            weeklyWindow: QuotaWindow(label: "weekly", windowMinutes: 10_080, usedPercent: 2, remainingPercent: 98, resetsAt: newReset),
+            errorMessage: nil
+        )
+
+        let reduction = QuotaRefreshReducer.reduceForecastResult(
+            currentForecast: previous,
+            newSnapshot: live,
+            weeklyReadings: history,
+            now: now
+        )
+
+        #expect(reduction.shouldAdoptLiveSnapshot)
+        #expect(reduction.acceptedResetTransition)
     }
 }
