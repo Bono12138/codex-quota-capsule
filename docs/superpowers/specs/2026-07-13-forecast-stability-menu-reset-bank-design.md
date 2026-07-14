@@ -2,7 +2,7 @@
 
 **Target release:** `v0.3.1-beta.1`
 
-**Status:** Conversational direction approved; written specification awaiting owner review
+**Status:** Approved on 2026-07-14; amended with reset-credit history requirements from the approval review
 
 **Scope:** Public repository only; one installed Beta application; Weekly Only product mode
 
@@ -16,8 +16,9 @@ The release will:
 2. make activity evidence invariant to polling frequency and flat samples;
 3. replace extreme-quantile fusion with a robust consensus forecast and explicit disagreement handling;
 4. present observed usage in the period actually observed instead of leading with an extrapolated `%/day` rate;
-5. display the exact local expiry time of available reset credits returned by Codex;
-6. prove the result through shared fixtures, unit tests, repository audit, and a recording of the installed app.
+5. display every available reset credit at the bottom of the expanded panel with exact local expiry to the minute;
+6. retain a local-only lifecycle history of every reset credit observed for later grant-pattern analysis;
+7. prove the result through shared fixtures, unit tests, repository audit, and a recording of the installed app.
 
 This is a patch to the adaptive Weekly Only design, not a return to a five-hour-window product. The data model remains capable of accepting additional upstream windows later, but no five-hour information will be added to the current user interface.
 
@@ -214,37 +215,67 @@ The user-facing risk state remains compact: early, sustainable, watch, or likely
 
 ### 6.1 Data model
 
-Add a provider-neutral value type containing only:
+Add a provider-neutral bank summary containing:
+
+- the backend-reported available count;
+- optional detail rows;
+- the fetch time and detail-completeness state.
+
+The distinction follows the upstream contract:
+
+- a missing bank summary means the whole field was unavailable or unsupported;
+- `credits == nil` means the available count is known but detail rows could not be fetched;
+- an empty detail collection means the detail request succeeded and returned no rows;
+- the detail collection may be shorter than the available count because the backend may cap it.
+
+Each provider-neutral credit detail contains only:
 
 - status;
 - reset type;
 - granted timestamp when available;
-- expiry timestamp;
+- optional expiry timestamp;
 - short display title when safe and useful.
 
-The quota snapshot contains an optional credit collection:
-
-- `nil` means the field was unavailable, unsupported, or not parsed;
-- an empty collection means the provider explicitly reported no credits;
-- a non-empty collection is sorted by expiry.
-
-This distinction prevents a temporary schema or transport issue from being displayed as `0 张`.
+This prevents a temporary detail-fetch failure from being displayed as `0 张` and handles future non-expiring credits without inventing a date.
 
 ### 6.2 Parsing and privacy
 
-The parser validates timestamp ranges, skips malformed entries without failing the quota read, and accepts only relevant available credits for the main count. Raw credit IDs, referral metadata, and verbose upstream descriptions are not stored, logged, or included in fixtures.
+The parser validates timestamp ranges, skips malformed entries without failing the quota read, and accepts only relevant available credits for the main list. The backend-reported available count remains authoritative even when detail rows are missing or capped.
+
+The upstream opaque ID is immediately converted to a one-way SHA-256 fingerprint for local deduplication. The raw ID, referral metadata, and verbose upstream descriptions are not stored, logged, uploaded, shown in diagnostics, or included in fixtures.
 
 Stale quota data may retain the last successful credit list only when the UI clearly labels the last successful update time.
 
 ### 6.3 Presentation
 
-The expanded weekly view shows a compact summary only when credit state is known:
+Reset credits are a low-frequency lookup, so they appear as the final section at the bottom of the expanded weekly panel, after actions and diagnostics. The collapsed capsule and menu-bar title do not add credit information.
+
+When detail rows are available, the footer lists every available credit in expiry order. Normal rows show local time to the minute:
 
 ```text
-3 张重置券可用，最早于 7 月 18 日 08:33 到期
+重置券 1 · 7 月 18 日 08:33 到期
+重置券 2 · 7 月 27 日 07:49 到期
 ```
 
-Diagnostics list every available credit with its local expiry to the minute; seconds may be shown in the detailed row or copied diagnostic text. The collapsed capsule does not add credit information because weekly risk and pace remain the primary glanceable purpose.
+The section also shows the authoritative count. If the count exceeds the returned detail rows, it says that some expiry details are unavailable instead of fabricating missing rows. A credit with no expiry timestamp is labelled `未提供到期时间`. Seconds are reserved for diagnostics and local history, not the normal footer.
+
+### 6.4 Local lifecycle history
+
+Reset-credit history is local-only, retained without automatic pruning, and removed by the existing `清除本地历史` action. It is never part of product analytics or upload payloads.
+
+The SQLite store keeps:
+
+- one credit row per hashed fingerprint with reset type, safe title, granted time, optional expiry time, first seen, last seen, and latest observed status;
+- a coalesced bank-observation run with first observed, last observed, sample count, available count, detail count, and detail-completeness state;
+- a lifecycle classification of `available`, `expired`, `likelyRedeemed`, or `disappearedUnknown`.
+
+Identical consecutive bank observations are coalesced by updating `last observed` and `sample count`; no information useful for issuance-pattern or disappearance analysis is lost, while minute polling does not create unbounded duplicate rows.
+
+A disappearance is classified as expired only after its actual expiry time passes. A pre-expiry disappearance is `likelyRedeemed` only when the same accepted refresh also contains a compatible weekly reset transition; otherwise it remains `disappearedUnknown`. The app must not claim that a missing credit was redeemed merely because the count fell.
+
+The grant timestamp returned by the app-server is the primary issuance fact. `expiry - 30 days` may be stored only as an explicitly labelled inference when `grantedAt` is absent and the applicable offer is known to use the 30-day rule. It must never overwrite or masquerade as a provider timestamp.
+
+The installed-app acceptance pass may import previously observed timestamps into this Mac's local database. Personal historical values and fingerprints remain local and are not committed to the public repository.
 
 This release is read-only. Redeeming a credit, choosing when to use it, or automating redemption is out of scope.
 
@@ -292,10 +323,13 @@ Tests cover:
 
 - exact timestamp decoding and local-time formatting;
 - chronological sorting;
-- missing field versus explicit empty list;
+- missing bank summary, count-only details, explicit empty details, and capped details;
+- nullable expiry timestamps;
 - malformed entry isolation;
 - unavailable/expired filtering;
 - absence of upstream IDs from the provider-neutral model and diagnostics;
+- deterministic one-way fingerprinting without persistence of the raw ID;
+- insert, update, coalescing, lifecycle inference, indefinite retention, and clear-history behavior;
 - Chinese, English, and system-language presentation.
 
 ### 8.3 Menu tests
@@ -315,10 +349,11 @@ Before release, test the signed app installed in `/Applications`, not only the b
 1. confirm exactly one installed Quota Capsule Beta application and one running instance;
 2. keep the Language submenu open for at least ten seconds and record that it neither closes nor reopens;
 3. verify collapsed and expanded views with live weekly data;
-4. compare displayed reset-credit count and expiry minutes with the same app-server response without logging identifiers;
-5. verify positive, negative, crossing-zero, low-confidence, stale, and no-credit fixture states;
-6. inspect Chinese and English copy, light and dark appearance, and narrow-screen placement;
-7. run the full test suite, release preflight, contributor check, and repository audit.
+4. compare every footer row, the authoritative count, and expiry minutes with the same app-server response without logging identifiers;
+5. verify the local history contains all currently observed credits and the local-only backfill, while the public diff and analytics payloads contain none of their personal values;
+6. verify positive, negative, crossing-zero, low-confidence, stale, count-only, capped-detail, and no-credit fixture states;
+7. inspect Chinese and English copy, light and dark appearance, and narrow-screen placement;
+8. run the full test suite, release preflight, contributor check, and repository audit.
 
 Release evidence records commands, outputs, installed bundle version, commit, tag, and acceptance media. A code diff or successful compilation alone is not completion evidence.
 
@@ -329,6 +364,7 @@ The implementation pull request must update:
 - forecast methodology and mathematical definitions;
 - product acceptance criteria;
 - troubleshooting and diagnostic explanations;
+- reset-credit local-history schema and privacy boundaries;
 - README screenshots/copy when visible UI changes are final;
 - changelog and version references;
 - release checklist evidence for `v0.3.1-beta.1`.
@@ -339,6 +375,7 @@ The old run-summed activity-uncertainty description must be removed rather than 
 
 - applying or scheduling reset credits;
 - predicting whether a user will redeem a credit;
+- shipping an optimization recommendation for when to redeem a credit;
 - reintroducing five-hour UI;
 - adding unrelated provider windows to the primary screen;
 - claiming statistical calibration before labelled outcome backtests exist;
@@ -353,7 +390,19 @@ The release is done only when:
 - the observed large-range failure is replaced by honest scenario language and bounded, explainable evidence;
 - the Language submenu remains visually stable through live clock ticks;
 - every available reset credit exposes a verified local expiry time to the minute;
+- reset-credit grant, expiry, and lifecycle facts remain available locally after the credit disappears;
 - one installed Beta app matches the tested commit and version;
 - contributor attribution contains only repository-authorized identities;
 - public documentation matches shipped behavior;
 - the pull request, CI, tag, release, and post-install smoke checks all pass.
+
+## 12. Source validation
+
+The reset-credit contract is based on current primary sources, not social-media inference:
+
+- [ChatGPT release notes, June 11, 2026](https://help.openai.com/en/articles/6825453-chatgpt-release-notes) state that eligible users received reset banking and that banked resets are usable for 30 days after grant;
+- [Codex referral promotion terms](https://help.openai.com/en/articles/20001271-codex-referral-promotions) say the 30-day rule applies unless the offer states otherwise;
+- [openai/codex PR #30395](https://github.com/openai/codex/pull/30395) defines the app-server detail fields, nullable details, grant time, optional expiry, and opaque ID;
+- [openai/codex PR #30488](https://github.com/openai/codex/pull/30488) validates expiry-sorted presentation and selection of an exact credit in the official CLI.
+
+Social-media posts may help explain public launch or global-reset events, but they cannot establish why a particular account received a particular credit. Account-local `grantedAt` remains the authoritative timestamp for issuance-pattern analysis.
