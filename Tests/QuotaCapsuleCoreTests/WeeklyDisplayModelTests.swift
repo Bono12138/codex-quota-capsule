@@ -100,6 +100,51 @@ struct WeeklyDisplayModelTests {
         #expect(!watch.defaultText.contains("-"))
     }
 
+    @Test("cross-zero projection is described as two scenarios")
+    func crossZeroProjectionIsExplicit() {
+        let model = CapsuleDisplayModel.make(
+            forecast: forecast(state: .watch, projected: PercentageBand(lower: -22, upper: 44)),
+            locale: .zhHans
+        )
+
+        #expect(model.defaultText == "按较快节奏可能提前用完；较慢情景重置时最多剩 44%")
+        #expect(!model.defaultText.contains("0–44"))
+    }
+
+    @Test("positive projection uses whole-percent precision")
+    func positiveProjectionUsesWholePercent() {
+        let model = CapsuleDisplayModel.make(
+            forecast: forecast(projected: PercentageBand(lower: 12.2, upper: 18.8)),
+            locale: .zhHans
+        )
+
+        #expect(model.defaultText == "照最近速度，重置时预计剩 12%–19%")
+    }
+
+    @Test("observed usage names the real coverage period")
+    func observedUsageUsesRealCoverage() {
+        let copy = QuotaCopy(locale: .zhHans)
+        let text = copy.observedUsage(
+            ObservedUsageSummary(
+                coverageSeconds: 8 * 3_600 + 15 * 60,
+                increaseBand: PercentageBand(lower: 16, upper: 18)
+            )
+        )
+
+        #expect(text == "近 8 小时 15 分钟已用约 16%–18%")
+        #expect(!text.contains("/天"))
+    }
+
+    @Test("trend legend keeps negative projection semantics")
+    func trendLegendDoesNotClampNegativeProjection() {
+        let copy = QuotaCopy(locale: .zhHans)
+
+        #expect(copy.forecastResetBandValue(PercentageBand(lower: -22, upper: 44)) == "较快情景可能提前用完；较慢情景最多剩 44%")
+        #expect(copy.forecastResetBandValue(PercentageBand(lower: -22, upper: -4)) == "可能在重置前用完")
+        #expect(copy.forecastResetBandValue(PercentageBand(lower: 12.2, upper: 18.8)) == "12%–19%")
+        #expect(!copy.forecastResetBandValue(PercentageBand(lower: -22, upper: 44)).contains("0–44"))
+    }
+
     @Test("all locales remain Weekly Only")
     func allLocalesAreWeeklyOnly() {
         let models = [QuotaLocale.zhHans, .zhHant, .en].map {

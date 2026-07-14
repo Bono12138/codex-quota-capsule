@@ -2,6 +2,8 @@ import { describe, expect, it } from "vitest";
 import {
   analyzeWeeklyQuality,
   createMockWeeklyScenario,
+  formatObservedUsage,
+  formatWeeklyProjection,
   predictWeeklyRunway,
   type AgentQuotaSnapshot,
   type WeeklyQuotaReading,
@@ -133,6 +135,21 @@ describe("Weekly Only runway", () => {
     expect(forecast.next24HourBudget).toBeLessThan(forecast.remainingPercent!);
     expect(forecast.last24HourUsageBand).toEqual({ lower: 4, upper: 6 });
     expect(forecast.currentCycleTrend).toHaveLength(3);
+    expect(forecast.observedUsage).toEqual({
+      coverageSeconds: 172_800,
+      increaseBand: { lower: 9, upper: 11 },
+    });
+  });
+
+  it("formats raw projection scenarios and actual observation periods", () => {
+    expect(formatWeeklyProjection({ lower: -22, upper: 44 }, "zh-Hans"))
+      .toBe("按较快节奏可能提前用完；较慢情景重置时最多剩 44%");
+    expect(formatWeeklyProjection({ lower: 12.2, upper: 18.8 }, "zh-Hans"))
+      .toBe("照最近速度，重置时预计剩 12%–19%");
+    expect(formatObservedUsage({
+      coverageSeconds: 8 * 3_600 + 15 * 60,
+      increaseBand: { lower: 16, upper: 18 },
+    }, "zh-Hans")).toBe("近 8 小时 15 分钟已用约 16%–18%");
   });
 
   it("does not warn that a zero reading just after reset is running fast", () => {

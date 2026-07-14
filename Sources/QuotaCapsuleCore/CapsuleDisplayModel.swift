@@ -163,19 +163,36 @@ public struct CapsuleDisplayModel: Equatable, Sendable {
         _ band: PercentageBand?,
         locale: QuotaLocale
     ) -> String {
-        guard let range = safeProjectedRange(band) else {
+        guard let band, band.lower.isFinite, band.upper.isFinite else {
             return switch locale {
             case .zhHans: "正在积累可靠的周速度预测"
             case .zhHant: "正在累積可靠的週速度預測"
             case .en: "Building a reliable weekly pace forecast"
             }
         }
-        let lower = formatNumber(range.lower)
-        let upper = formatNumber(range.upper)
+        let lower = min(band.lower, band.upper)
+        let upper = max(band.lower, band.upper)
+        if upper < 0 {
+            return switch locale {
+            case .zhHans: "照最近速度，本周额度可能在重置前用完"
+            case .zhHant: "照最近速度，本週額度可能在重設前用完"
+            case .en: "At the recent pace, weekly quota may run out before reset"
+            }
+        }
+        if lower < 0 {
+            let maximum = Int(upper.rounded())
+            return switch locale {
+            case .zhHans: "按较快节奏可能提前用完；较慢情景重置时最多剩 \(maximum)%"
+            case .zhHant: "按較快節奏可能提前用完；較慢情境重設時最多剩 \(maximum)%"
+            case .en: "The faster scenario may run out early; the slower scenario leaves at most \(maximum)% at reset"
+            }
+        }
+        let roundedLower = Int(lower.rounded())
+        let roundedUpper = Int(upper.rounded())
         return switch locale {
-        case .zhHans: "照最近速度，重置时预计剩 \(lower)%–\(upper)%"
-        case .zhHant: "照最近速度，重設時預計剩 \(lower)%–\(upper)%"
-        case .en: "At the recent pace, \(lower)%–\(upper)% should remain at reset"
+        case .zhHans: "照最近速度，重置时预计剩 \(roundedLower)%–\(roundedUpper)%"
+        case .zhHant: "照最近速度，重設時預計剩 \(roundedLower)%–\(roundedUpper)%"
+        case .en: "At the recent pace, \(roundedLower)%–\(roundedUpper)% should remain at reset"
         }
     }
 

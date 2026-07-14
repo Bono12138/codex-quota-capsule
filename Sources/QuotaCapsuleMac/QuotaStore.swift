@@ -199,11 +199,20 @@ final class QuotaStore: ObservableObject {
         )
     }
 
-    var paceComparisonText: String {
+    var observedUsageText: String {
+        guard snapshot.sourceStatus == .ok,
+              displayModel.showsLivePaceDetails,
+              let observedUsage = runwayForecast.observedUsage else {
+            return ""
+        }
+        return copy.observedUsage(observedUsage)
+    }
+
+    var diagnosticPaceComparisonText: String {
         guard snapshot.sourceStatus == .ok, displayModel.showsLivePaceDetails else {
             return ""
         }
-        return copy.paceComparison(
+        return copy.diagnosticPaceComparison(
             observed: runwayForecast.recentRateBandPerDay ?? runwayForecast.cycleRateBandPerDay,
             sustainablePerDay: runwayForecast.sustainableRatePerDay
         )

@@ -398,8 +398,8 @@ struct DetailPopoverView: View {
                 }
             }
 
-            if !store.paceComparisonText.isEmpty {
-                Label(store.paceComparisonText, systemImage: "gauge.with.dots.needle.33percent")
+            if !store.observedUsageText.isEmpty {
+                Label(store.observedUsageText, systemImage: "clock.arrow.circlepath")
                     .font(.system(size: 10.5, weight: .semibold))
                     .foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
@@ -428,6 +428,12 @@ struct DetailPopoverView: View {
                         .font(.system(size: 10, weight: .medium))
                         .foregroundStyle(.secondary)
                         .fixedSize(horizontal: false, vertical: true)
+                    if !store.diagnosticPaceComparisonText.isEmpty {
+                        Text(store.diagnosticPaceComparisonText)
+                            .font(.system(size: 10, weight: .medium))
+                            .foregroundStyle(.secondary)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
                 }
                 .padding(.top, 8)
             } label: {
@@ -555,21 +561,7 @@ struct WeeklyTrendChartView: View {
     }
 
     private var forecastBandText: String {
-        guard let band = store.runwayForecast.projectedRemainingBandAtReset,
-              band.lower.isFinite,
-              band.upper.isFinite else {
-            return "\(store.copy.forecastResetBandTitle)：\(store.copy.accumulatingValue)"
-        }
-        let lower = min(100, max(0, min(band.lower, band.upper)))
-        let upper = min(100, max(0, max(band.lower, band.upper)))
-        return "\(store.copy.forecastResetBandTitle)：\(format(lower))%–\(format(upper))%"
-    }
-
-    private func format(_ value: Double) -> String {
-        if abs(value.rounded() - value) < 0.05 {
-            return "\(Int(value.rounded()))"
-        }
-        return String(format: "%.1f", value)
+        "\(store.copy.forecastResetBandTitle)：\(store.copy.forecastResetBandValue(store.runwayForecast.projectedRemainingBandAtReset))"
     }
 }
 

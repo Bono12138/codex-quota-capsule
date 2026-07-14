@@ -7,6 +7,7 @@ export type {
   PaceBand,
   PaceEvidence,
   PaceEvidenceKind,
+  ObservedUsageSummary,
   PercentageBand,
   WeeklyObservation,
   WeeklyQualityFlag,
@@ -16,7 +17,7 @@ export type {
   WeeklyRunwayForecast,
   WeeklyRunwayState,
 } from "./model";
-export { pickCapsuleCopy } from "./copy";
+export { formatObservedUsage, formatWeeklyProjection, pickCapsuleCopy } from "./copy";
 export { createMockWeeklyScenario } from "./mock";
 export type { WeeklyMockKind } from "./mock";
 export {
