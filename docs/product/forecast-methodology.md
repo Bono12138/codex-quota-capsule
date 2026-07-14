@@ -2,7 +2,7 @@
 
 Status: current product contract
 Updated: 2026-07-14
-Applies to: `v0.3.0-beta.1` and later until superseded
+Applies to: `v0.3.1-beta.1` and later until superseded
 
 ## Product question
 

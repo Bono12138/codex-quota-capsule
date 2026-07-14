@@ -4,6 +4,8 @@ All notable user-visible and repository-governance changes are recorded here.
 
 ## Unreleased
 
+## 0.3.1-beta.1 — 2026-07-14
+
 ### Changed
 
 - Make weekly pace evidence invariant to duplicate and flat polling frequency by measuring each clean monotonic segment once.
