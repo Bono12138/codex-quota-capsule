@@ -2,10 +2,11 @@ import AppKit
 import Combine
 
 @MainActor
-final class StatusBarController {
+final class StatusBarController: NSObject, NSMenuDelegate {
     private let store: QuotaStore
     private let statusItem: NSStatusItem
     private var cancellables: Set<AnyCancellable> = []
+    private var updateGate = StatusBarUpdateGate<StatusBarPresentation>()
 
     var onTogglePanel: (() -> Void)?
     var onShowAboutFeedback: (() -> Void)?
@@ -17,21 +18,28 @@ final class StatusBarController {
     init(store: QuotaStore) {
         self.store = store
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
+        super.init()
         statusItem.isVisible = true
-        configureButton()
-        rebuildMenu()
 
-        store.objectWillChange
-            .sink { [weak self] _ in
-                Task { @MainActor in
-                    self?.configureButton()
-                    self?.rebuildMenu()
-                }
+        store.$statusBarPresentation
+            .removeDuplicates()
+            .sink { [weak self] presentation in
+                self?.receive(presentation)
             }
             .store(in: &cancellables)
     }
 
-    private func configureButton() {
+    private func receive(_ presentation: StatusBarPresentation) {
+        guard let next = updateGate.receive(presentation) else { return }
+        apply(next)
+    }
+
+    private func apply(_ presentation: StatusBarPresentation) {
+        configureButton(presentation)
+        rebuildMenu(presentation)
+    }
+
+    private func configureButton(_ presentation: StatusBarPresentation) {
         guard let button = statusItem.button else {
             NSLog("Quota Capsule status item button is unavailable")
             return
@@ -39,28 +47,16 @@ final class StatusBarController {
 
         button.image = makeStatusIcon()
         button.imagePosition = .imageLeading
-        button.title = " \(statusBarTitle)"
-        button.toolTip = "Quota Capsule · \(statusBarTooltip)"
+        button.title = presentation.buttonTitle
+        button.toolTip = presentation.toolTip
         button.appearsDisabled = false
     }
 
     func showMenu() {
-        rebuildMenu()
         guard let menu = statusItem.menu else {
             return
         }
         menu.popUp(positioning: nil, at: NSEvent.mouseLocation, in: nil)
-    }
-
-    private var statusBarTitle: String {
-        store.visibleMenuBarText
-    }
-
-    private var statusBarTooltip: String {
-        if let used = store.compactUsedValueText {
-            return "\(store.visibleStatusText) · \(used)"
-        }
-        return store.visibleStatusText
     }
 
     private func makeStatusIcon() -> NSImage {
@@ -82,84 +78,85 @@ final class StatusBarController {
         return image
     }
 
-    private func rebuildMenu() {
+    private func rebuildMenu(_ presentation: StatusBarPresentation) {
         let menu = NSMenu()
         menu.autoenablesItems = false
+        menu.delegate = self
 
-        let header = NSMenuItem(title: store.visibleMenuBarText, action: nil, keyEquivalent: "")
+        let header = NSMenuItem(title: presentation.headerTitle, action: nil, keyEquivalent: "")
         header.isEnabled = false
         menu.addItem(header)
         menu.addItem(.separator())
 
-        menu.addItem(actionItem(store.copy.refreshNowAction) { [weak self] in
+        menu.addItem(actionItem(presentation.refreshTitle) { [weak self] in
             self?.store.refresh()
         })
-        menu.addItem(actionItem(store.copy.toggleCapsuleAction) { [weak self] in
+        menu.addItem(actionItem(presentation.toggleTitle) { [weak self] in
             self?.onTogglePanel?()
         })
-        menu.addItem(actionItem(store.copy.userGuideAction) { [weak self] in
+        menu.addItem(actionItem(presentation.userGuideTitle) { [weak self] in
             self?.onShowOnboarding?()
         })
 
-        menu.addItem(languageMenuItem())
+        menu.addItem(languageMenuItem(presentation))
         menu.addItem(.separator())
-        menu.addItem(contactMenuItem())
-        menu.addItem(actionItem(store.copy.aboutFeedbackTitle) { [weak self] in
+        menu.addItem(contactMenuItem(presentation))
+        menu.addItem(actionItem(presentation.aboutFeedbackTitle) { [weak self] in
             self?.onShowAboutFeedback?()
         })
 
-        menu.addItem(actionItem(store.copy.submitFeedbackAction) { [weak self] in
+        menu.addItem(actionItem(presentation.submitFeedbackTitle) { [weak self] in
             guard let self else { return }
             let destination = startAssistedFeedback(store: self.store)
             self.showAssistedFeedbackAlert(destination: destination)
         })
 
         menu.addItem(.separator())
-        menu.addItem(actionItem(store.copy.quitAction) {
+        menu.addItem(actionItem(presentation.quitTitle) {
             NSApp.terminate(nil)
         })
 
         statusItem.menu = menu
     }
 
-    private func languageMenuItem() -> NSMenuItem {
-        let item = NSMenuItem(title: store.copy.languageMenuTitle, action: nil, keyEquivalent: "")
+    private func languageMenuItem(_ presentation: StatusBarPresentation) -> NSMenuItem {
+        let item = NSMenuItem(title: presentation.languageMenuTitle, action: nil, keyEquivalent: "")
         let submenu = NSMenu()
-        submenu.addItem(actionItem("简体中文 · \(store.copy.languageSimplifiedAssistiveLabel)") { [weak self] in
+        submenu.addItem(actionItem(presentation.languageTitles[0]) { [weak self] in
             self?.store.selectLocale(.zhHans)
         })
-        submenu.addItem(actionItem("繁體中文 · \(store.copy.languageTraditionalAssistiveLabel)") { [weak self] in
+        submenu.addItem(actionItem(presentation.languageTitles[1]) { [weak self] in
             self?.store.selectLocale(.zhHant)
         })
-        submenu.addItem(actionItem("English · \(store.copy.languageEnglishAssistiveLabel)") { [weak self] in
+        submenu.addItem(actionItem(presentation.languageTitles[2]) { [weak self] in
             self?.store.selectLocale(.en)
         })
         item.submenu = submenu
         return item
     }
 
-    private func contactMenuItem() -> NSMenuItem {
-        let item = NSMenuItem(title: store.copy.contactAuthorTitle, action: nil, keyEquivalent: "")
+    private func contactMenuItem(_ presentation: StatusBarPresentation) -> NSMenuItem {
+        let item = NSMenuItem(title: presentation.contactAuthorTitle, action: nil, keyEquivalent: "")
         let submenu = NSMenu()
-        [store.copy.authorLine, store.copy.emailLine, store.copy.xLine, store.copy.douyinLine].forEach { line in
+        presentation.contactLines.forEach { line in
             let lineItem = NSMenuItem(title: line, action: nil, keyEquivalent: "")
             lineItem.isEnabled = false
             submenu.addItem(lineItem)
         }
         submenu.addItem(.separator())
-        submenu.addItem(actionItem(store.copy.emailFeedbackAction) { [weak self] in
+        submenu.addItem(actionItem(presentation.emailFeedbackTitle) { [weak self] in
             self?.store.recordFeedbackClick("email")
             NSWorkspace.shared.open(URL(string: "mailto:\(FeedbackDestinations.authorEmail)")!)
         })
-        submenu.addItem(actionItem(store.copy.openXAction) { [weak self] in
+        submenu.addItem(actionItem(presentation.openXTitle) { [weak self] in
             self?.store.recordFeedbackClick("x")
             NSWorkspace.shared.open(FeedbackDestinations.authorXURL)
         })
-        submenu.addItem(actionItem(store.copy.openDouyinAction) { [weak self] in
+        submenu.addItem(actionItem(presentation.openDouyinTitle) { [weak self] in
             self?.store.recordFeedbackClick("douyin_open")
             NSWorkspace.shared.open(FeedbackDestinations.douyinURL)
         })
-        submenu.addItem(actionItem(store.copy.contactAuthorTitle) { [weak self] in
+        submenu.addItem(actionItem(presentation.contactAuthorTitle) { [weak self] in
             self?.onShowContactAuthor?()
         })
         item.submenu = submenu
@@ -177,6 +174,15 @@ final class StatusBarController {
         alert.alertStyle = .informational
         alert.addButton(withTitle: store.copy.doneAction)
         alert.runModal()
+    }
+
+    func menuWillOpen(_ menu: NSMenu) {
+        updateGate.beginTracking()
+    }
+
+    func menuDidClose(_ menu: NSMenu) {
+        guard let next = updateGate.endTracking() else { return }
+        apply(next)
     }
 }
 

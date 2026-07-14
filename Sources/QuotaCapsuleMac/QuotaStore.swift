@@ -31,6 +31,7 @@ final class QuotaStore: ObservableObject {
     @Published private(set) var isConfirmingQuotaChange = false
     @Published private(set) var nextAutomaticReadAt: Date?
     @Published private(set) var currentTime = Date()
+    @Published private(set) var statusBarPresentation: StatusBarPresentation
 
     private var refreshTask: Task<Void, Never>?
     private var clockTask: Task<Void, Never>?
@@ -97,7 +98,14 @@ final class QuotaStore: ObservableObject {
             locale: locale
         )
         runwayForecast = initialForecast
-        displayModel = CapsuleDisplayModel.make(forecast: initialForecast, locale: locale)
+        let initialDisplayModel = CapsuleDisplayModel.make(forecast: initialForecast, locale: locale)
+        displayModel = initialDisplayModel
+        statusBarPresentation = StatusBarPresentation.make(
+            copy: initialCopy,
+            statusText: initialDisplayModel.statusLabel,
+            menuBarText: initialDisplayModel.statusLabel,
+            compactUsedValueText: nil
+        )
         lastRefreshText = initialCopy.notRefreshed
         lastAttemptText = initialCopy.notAttempted
 
@@ -149,6 +157,7 @@ final class QuotaStore: ObservableObject {
         }
 
         isRefreshing = true
+        refreshStatusBarPresentation()
         recordEvent(name: "quota_refresh_started", surface: "menu_bar", requiresConsent: false)
         let locale = self.locale
         Task.detached(priority: .utility) {
@@ -158,6 +167,7 @@ final class QuotaStore: ObservableObject {
             await MainActor.run {
                 self.applyRefreshResult(snapshot, now: now)
                 self.isRefreshing = false
+                self.refreshStatusBarPresentation()
             }
         }
     }
@@ -554,6 +564,7 @@ final class QuotaStore: ObservableObject {
             }
         }
         displayModel = makeDisplayModel()
+        refreshStatusBarPresentation()
         if attemptSnapshot.sourceStatus == .ok, !isConfirmingQuotaChange {
             recordQuotaStateSample()
         }
@@ -648,6 +659,16 @@ final class QuotaStore: ObservableObject {
         displayModel = makeDisplayModel()
         lastRefreshText = lastRefreshText == QuotaCopy(locale: .zhHans).notRefreshed ? copy.notRefreshed : lastRefreshText
         lastAttemptText = lastAttemptText == QuotaCopy(locale: .zhHans).notAttempted ? copy.notAttempted : lastAttemptText
+        refreshStatusBarPresentation()
+    }
+
+    private func refreshStatusBarPresentation() {
+        statusBarPresentation = StatusBarPresentation.make(
+            copy: copy,
+            statusText: visibleStatusText,
+            menuBarText: visibleMenuBarText,
+            compactUsedValueText: compactUsedValueText
+        )
     }
 
     private func makeDisplayModel() -> CapsuleDisplayModel {
