@@ -45,6 +45,18 @@
       "expected": { "qualityState": "stable", "cycleCount": 1, "forecastState": "earlyEstimate", "confidence": "low", "evidenceKinds": [] }
     },
     {
+      "id": "sliding-unused-reset-anchors-on-first-use",
+      "snapshot": { "usedPercent": 4, "remainingPercent": 96, "resetsAt": "2026-07-19T22:30:00Z" },
+      "readings": [
+        { "fetchedAt": "2026-07-12T18:30:00Z", "usedPercent": 0, "resetsAt": "2026-07-19T18:30:00Z" },
+        { "fetchedAt": "2026-07-12T20:30:00Z", "usedPercent": 0, "resetsAt": "2026-07-19T20:30:00Z" },
+        { "fetchedAt": "2026-07-12T22:30:00Z", "usedPercent": 0, "resetsAt": "2026-07-19T22:30:00Z" },
+        { "fetchedAt": "2026-07-12T23:30:00Z", "usedPercent": 1, "resetsAt": "2026-07-19T22:30:00Z" },
+        { "fetchedAt": "2026-07-13T00:00:00Z", "usedPercent": 4, "resetsAt": "2026-07-19T22:30:00Z" }
+      ],
+      "expected": { "qualityState": "stable", "cycleCount": 1, "forecastState": "mayRunOut", "usedPercent": 4 }
+    },
+    {
       "id": "reset-jitter",
       "snapshot": { "usedPercent": 11, "remainingPercent": 89, "resetsAt": "2026-07-18T18:53:22Z" },
       "readings": [

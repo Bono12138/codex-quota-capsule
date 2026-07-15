@@ -252,6 +252,63 @@ struct WeeklyRunwayPredictorTests {
         #expect(result != previous)
     }
 
+    @Test("a sliding unused reset does not freeze the first positive reading")
+    func slidingUnusedResetDoesNotFreezeFirstUse() {
+        let provisionalStart = now.addingTimeInterval(-6 * 3_600)
+        let provisionalReset = provisionalStart.addingTimeInterval(7 * 86_400)
+        let anchoredReset = provisionalReset.addingTimeInterval(5.5 * 3_600)
+        let history: [WeeklyQuotaReading] = [
+            (provisionalStart, 0, provisionalReset),
+            (provisionalStart.addingTimeInterval(2 * 3_600), 0, provisionalReset.addingTimeInterval(2 * 3_600)),
+            (provisionalStart.addingTimeInterval(4 * 3_600), 0, provisionalReset.addingTimeInterval(4 * 3_600)),
+            (now.addingTimeInterval(-30 * 60), 0, anchoredReset),
+            (now.addingTimeInterval(-20 * 60), 1, anchoredReset),
+            (now.addingTimeInterval(-10 * 60), 2, anchoredReset),
+            (now, 4, anchoredReset)
+        ].map { fetchedAt, used, resetsAt in
+            WeeklyQuotaReading(
+                provider: "codex",
+                sourceStatus: .ok,
+                fetchedAt: fetchedAt,
+                windowMinutes: 10_080,
+                usedPercent: used,
+                remainingPercent: 100 - used,
+                resetsAt: resetsAt,
+                errorMessage: nil
+            )
+        }
+        let live = AgentQuotaSnapshot(
+            provider: "codex",
+            sourceStatus: .ok,
+            fetchedAt: now,
+            weeklyWindow: QuotaWindow(
+                label: "weekly",
+                windowMinutes: 10_080,
+                usedPercent: 4,
+                remainingPercent: 96,
+                resetsAt: anchoredReset
+            ),
+            errorMessage: nil
+        )
+        let previous = WeeklyRunwayPredictor.predict(
+            snapshot: snapshot(remaining: 100, daysRemaining: 7),
+            quality: quality(values: [0], spacingHours: 1, resetDays: 7),
+            now: now
+        )
+
+        let reduction = QuotaRefreshReducer.reduceForecastResult(
+            currentForecast: previous,
+            newSnapshot: live,
+            weeklyReadings: history,
+            now: now
+        )
+
+        #expect(WeeklyQualityEngine.analyze(history, now: now).state == .stable)
+        #expect(reduction.shouldAdoptLiveSnapshot)
+        #expect(reduction.forecast.usedPercent == 4)
+        #expect(reduction.forecast.remainingPercent == 96)
+    }
+
     @Test("an unconfirmed reset candidate exposes calibration with accepted data")
     func resetCandidateExposesCalibrationWithAcceptedData() {
         let previousSnapshot = snapshot(remaining: 70, daysRemaining: 4)

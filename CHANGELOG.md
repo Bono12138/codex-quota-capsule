@@ -2,7 +2,17 @@
 
 All notable user-visible and repository-governance changes are recorded here.
 
-## Unreleased
+## 0.3.3-beta.1 — 2026-07-15
+
+### Fixed
+
+- Follow an unused weekly window's provisional reset timestamp while every accepted reading remains at 0%, then anchor the reset normally as soon as positive usage appears.
+- Prevent a provisional reset that drifts for less than six hours from leaving the visible snapshot frozen at 0% while live Codex readings continue to increase.
+- Add one shared Swift/TypeScript regression fixture for the exact zero-to-positive sequence so both runtimes adopt the same current reading and reset time.
+
+### Documentation
+
+- Define the unused-window exception to normal reset-candidate quarantine in the forecast methodology, product acceptance criteria, and release-blocker policy.
 
 ## 0.3.2-beta.1 — 2026-07-14
 

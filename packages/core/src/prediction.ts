@@ -77,6 +77,25 @@ export function analyzeWeeklyQuality(readings: WeeklyQuotaReading[], now = new D
       continue;
     }
 
+    const activeCycleObservations = accepted.filter((item) => item.cycleID === cycleID);
+    const resetShift = reading.resetsAt.getTime() - activeReset.getTime();
+    const observationGap = reading.fetchedAt.getTime() - lastAccepted.fetchedAt.getTime();
+    const isSlidingUnusedWindow = reading.usedPercent === 0
+      && activeCycleObservations.length > 0
+      && activeCycleObservations.every((item) => item.usedPercent === 0)
+      && resetShift >= -RESET_CLUSTER_TOLERANCE_MS
+      && Math.abs(resetShift - observationGap) <= RESET_CLUSTER_TOLERANCE_MS;
+    if (isSlidingUnusedWindow) {
+      activeResetSamples = [reading.resetsAt];
+      activeReset = reading.resetsAt;
+      accepted = accepted.filter((item) => item.cycleID !== cycleID);
+      accepted.push(makeObservation(reading, activeReset, cycleID, segmentID));
+      pendingCycle = [];
+      pendingCorrection = [];
+      calibrating = false;
+      continue;
+    }
+
     const sameCluster = Math.abs(reading.resetsAt.getTime() - activeReset.getTime()) <= RESET_CLUSTER_TOLERANCE_MS;
     if (!sameCluster) {
       const resetMovedForward = reading.resetsAt.getTime() - activeReset.getTime() >= 6 * 60 * 60_000;
