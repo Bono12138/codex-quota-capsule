@@ -84,6 +84,30 @@ public enum WeeklyQualityEngine {
                 continue
             }
 
+            let activeCycleObservations = accepted.filter { $0.cycleID == cycleID }
+            let resetShift = reading.resetsAt.timeIntervalSince(currentReset)
+            let observationGap = reading.fetchedAt.timeIntervalSince(lastAccepted.fetchedAt)
+            let isSlidingUnusedWindow = reading.usedPercent == 0
+                && !activeCycleObservations.isEmpty
+                && activeCycleObservations.allSatisfy { $0.usedPercent == 0 }
+                && resetShift >= -resetClusterTolerance
+                && abs(resetShift - observationGap) <= resetClusterTolerance
+            if isSlidingUnusedWindow {
+                activeResetSamples = [reading.resetsAt]
+                activeReset = reading.resetsAt
+                accepted.removeAll { $0.cycleID == cycleID }
+                accepted.append(observation(
+                    from: reading,
+                    canonicalResetAt: reading.resetsAt,
+                    cycleID: cycleID,
+                    segmentID: segmentID
+                ))
+                pendingCycle.removeAll()
+                pendingCorrection.removeAll()
+                calibrating = false
+                continue
+            }
+
             let sameResetCluster = abs(reading.resetsAt.timeIntervalSince(currentReset)) <= resetClusterTolerance
             if !sameResetCluster {
                 let resetMovedForward = reading.resetsAt.timeIntervalSince(currentReset) >= 6 * 60 * 60
