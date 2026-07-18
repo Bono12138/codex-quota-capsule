@@ -270,7 +270,15 @@ final class QuotaStore: ObservableObject {
     }
 
     var dataRefreshDescription: String {
-        copy.dataRefreshDescription(
+        if isConfirmingQuotaChange {
+            return copy.confirmingDataRefreshDescription(
+                lastConfirmedText: lastRefreshText,
+                lastAttemptText: lastAttemptText,
+                nextAttempt: nextAutomaticReadAt,
+                now: currentTime
+            )
+        }
+        return copy.dataRefreshDescription(
             lastSuccess: lastSuccessfulReadAt,
             nextAttempt: nextAutomaticReadAt,
             now: currentTime

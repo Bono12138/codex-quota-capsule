@@ -63,6 +63,14 @@ describe("createCapsuleDisplayModel", () => {
     expect(JSON.stringify(model)).not.toContain("6 小时");
   });
 
+  it("explains that a quota change was read successfully during confirmation", () => {
+    const model = createCapsuleDisplayModel(forecast({ state: "calibrating" }));
+
+    expect(model.statusLabel).toBe("确认额度变化");
+    expect(model.defaultText).toBe("已成功读取额度变化；短暂确认期间继续显示上次已确认数据");
+    expect(model.defaultText).not.toContain("恢复");
+  });
+
   it("explains a first zero reading without inventing a pace warning", () => {
     const model = createCapsuleDisplayModel(forecast({
       state: "earlyEstimate",

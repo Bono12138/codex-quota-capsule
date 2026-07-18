@@ -171,7 +171,7 @@ struct WeeklyDisplayModelTests {
 
         #expect(copy.weeklyStatusLabel(.unavailable) == "Data unavailable")
         #expect(copy.weeklyStatusLabel(.exhausted) == "Exhausted")
-        #expect(copy.weeklyStatusLabel(.calibrating) == "Calibrating")
+        #expect(copy.weeklyStatusLabel(.calibrating) == "Confirming change")
         #expect(copy.weeklyStatusLabel(.earlyEstimate) == "Early estimate")
         #expect(copy.weeklyStatusLabel(.enough) == "On track")
         #expect(copy.weeklyStatusLabel(.watch) == "Running fast")
@@ -190,6 +190,30 @@ struct WeeklyDisplayModelTests {
         #expect(simplified.sourceConfirming(lastRefreshText: "10:00", lastAttemptText: "10:01").contains("可能的额度变化"))
         #expect(simplified.sourceConfirming(lastRefreshText: "10:00", lastAttemptText: "10:01").contains("继续显示 10:00"))
         #expect(simplified.sourceConfirmationPending("10:01").contains("读取成功，但额度变化尚待确认"))
+    }
+
+    @Test("confirmation state says the latest read succeeded while previous data remains visible")
+    func confirmationStateSeparatesLatestReadFromConfirmedData() throws {
+        let copy = QuotaCopy(locale: .en)
+        let model = CapsuleDisplayModel.make(
+            forecast: forecast(state: .calibrating),
+            locale: .en
+        )
+        let now = try Date.ISO8601FormatStyle().parse("2026-07-16T05:09:32Z")
+        let nextAttempt = try Date.ISO8601FormatStyle().parse("2026-07-16T05:10:00Z")
+
+        #expect(model.defaultText.contains("read successfully"))
+        #expect(model.defaultText.contains("previous confirmed data"))
+        #expect(copy.paceDetailsPausedText.contains("resume automatically"))
+        #expect(!copy.paceDetailsPausedText.contains("live data recovers"))
+        #expect(
+            copy.confirmingDataRefreshDescription(
+                lastConfirmedText: "09:22:53",
+                lastAttemptText: "13:09:24",
+                nextAttempt: nextAttempt,
+                now: now
+            ) == "Latest read succeeded at 13:09:24; showing confirmed data from 09:22:53; next check in about 28s"
+        )
     }
 
     @Test("onboarding teaches the weekly decision hierarchy")

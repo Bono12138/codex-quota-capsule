@@ -1,8 +1,8 @@
 # Adaptive Weekly Forecast Methodology
 
 Status: current product contract
-Updated: 2026-07-15
-Applies to: `v0.3.3-beta.1` and later until superseded
+Updated: 2026-07-18
+Applies to: `v0.3.4-beta.1` and later until superseded
 
 ## Product question
 
@@ -24,9 +24,9 @@ A reading enters the forecast only when:
 - the source is live rather than stale or failed;
 - reset changes and downward corrections have passed the quality engine's confirmation rules.
 
-A reset candidate needs three mutually consistent live readings spanning at least two minutes. A downward correction starts a new clean segment and never becomes negative consumption. Alternating or stale streams cannot produce fresh reassurance.
+A reset candidate needs three mutually consistent live readings spanning at least two minutes. A reset moving forward by at least six hours or accompanied by a usage drop of at least two percentage points starts a new cycle after confirmation. A persistent reset-time correction outside the five-minute cluster but without either new-cycle signal is confirmed on the same schedule, then rebases the current cycle instead of remaining in calibration forever. A downward correction starts a new clean segment and never becomes negative consumption. Alternating or stale streams cannot produce fresh reassurance.
 
-An unused window has one narrower exception. While every accepted reading in the active cycle still reports 0%, some Codex versions return a provisional reset timestamp that advances with the observation time. If the reset shift matches the elapsed time between observations within the existing five-minute tolerance, the quality engine replaces the previous provisional zero reading with the latest one instead of opening a new-cycle candidate. This rule stops applying immediately when positive usage appears: the last provisional timestamp becomes the normal cycle anchor, and later reset changes still require the full confirmation rules. It cannot reinterpret a positive reading, a usage drop, or an unrelated reset jump as harmless drift.
+An unused window has one narrower exception. While every accepted reading in the active cycle still reports 0%, some Codex versions return a provisional reset timestamp that advances or is recomputed after sleep, restart, or a long polling gap. Because that zero-only history contains no consumption evidence to preserve, a valid non-backward provisional reset replaces the earlier zero-only anchor even when the reset shift does not match the observation gap. This rule stops applying immediately when positive usage appears: the last provisional timestamp becomes the normal cycle anchor, and later reset changes require the full confirmation rules. It cannot reinterpret a positive reading or a usage drop as harmless drift.
 
 ## Quantized measurement model
 
@@ -135,7 +135,7 @@ Available credits do not change the weekly risk state, color, pace, or budget be
 
 ## Cross-runtime parity and change control
 
-Swift is the native macOS runtime and TypeScript supports the reference/demo runtime. Both consume `fixtures/weekly-runway-cases.json` and `fixtures/weekly-pace-equivalence.json`. They must agree on quality state, forecast state, polling-invariant pace evidence, provisional unused-window anchoring, budget rules, and edge cases.
+Swift is the native macOS runtime and TypeScript supports the reference/demo runtime. Both consume `fixtures/weekly-runway-cases.json` and `fixtures/weekly-pace-equivalence.json`. They must agree on quality state, forecast state, polling-invariant pace evidence, provisional unused-window anchoring across application gaps, persistent reset-time correction recovery, budget rules, and edge cases.
 
 Every algorithm change must include, in the same pull request:
 

@@ -73,6 +73,59 @@ describe("Weekly Only runway", () => {
     expect(new Set(stable.observations.map((item) => item.usedPercent))).toEqual(new Set([5]));
   });
 
+  it("rebases an unused sliding window after an application gap", () => {
+    const start = new Date(now.getTime() - 92 * 60_000);
+    const oldReset = new Date(now.getTime() + 4 * 86_400_000);
+    const correctedReset = new Date(oldReset.getTime() + 14_000_000);
+    const reading = (minute: number, usedPercent: number, resetsAt: Date): WeeklyQuotaReading => ({
+      provider: "codex",
+      sourceStatus: "ok",
+      fetchedAt: new Date(start.getTime() + minute * 60_000),
+      windowMinutes: 10_080,
+      usedPercent,
+      remainingPercent: 100 - usedPercent,
+      resetsAt,
+    });
+    const quality = analyzeWeeklyQuality([
+      reading(0, 0, oldReset),
+      reading(90, 0, correctedReset),
+      reading(91, 1, correctedReset),
+      reading(92, 2, correctedReset),
+    ], now);
+
+    expect(quality.state).toBe("stable");
+    expect(quality.observations.map((item) => item.usedPercent)).toEqual([0, 1, 2]);
+    expect(quality.canonicalResetAt).toEqual(correctedReset);
+    expect(new Set(quality.observations.map((item) => item.cycleID))).toEqual(new Set([0]));
+  });
+
+  it("accepts a persistent reset-time correction after confirmation", () => {
+    const start = new Date(now.getTime() - 4 * 60_000);
+    const oldReset = new Date(now.getTime() + 4 * 86_400_000);
+    const correctedReset = new Date(oldReset.getTime() + 14_000_000);
+    const reading = (minute: number, usedPercent: number, resetsAt: Date): WeeklyQuotaReading => ({
+      provider: "codex",
+      sourceStatus: "ok",
+      fetchedAt: new Date(start.getTime() + minute * 60_000),
+      windowMinutes: 10_080,
+      usedPercent,
+      remainingPercent: 100 - usedPercent,
+      resetsAt,
+    });
+    const quality = analyzeWeeklyQuality([
+      reading(0, 10, oldReset),
+      reading(1, 10, new Date(oldReset.getTime() + 1_000)),
+      reading(2, 11, correctedReset),
+      reading(3, 11, new Date(correctedReset.getTime() + 1_000)),
+      reading(4, 12, new Date(correctedReset.getTime() - 1_000)),
+    ], now);
+
+    expect(quality.state).toBe("stable");
+    expect(quality.observations.at(-1)?.usedPercent).toBe(12);
+    expect(quality.canonicalResetAt).toEqual(correctedReset);
+    expect(new Set(quality.observations.map((item) => item.cycleID))).toEqual(new Set([0]));
+  });
+
   it("never promotes stale readings into a runway judgment", () => {
     const resetsAt = new Date(now.getTime() + 4 * 86_400_000);
     const staleReadings = readings([20, 25, 30], resetsAt).map((reading) => ({

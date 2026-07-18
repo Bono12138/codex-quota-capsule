@@ -80,21 +80,21 @@ public struct QuotaCopy: Equatable, Sendable {
         switch (locale, state) {
         case (.zhHans, .unavailable): "数据暂不可用"
         case (.zhHans, .exhausted): "已用尽"
-        case (.zhHans, .calibrating): "正在校准"
+        case (.zhHans, .calibrating): "确认额度变化"
         case (.zhHans, .earlyEstimate): "初步估算"
         case (.zhHans, .enough): "够用"
         case (.zhHans, .watch): "偏快"
         case (.zhHans, .mayRunOut): "可能不够"
         case (.zhHant, .unavailable): "資料暫不可用"
         case (.zhHant, .exhausted): "已用盡"
-        case (.zhHant, .calibrating): "正在校準"
+        case (.zhHant, .calibrating): "確認額度變化"
         case (.zhHant, .earlyEstimate): "初步估算"
         case (.zhHant, .enough): "夠用"
         case (.zhHant, .watch): "偏快"
         case (.zhHant, .mayRunOut): "可能不夠"
         case (.en, .unavailable): "Data unavailable"
         case (.en, .exhausted): "Exhausted"
-        case (.en, .calibrating): "Calibrating"
+        case (.en, .calibrating): "Confirming change"
         case (.en, .earlyEstimate): "Early estimate"
         case (.en, .enough): "On track"
         case (.en, .watch): "Running fast"
@@ -257,9 +257,9 @@ public struct QuotaCopy: Equatable, Sendable {
 
     public var paceDetailsPausedText: String {
         switch locale {
-        case .zhHans: "实时数据恢复前，速度与预测趋势已暂停"
-        case .zhHant: "即時資料恢復前，速度與預測趨勢已暫停"
-        case .en: "Pace and forecast trend are paused until live data recovers"
+        case .zhHans: "额度变化确认后会自动恢复速度与预测趋势"
+        case .zhHant: "額度變化確認後會自動恢復速度與預測趨勢"
+        case .en: "Pace and forecast resume automatically after the quota change is confirmed"
         }
     }
 
@@ -359,6 +359,30 @@ public struct QuotaCopy: Equatable, Sendable {
         case (.en, let success?, nil): "Data updated at \(success); automatic read due now"
         case (.en, nil, let next?): "No successful read yet; next automatic read in about \(next)s"
         case (.en, nil, nil): "No successful read yet; automatic read due now"
+        }
+    }
+
+    public func confirmingDataRefreshDescription(
+        lastConfirmedText: String,
+        lastAttemptText: String,
+        nextAttempt: Date?,
+        now: Date
+    ) -> String {
+        let nextText: String?
+        if let nextAttempt {
+            let seconds = max(0, Int(ceil(nextAttempt.timeIntervalSince(now))))
+            nextText = seconds == 0 ? nil : "\(seconds)"
+        } else {
+            nextText = nil
+        }
+
+        return switch (locale, nextText) {
+        case (.zhHans, let next?): "最新读取于 \(lastAttemptText) 成功；暂时显示 \(lastConfirmedText) 的已确认数据；约 \(next) 秒后再次检查"
+        case (.zhHans, nil): "最新读取于 \(lastAttemptText) 成功；暂时显示 \(lastConfirmedText) 的已确认数据；即将再次检查"
+        case (.zhHant, let next?): "最新讀取於 \(lastAttemptText) 成功；暫時顯示 \(lastConfirmedText) 的已確認資料；約 \(next) 秒後再次檢查"
+        case (.zhHant, nil): "最新讀取於 \(lastAttemptText) 成功；暫時顯示 \(lastConfirmedText) 的已確認資料；即將再次檢查"
+        case (.en, let next?): "Latest read succeeded at \(lastAttemptText); showing confirmed data from \(lastConfirmedText); next check in about \(next)s"
+        case (.en, nil): "Latest read succeeded at \(lastAttemptText); showing confirmed data from \(lastConfirmedText); checking again now"
         }
     }
 

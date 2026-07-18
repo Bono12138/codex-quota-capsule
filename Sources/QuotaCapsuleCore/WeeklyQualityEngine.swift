@@ -73,6 +73,7 @@ public enum WeeklyQualityEngine {
         var cycleID = 0
         var segmentID = 0
         var pendingCycle: [WeeklyQuotaReading] = []
+        var pendingCycleStartsNewCycle = false
         var pendingCorrection: [WeeklyQuotaReading] = []
         var calibrating = false
 
@@ -86,12 +87,10 @@ public enum WeeklyQualityEngine {
 
             let activeCycleObservations = accepted.filter { $0.cycleID == cycleID }
             let resetShift = reading.resetsAt.timeIntervalSince(currentReset)
-            let observationGap = reading.fetchedAt.timeIntervalSince(lastAccepted.fetchedAt)
             let isSlidingUnusedWindow = reading.usedPercent == 0
                 && !activeCycleObservations.isEmpty
                 && activeCycleObservations.allSatisfy { $0.usedPercent == 0 }
                 && resetShift >= -resetClusterTolerance
-                && abs(resetShift - observationGap) <= resetClusterTolerance
             if isSlidingUnusedWindow {
                 activeResetSamples = [reading.resetsAt]
                 activeReset = reading.resetsAt
@@ -103,6 +102,7 @@ public enum WeeklyQualityEngine {
                     segmentID: segmentID
                 ))
                 pendingCycle.removeAll()
+                pendingCycleStartsNewCycle = false
                 pendingCorrection.removeAll()
                 calibrating = false
                 continue
@@ -113,38 +113,61 @@ public enum WeeklyQualityEngine {
                 let resetMovedForward = reading.resetsAt.timeIntervalSince(currentReset) >= 6 * 60 * 60
                 let usageDropped = lastAccepted.usedPercent - reading.usedPercent >= correctionDrop
 
-                guard resetMovedForward || usageDropped else {
-                    flags.insert(.resetCandidate)
-                    calibrating = true
-                    continue
-                }
+                let startsNewCycle = resetMovedForward || usageDropped
 
                 if pendingCycle.isEmpty || abs(reading.resetsAt.timeIntervalSince(pendingCycle[0].resetsAt)) <= resetClusterTolerance {
                     pendingCycle.append(reading)
+                    pendingCycleStartsNewCycle = pendingCycleStartsNewCycle || startsNewCycle
                 } else {
                     pendingCycle = [reading]
+                    pendingCycleStartsNewCycle = startsNewCycle
                 }
                 flags.insert(.resetCandidate)
 
                 if isConfirmed(pendingCycle) {
-                    cycleID += 1
-                    segmentID += 1
                     activeResetSamples = pendingCycle.map(\.resetsAt)
                     let canonical = median(activeResetSamples)
                     activeReset = canonical
                     if activeResetSamples.contains(where: { $0 != canonical }) {
                         flags.insert(.resetJitter)
                     }
+                    var resetCorrectionIsDownward = false
+                    if pendingCycleStartsNewCycle {
+                        cycleID += 1
+                        segmentID += 1
+                    } else {
+                        resetCorrectionIsDownward = pendingCycle[0].usedPercent < lastAccepted.usedPercent
+                        if resetCorrectionIsDownward {
+                            segmentID += 1
+                            flags.insert(.correction)
+                        }
+                        accepted = accepted.map { existing in
+                            guard existing.cycleID == cycleID else { return existing }
+                            return WeeklyObservation(
+                                fetchedAt: existing.fetchedAt,
+                                canonicalResetAt: canonical,
+                                usedPercent: existing.usedPercent,
+                                remainingPercent: existing.remainingPercent,
+                                cycleID: existing.cycleID,
+                                segmentID: existing.segmentID,
+                                qualityFlags: existing.qualityFlags
+                            )
+                        }
+                    }
+                    let candidateFlags: Set<WeeklyQualityFlag> = resetCorrectionIsDownward
+                        ? [.resetCandidate, .correction]
+                        : [.resetCandidate]
                     accepted.append(contentsOf: pendingCycle.map {
                         observation(
                             from: $0,
                             canonicalResetAt: canonical,
                             cycleID: cycleID,
                             segmentID: segmentID,
-                            flags: [.resetCandidate]
+                            flags: candidateFlags
                         )
                     })
                     pendingCycle.removeAll()
+                    pendingCycleStartsNewCycle = false
                     pendingCorrection.removeAll()
                     calibrating = false
                 } else {
@@ -154,6 +177,7 @@ public enum WeeklyQualityEngine {
             }
 
             pendingCycle.removeAll()
+            pendingCycleStartsNewCycle = false
             activeResetSamples.append(reading.resetsAt)
             let canonical = median(activeResetSamples)
             if activeResetSamples.contains(where: { $0 != canonical }) {
