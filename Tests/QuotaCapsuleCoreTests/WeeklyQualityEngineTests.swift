@@ -183,4 +183,39 @@ struct WeeklyQualityEngineTests {
         #expect(result.observations.map(\.usedPercent) == [75])
         #expect(result.flags.contains(.resetCandidate))
     }
+
+    @Test("an unused sliding window rebases after an application gap")
+    func unusedSlidingWindowRebasesAfterApplicationGap() {
+        let readings = [
+            reading(minute: 0, used: 0, resetOffset: 100_000),
+            reading(minute: 90, used: 0, resetOffset: 114_000),
+            reading(minute: 91, used: 1, resetOffset: 114_000),
+            reading(minute: 92, used: 2, resetOffset: 114_000)
+        ]
+
+        let result = WeeklyQualityEngine.analyze(readings, now: origin.addingTimeInterval(92 * 60 + 10))
+
+        #expect(result.state == .stable)
+        #expect(result.observations.map(\.usedPercent) == [0, 1, 2])
+        #expect(result.canonicalResetAt == origin.addingTimeInterval(114_000))
+        #expect(Set(result.observations.map(\.cycleID)) == [0])
+    }
+
+    @Test("a persistent reset-time correction cannot calibrate forever")
+    func persistentResetTimeCorrectionIsAccepted() {
+        let readings = [
+            reading(minute: 0, used: 10, resetOffset: 100_000),
+            reading(minute: 1, used: 10, resetOffset: 100_001),
+            reading(minute: 2, used: 11, resetOffset: 114_000),
+            reading(minute: 3, used: 11, resetOffset: 114_001),
+            reading(minute: 4, used: 12, resetOffset: 113_999)
+        ]
+
+        let result = WeeklyQualityEngine.analyze(readings, now: origin.addingTimeInterval(4 * 60 + 10))
+
+        #expect(result.state == .stable)
+        #expect(result.observations.last?.usedPercent == 12)
+        #expect(result.canonicalResetAt == origin.addingTimeInterval(114_000))
+        #expect(Set(result.observations.map(\.cycleID)) == [0])
+    }
 }

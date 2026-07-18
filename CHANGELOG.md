@@ -2,6 +2,20 @@
 
 All notable user-visible and repository-governance changes are recorded here.
 
+## 0.3.4-beta.1 — 2026-07-18
+
+### Fixed
+
+- Rebase a still-unused sliding weekly window after sleep, an app restart, or a long polling gap instead of requiring its reset shift to match the observation gap.
+- Accept a persistent reset-time correction after three consistent readings spanning two minutes, so a sub-six-hour correction cannot leave the app calibrating forever.
+- Keep true new-cycle signals quarantined while treating a confirmed reset-time correction as the same cycle, preserving useful positive-use history.
+- Explain confirmation as a successful latest read that is temporarily showing previous confirmed data, rather than incorrectly saying that live data has not recovered.
+
+### Verification
+
+- Add Swift and TypeScript regressions for the observed 0% → 1% → 2% recovery sequence after an application gap and for a persistent reset-time correction during positive use.
+- Strengthen the shared cross-runtime sliding-window fixture so it no longer assumes uninterrupted polling.
+
 ## 0.3.3-beta.1 — 2026-07-15
 
 ### Fixed

@@ -65,6 +65,7 @@ export function analyzeWeeklyQuality(readings: WeeklyQuotaReading[], now = new D
   let cycleID = 0;
   let segmentID = 0;
   let pendingCycle: WeeklyQuotaReading[] = [];
+  let pendingCycleStartsNewCycle = false;
   let pendingCorrection: WeeklyQuotaReading[] = [];
   let calibrating = false;
 
@@ -79,18 +80,17 @@ export function analyzeWeeklyQuality(readings: WeeklyQuotaReading[], now = new D
 
     const activeCycleObservations = accepted.filter((item) => item.cycleID === cycleID);
     const resetShift = reading.resetsAt.getTime() - activeReset.getTime();
-    const observationGap = reading.fetchedAt.getTime() - lastAccepted.fetchedAt.getTime();
     const isSlidingUnusedWindow = reading.usedPercent === 0
       && activeCycleObservations.length > 0
       && activeCycleObservations.every((item) => item.usedPercent === 0)
-      && resetShift >= -RESET_CLUSTER_TOLERANCE_MS
-      && Math.abs(resetShift - observationGap) <= RESET_CLUSTER_TOLERANCE_MS;
+      && resetShift >= -RESET_CLUSTER_TOLERANCE_MS;
     if (isSlidingUnusedWindow) {
       activeResetSamples = [reading.resetsAt];
       activeReset = reading.resetsAt;
       accepted = accepted.filter((item) => item.cycleID !== cycleID);
       accepted.push(makeObservation(reading, activeReset, cycleID, segmentID));
       pendingCycle = [];
+      pendingCycleStartsNewCycle = false;
       pendingCorrection = [];
       calibrating = false;
       continue;
@@ -100,26 +100,38 @@ export function analyzeWeeklyQuality(readings: WeeklyQuotaReading[], now = new D
     if (!sameCluster) {
       const resetMovedForward = reading.resetsAt.getTime() - activeReset.getTime() >= 6 * 60 * 60_000;
       const usageDropped = lastAccepted.usedPercent - reading.usedPercent >= 2;
-      if (!resetMovedForward && !usageDropped) {
-        flags.add("resetCandidate");
-        calibrating = true;
-        continue;
-      }
+      const startsNewCycle = resetMovedForward || usageDropped;
 
       if (!pendingCycle.length || Math.abs(reading.resetsAt.getTime() - pendingCycle[0].resetsAt.getTime()) <= RESET_CLUSTER_TOLERANCE_MS) {
         pendingCycle.push(reading);
+        pendingCycleStartsNewCycle ||= startsNewCycle;
       } else {
         pendingCycle = [reading];
+        pendingCycleStartsNewCycle = startsNewCycle;
       }
       flags.add("resetCandidate");
       if (isConfirmed(pendingCycle)) {
-        cycleID += 1;
-        segmentID += 1;
         activeResetSamples = pendingCycle.map((item) => item.resetsAt);
         activeReset = medianDate(activeResetSamples);
         if (activeResetSamples.some((date) => date.getTime() !== activeReset!.getTime())) flags.add("resetJitter");
-        accepted.push(...pendingCycle.map((item) => makeObservation(item, activeReset!, cycleID, segmentID, ["resetCandidate"])));
+        let resetCorrectionIsDownward = false;
+        if (pendingCycleStartsNewCycle) {
+          cycleID += 1;
+          segmentID += 1;
+        } else {
+          resetCorrectionIsDownward = pendingCycle[0].usedPercent < lastAccepted.usedPercent;
+          if (resetCorrectionIsDownward) {
+            segmentID += 1;
+            flags.add("correction");
+          }
+          accepted = accepted.map((item) => item.cycleID === cycleID ? { ...item, canonicalResetAt: activeReset! } : item);
+        }
+        const candidateFlags: WeeklyQualityFlag[] = resetCorrectionIsDownward
+          ? ["resetCandidate", "correction"]
+          : ["resetCandidate"];
+        accepted.push(...pendingCycle.map((item) => makeObservation(item, activeReset!, cycleID, segmentID, candidateFlags)));
         pendingCycle = [];
+        pendingCycleStartsNewCycle = false;
         pendingCorrection = [];
         calibrating = false;
       } else {
@@ -129,6 +141,7 @@ export function analyzeWeeklyQuality(readings: WeeklyQuotaReading[], now = new D
     }
 
     pendingCycle = [];
+    pendingCycleStartsNewCycle = false;
     activeResetSamples.push(reading.resetsAt);
     activeReset = medianDate(activeResetSamples);
     if (activeResetSamples.some((date) => date.getTime() !== activeReset!.getTime())) flags.add("resetJitter");

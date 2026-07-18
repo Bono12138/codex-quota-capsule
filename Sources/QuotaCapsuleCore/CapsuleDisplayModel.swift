@@ -134,9 +134,9 @@ public struct CapsuleDisplayModel: Equatable, Sendable {
             }
         case .calibrating:
             switch locale {
-            case .zhHans: "数据正在确认，本次暂不更新周速度判断"
-            case .zhHant: "資料正在確認，本次暫不更新週速度判斷"
-            case .en: "Data is being confirmed; the pace judgment is unchanged for now"
+            case .zhHans: "已成功读取额度变化；短暂确认期间继续显示上次已确认数据"
+            case .zhHant: "已成功讀取額度變化；短暫確認期間繼續顯示上次已確認資料"
+            case .en: "A quota change was read successfully; showing the previous confirmed data during a brief check"
             }
         case .earlyEstimate:
             if forecast.confidenceReason == "no-consumption-observed" {

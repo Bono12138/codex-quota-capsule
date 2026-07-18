@@ -18,7 +18,7 @@ export type CapsuleDisplayModel = {
 const STATUS_LABELS: Record<WeeklyRunwayState, string> = {
   unavailable: "数据暂不可用",
   exhausted: "已用尽",
-  calibrating: "正在校准",
+  calibrating: "确认额度变化",
   earlyEstimate: "初步估算",
   enough: "够用",
   watch: "偏快",
@@ -53,7 +53,7 @@ function toneFor(state: WeeklyRunwayState): CapsuleLevel {
 function defaultText(forecast: WeeklyRunwayForecast): string {
   if (forecast.state === "unavailable") return "暂时没有可用的周额度数据";
   if (forecast.state === "exhausted") return "本周额度已用尽，重置后会自动恢复";
-  if (forecast.state === "calibrating") return "数据正在确认，本次暂不更新周速度判断";
+  if (forecast.state === "calibrating") return "已成功读取额度变化；短暂确认期间继续显示上次已确认数据";
   if (forecast.state === "earlyEstimate") {
     if (forecast.confidenceReason === "no-consumption-observed") {
       return "尚未观察到消耗；可先按未来 24 小时建议使用";
