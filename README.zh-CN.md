@@ -1,23 +1,22 @@
 # Quota Capsule / 额度胶囊
 
-语言：[简体中文](README.zh-CN.md) | [English](README.en.md)
+语言：[简体中文](README.zh-CN.md) | [English](README.en.md) | [中英双语](README.md)
 
-额度胶囊是一个面向 Codex 重度用户的 macOS 桌面额度小胶囊。它把 quota window 数据翻译成一个工作判断：
+**一个本地优先、面向 Codex 重度用户的 macOS 额度判断胶囊。**
 
 > 按现在这个速度，我能不能撑到下一次周额度重置？
 
-Codex 是第一个适配对象。项目会保持 agent-extensible：其他 Agent 产品可以添加自己的本地 source adapter，复用同一套 quota model、预测引擎、UI 状态和产品形态。
+![额度胶囊收起与展开状态](docs/assets/product/quota-capsule-expanded.png)
 
 ## 为什么做
 
-重度 Codex 用户经常同时跑多个 coding task，也会反复查看 usage 页面。百分比只能提供证据。真正影响工作节奏的是：
+额度百分比只告诉你已经用了多少，却没有回答一个更直接的工作问题：**现在还能不能放心继续用？**
 
-- 现在还能不能继续用？
-- 当前速度能不能撑到周额度重置？
-- 如果可能撑不到，风险范围在哪里？
-- 如果能撑到，重置时大概还有多少余量？
+AI-native 重度用户经常同时运行多个任务，也会反复查看 usage 页面：有时明明还有大量已付费额度，却因为不知道够不够而刻意收着用；有时又在临近重置时才发现还有很多额度没有用完。
 
-额度胶囊要做成一个小而常驻的状态物，直接给出六种诚实判断：
+额度胶囊把已用额度、时间进度、最近速度、当前活动和可用历史证据合并成一句能直接行动的判断，并显示未来 24 小时建议和重置时的预计余量区间。
+
+它提供六种诚实状态：
 
 - 初步判断：从第一个有效周额度读数开始给出宽区间，并明确标记低置信度。
 - 够用：保守预测区间仍能撑到周额度重置。
@@ -26,35 +25,45 @@ Codex 是第一个适配对象。项目会保持 agent-extensible：其他 Agent
 - 已用尽：本周额度已经用完，等待重置恢复。
 - 数据暂不可用：实时读取失败或数据过期，只保留最后成功百分比，不给速度结论。
 
-## 适合谁
+Codex 是第一个适配对象。项目保持 agent-extensible：其他 Agent 产品可以添加自己的本地 source adapter，复用同一套额度模型、预测引擎、UI 状态和产品形态。
 
-- 经常同时跑多个 Codex 任务的用户。
-- 工作时反复查看 usage 或 quota 页面的人。
-- 希望本地读取、本地计算、能检查源码的开发者。
-- 想为其他 Agent 产品贡献 quota source adapter 的社区。
+## 产品形态
 
-## 当前状态
+额度胶囊尽量安静地常驻，只在用户需要时展开更多信息：
 
-项目已经有第一版可本地试用的 macOS app：
+- 桌面悬浮胶囊显示当前判断与周已用比例。
+- 菜单栏提供随时可见的一眼状态。
+- 展开面板显示时间/用量进度、速度证据、预测置信度、可持续线、重置时间和本地历史。
 
-- 原生桌面悬浮胶囊。
-- 菜单栏状态入口。
-- 只读 Codex app-server rate-limit adapter。
-- 第一次有效读数即给初步估算；随后融合周期、近期、活动节奏和弱历史先验。
-- 未来 24 小时建议、最近 24 小时实际用量、周速度、重置余量区间和置信原因。
-- 周额度重置、上次成功读取和下次自动读取分别显示。
-- 当前周期趋势、可持续线、预测区间和重置标记。
-- 本地历史快照。
-- 多语言界面。
-- 公开反馈入口。
+![额度胶囊收起状态](docs/assets/product/quota-capsule-collapsed.png)
 
-当前 macOS 原生 app 使用真实本地 Codex rate-limit 数据。浏览器/Vite demo 保留为视觉原型和 Web/Chrome 版本探索用。
+![菜单栏中的额度胶囊](docs/assets/product/quota-capsule-menu-bar.png)
+
+## 当前 Beta
+
+当前公开预发布版本是 [v0.3.4-beta.1](https://github.com/Bono12138/codex-quota-capsule/releases/tag/v0.3.4-beta.1)，已经包括：
+
+- 原生桌面悬浮胶囊和菜单栏入口。
+- 只读 Codex app-server rate-limit 数据源。
+- 第一次有效读数即给初步估算，并逐步融合周期、近期、活动节奏和历史证据。
+- 未来 24 小时建议、最近 24 小时实际用量、重置余量区间和置信原因。
+- 分开显示周额度重置、上次成功读取和下次自动读取。
+- 带可持续线、预测区间和重置标记的当前周期趋势。
+- 本地历史快照，以及隐私安全的重置券数量、到期时间和生命周期历史。
+- 多语言界面和公开反馈入口。
 
 完整算法公式、边界和变更规则见 [预测方法](docs/product/forecast-methodology.md)。
 
-## 快速开始
+## 安装
 
-早期公开试用推荐使用 Codex-assisted 安装。打开本仓库，把下面这段交给自己的 Codex：
+### 下载当前 Beta
+
+从 [v0.3.4-beta.1 Release](https://github.com/Bono12138/codex-quota-capsule/releases/tag/v0.3.4-beta.1) 下载 `Quota-Capsule-Beta-macOS.zip`。
+
+当前 Beta 使用 ad-hoc 签名，尚未公证。macOS 可能要求在 Finder 中对应用执行**右键 → 打开**。系统要求和 Gatekeeper 处理方式见 [INSTALL.md](INSTALL.md)。
+
+<details>
+<summary>使用 Codex 辅助安装</summary>
 
 ```text
 请帮我在本机安装并运行 Quota Capsule。
@@ -68,16 +77,16 @@ https://github.com/Bono12138/codex-quota-capsule
 3. 不要退出我的 Codex 登录，不要重装、卸载、降级或替换 Codex。
 4. 不要读取、复制、输出或上传 auth token、cookie、API key、Codex session 正文、prompt 正文、代码内容或私有文件路径。
 5. 如果缺 Node、npm、Swift、Xcode Command Line Tools 或 Codex CLI，先告诉我缺什么，让我决定是否安装。
-6. 运行 npm ci。
-7. 运行 npm test。
-8. 运行 npm run build。
-9. 运行 swift run QuotaCapsuleCoreSpec。
-10. 运行 npm run mac:install，并确认只有一个运行进程来自 /Applications。
-11. 如果启动成功，告诉我如何再次打开 Quota Capsule。
-12. 如果失败，只给我必要的非敏感错误信息和下一步建议。
+6. 运行 npm ci、npm test、npm run build、npm run audit:repository、swift test 和 swift run QuotaCapsuleCoreSpec。
+7. 运行 npm run mac:install，并确认只有一个运行进程来自 /Applications。
+8. 如果启动成功，告诉我如何再次打开 Quota Capsule。
+9. 如果失败，只给我必要的非敏感错误信息和下一步建议。
 ```
 
-手动安装：
+</details>
+
+<details>
+<summary>从源码构建</summary>
 
 ```bash
 git clone https://github.com/Bono12138/codex-quota-capsule.git
@@ -85,41 +94,43 @@ cd codex-quota-capsule
 npm ci
 npm test
 npm run build
+npm run audit:repository
+swift test
 swift run QuotaCapsuleCoreSpec
 npm run mac:install
 ```
 
-## 唯一应用
-
-公开仓库只构建一个 `Quota Capsule Beta.app`。开发使用分支、测试和预览，不再安装第二个常驻应用。
-
-运行公开 Beta：
-
-```bash
-npm run mac:run
-```
+</details>
 
 ## 隐私边界
 
-- 默认本地读取、本地计算。
-- 未配置 analytics endpoint 时，不上传产品事件。
-- 配置 analytics endpoint 后，基础诊断和产品改进数据按授权分层发送。
-- prompt 正文、session 正文、代码内容、私有文件路径、账号凭据、auth token、cookie 留在本机。
-- 缺失或过期数据显示为“数据暂不可用”，过期百分比会被明确标记。
+- 额度数据默认在本机读取和计算。
+- 未显式配置 analytics endpoint 并启用相应授权时，不上传产品事件。
+- prompt、session、代码、私有路径、账号凭据、auth token 和 cookie 留在本机。
+- 重置券原始 ID、描述和 referral 内容不落盘；仅保存 SHA-256 指纹，以及安全的时间和状态事实。
+- 缺失或过期数据显示为“数据暂不可用”，不会用旧百分比生成新的安全判断。
+
+## 复用与集成
+
+额度胶囊采用 MIT License。其他 macOS 产品可以整体采用，也可以只复用其中一层：
+
+- `Sources/QuotaCapsuleCore/`：Swift 通用额度模型、预测、历史和只读 Codex 数据源。
+- `Sources/QuotaCapsuleMac/`：原生悬浮胶囊、展开面板、菜单栏、设置和本地持久化。
+- `packages/core/` 和 `packages/source-codex/`：面向 Web、Chrome 或 adapter 探索的 TypeScript 模型和数据源包。
+- `docs/product/`：产品契约、预测方法、验收标准和边界决策。
+
+欢迎按照 [LICENSE](LICENSE) 的条款集成、修改、合并或再发布代码，也欢迎为其他 Agent 产品贡献 source adapter。
 
 ## 项目结构
 
 ```text
-Sources/QuotaCapsuleMac/   macOS 原生悬浮胶囊 + 菜单栏 app。
-Sources/QuotaCapsuleCore/  Swift 原生 provider-neutral model、预测、Codex app-server source。
-apps/desktop/              Vite 桌面 UI mock；用于 Web/Chrome 视觉探索。
-packages/core/             provider-neutral quota model、预测引擎、状态文案。
-packages/source-codex/     Codex-first 本地数据源 probe 和未来 adapter。
-packages/analytics-collector/  可选产品改进数据接收端。
-docs/product/              产品简报、MVP 范围、路线图和验收标准。
-docs/distribution/         分发策略、公开仓库清单和宣传材料。
+Sources/QuotaCapsuleMac/   macOS 原生悬浮胶囊和菜单栏 app。
+Sources/QuotaCapsuleCore/  Swift 通用模型、预测和 Codex app-server source。
+apps/desktop/              Vite UI mock，用于 Web/Chrome 视觉探索。
+packages/core/             TypeScript 通用额度模型和预测引擎。
+packages/source-codex/     Codex-first 本地数据源 probe。
+docs/product/              产品简报、预测方法、路线图和验收标准。
 docs/decisions/            项目决策记录。
-scripts/                   本地 helper scripts。
 ```
 
 ## 路线图
@@ -128,7 +139,7 @@ scripts/                   本地 helper scripts。
 - 更长期的历史趋势和使用节奏复盘。
 - Chrome 独立版本。
 - 更多 Agent provider adapter。
-- 内测稳定后补签名、公证、DMG 和自动更新。
+- 内测稳定后补签名、公证和正式 macOS 分发。
 
 ## 联系与反馈
 
@@ -137,9 +148,7 @@ scripts/                   本地 helper scripts。
 - X: <https://x.com/starlightsz0>
 - 抖音：火腿肠（`huotuichang439`）
 
-扫码关注抖音，也可以把新的意见发给我：
-
-![抖音二维码](docs/assets/douyin-qr-scan.png)
+<img src="docs/assets/douyin-qr-scan.png" alt="抖音二维码" width="180" />
 
 ## 许可证
 
