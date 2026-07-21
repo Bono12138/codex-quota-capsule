@@ -1,60 +1,60 @@
 # Quota Capsule / 额度胶囊
 
-Languages: [简体中文](README.zh-CN.md) | [English](README.en.md)
+Languages: [简体中文](README.zh-CN.md) | [English](README.en.md) | [Bilingual](README.md)
 
-Quota Capsule is a small macOS quota runway capsule for heavy Codex users. It turns raw quota-window data into the working decision users actually need:
+**A local-first macOS quota runway assistant for heavy Codex users.**
 
-> At the current pace, can I keep working until the next reset?
+> At the current pace, can I keep working until the next weekly reset?
 
-Codex is the first supported provider, and the architecture remains agent-extensible. Other agent communities can contribute local source adapters while reusing the shared quota model, prediction engine, UI states, and product surface.
+![Quota Capsule collapsed and expanded](docs/assets/product/quota-capsule-expanded.png)
 
 ## Why It Exists
 
-Heavy Codex users often run several coding tasks at the same time and repeatedly check usage pages. A bare percentage is evidence. The working decision is:
+A quota percentage tells you how much has been used. It does not tell you whether the remaining quota can support the way you are working now.
 
-- Can I keep using Codex right now?
-- Can the current pace last until reset?
-- If it may not last, what does the risk range look like?
-- If it can last, how much margin should remain at reset?
+Heavy AI-native users may run several tasks at once, repeatedly check the usage page, hold back even when paid quota is still available, or discover too late that a large balance will expire at reset. Quota Capsule closes that judgment gap by comparing quota usage with elapsed time, recent pace, current activity, and available history.
 
-Quota Capsule stays small, visible, and direct with six honest states:
+It reports six honest states—Early estimate, On track, Running fast, May run out, Exhausted, and Data unavailable—plus a next-24-hour budget and a forecast range for the balance at reset.
 
-- Early estimate: the first valid weekly reading produces a wide, low-confidence range.
-- On track: the conservative forecast band still lasts until weekly reset.
-- Running fast: it may still last, but the forecast margin is thin.
-- May run out: even the optimistic fused estimate can exhaust before reset.
-- Exhausted: this week's quota is gone and will recover at reset.
-- Data unavailable: the live read failed or expired; frozen percentages remain visible without a pace claim.
+Codex is the first supported provider, and the architecture remains agent-extensible. Other agent communities can contribute local source adapters while reusing the shared quota model, prediction engine, UI states, and product surface.
 
-## Who It Is For
+## Product Surfaces
 
-- Codex users who often run several tasks at once.
-- People who repeatedly check quota or usage pages while working.
-- Developers who want a local-first quota gauge they can inspect and modify.
-- Agent communities that want to add their own quota source adapters.
+Quota Capsule is designed to stay quiet until the user needs more detail:
 
-## Current Status
+- A small floating desktop capsule with the current judgment and weekly usage.
+- A menu bar status item for glanceable, always-available context.
+- An expanded panel with time and usage progress, pace evidence, forecast confidence, a sustainable line, reset timing, and local history.
 
-The first local macOS beta is usable. It includes:
+![Quota Capsule collapsed](docs/assets/product/quota-capsule-collapsed.png)
 
-- Native floating desktop capsule.
-- Menu bar status item.
-- Read-only Codex app-server rate-limit adapter.
+![Quota Capsule in the macOS menu bar](docs/assets/product/quota-capsule-menu-bar.png)
+
+## Current Beta
+
+The current public prerelease is [v0.3.4-beta.1](https://github.com/Bono12138/codex-quota-capsule/releases/tag/v0.3.4-beta.1). It includes:
+
+- Native floating desktop capsule and menu bar item.
+- Read-only Codex app-server rate-limit source.
 - Immediate first-reading estimates with adaptive cycle, recent, activity, and historical evidence.
 - Next-24-hour budget, actual last-24-hour usage, reset-balance range, and a plain-language confidence reason.
 - Separate weekly-reset, last-successful-read, and next-automatic-read timing.
 - Current-cycle trend with a sustainable line, forecast band, and reset marker.
-- Local history snapshots.
-- Multilingual UI.
-- Public feedback links.
-
-The native macOS app uses real local Codex rate-limit data. The browser/Vite demo remains as a visual prototype and exploration path for future Web or Chrome versions.
+- Local history snapshots and privacy-safe reset-credit count, expiry timing, and lifecycle history.
+- Multilingual UI and public feedback links.
 
 See [Forecast Methodology](docs/product/forecast-methodology.md) for equations, uncertainty, confidence, stale behavior, limits, and change control.
 
-## Quick Start
+## Install
 
-Codex-assisted installation is the recommended early public test path. Open this repository and give the prompt below to your own Codex:
+### Download the current beta
+
+Download `Quota-Capsule-Beta-macOS.zip` from the [v0.3.4-beta.1 release](https://github.com/Bono12138/codex-quota-capsule/releases/tag/v0.3.4-beta.1).
+
+The current beta uses ad-hoc signing and is not yet notarized. macOS may require opening the app from Finder with **Right-click → Open**. See [INSTALL.md](INSTALL.md) for system requirements and Gatekeeper guidance.
+
+<details>
+<summary>Codex-assisted installation</summary>
 
 ```text
 Please install and run Quota Capsule on this Mac:
@@ -64,15 +64,15 @@ Please install and run Quota Capsule on this Mac:
 4. Only do local clone, dependency install, build, test, and launch.
 5. Do not read, copy, print, or upload auth tokens, cookies, API keys, prompt text, session text, code content, or private file paths.
 6. If Node, npm, Swift, Xcode Command Line Tools, or Codex CLI is missing, tell me before changing the system.
-7. Run npm ci.
-8. Run npm test.
-9. Run npm run build.
-10. Run swift run QuotaCapsuleCoreSpec.
-11. Run npm run mac:install and verify that exactly one running process comes from /Applications.
-12. After it launches, tell me how to open it again.
+7. Run npm ci, npm test, npm run build, npm run audit:repository, swift test, and swift run QuotaCapsuleCoreSpec.
+8. Run npm run mac:install and verify that exactly one running process comes from /Applications.
+9. After it launches, tell me how to open it again.
 ```
 
-Manual install:
+</details>
+
+<details>
+<summary>Build from source</summary>
 
 ```bash
 git clone https://github.com/Bono12138/codex-quota-capsule.git
@@ -80,41 +80,43 @@ cd codex-quota-capsule
 npm ci
 npm test
 npm run build
+npm run audit:repository
+swift test
 swift run QuotaCapsuleCoreSpec
 npm run mac:install
 ```
 
-## One App
-
-The repository builds one `Quota Capsule Beta.app`. Development uses branches, tests, and previews instead of installing a second persistent application.
-
-Run the native macOS Beta:
-
-```bash
-npm run mac:run
-```
+</details>
 
 ## Privacy Boundary
 
-- By default, the app reads and computes locally.
-- Product events are not uploaded unless an analytics endpoint is configured.
-- If an analytics endpoint is configured, basic diagnostics and product improvement data are sent in separate tiers.
+- Quota data is read and computed locally by default.
+- Product events are not uploaded unless an analytics endpoint is explicitly configured and the relevant consent is enabled.
 - Prompt text, session text, code content, private file paths, account credentials, auth tokens, and cookies stay on this Mac.
-- Missing or stale data is shown as `Data unavailable`, with stale percentages clearly marked.
+- Reset-credit raw IDs, descriptions, and referral payloads are not stored; only a SHA-256 identity fingerprint and safe timestamps/status facts remain in local history until the user clears it.
+- Missing or stale quota data is shown as `Data unavailable`; stale percentages never produce a new safety judgment.
+
+## Reuse and Integration
+
+Quota Capsule is MIT-licensed. Another macOS product can adopt the whole project or reuse selected layers:
+
+- `Sources/QuotaCapsuleCore/`: provider-neutral Swift quota model, forecasting, history, and the read-only Codex source.
+- `Sources/QuotaCapsuleMac/`: native floating capsule, expanded panel, menu bar surface, settings, and local persistence.
+- `packages/core/` and `packages/source-codex/`: TypeScript model and source packages for Web, Chrome, or adapter exploration.
+- `docs/product/`: product contract, forecast methodology, acceptance criteria, and edge-case decisions.
+
+You are welcome to integrate, modify, merge, or redistribute the code under the terms of [LICENSE](LICENSE). Contributions for other agent-provider adapters are also welcome.
 
 ## Project Structure
 
 ```text
 Sources/QuotaCapsuleMac/   Native macOS floating capsule and menu bar app.
-Sources/QuotaCapsuleCore/  Swift provider-neutral model, prediction, and Codex app-server source.
-apps/desktop/              Vite desktop UI mock for Web/Chrome exploration.
-packages/core/             Provider-neutral quota model, prediction engine, and status copy.
-packages/source-codex/     Codex-first local source probe and future adapter.
-packages/analytics-collector/ Optional product improvement data receiver.
-docs/product/              Product brief, MVP scope, roadmap, and acceptance criteria.
-docs/distribution/         Distribution strategy, release guidance, and launch materials.
+Sources/QuotaCapsuleCore/  Swift provider-neutral model, forecasting, and Codex source.
+apps/desktop/              Vite UI mock for Web/Chrome exploration.
+packages/core/             TypeScript provider-neutral model and prediction engine.
+packages/source-codex/     Codex-first local source probe.
+docs/product/              Product brief, forecast methodology, roadmap, and acceptance criteria.
 docs/decisions/            Project decision records.
-scripts/                   Local helper scripts.
 ```
 
 ## Roadmap
@@ -122,7 +124,7 @@ scripts/                   Local helper scripts.
 - Better onboarding and in-product guidance.
 - Longer-term history and usage-rhythm review.
 - Chrome version.
-- More agent provider adapters.
+- More agent-provider adapters.
 - Signed, notarized, packaged macOS distribution after the beta stabilizes.
 
 ## Feedback
@@ -132,9 +134,7 @@ scripts/                   Local helper scripts.
 - X: <https://x.com/starlightsz0>
 - Douyin: 火腿肠 (`huotuichang439`)
 
-You can also follow on Douyin and send feedback there:
-
-![Douyin QR code](docs/assets/douyin-qr-scan.png)
+<img src="docs/assets/douyin-qr-scan.png" alt="Douyin QR code" width="180" />
 
 ## License
 

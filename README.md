@@ -2,52 +2,79 @@
 
 Languages: [简体中文](README.zh-CN.md) | [English](README.en.md)
 
-Quota Capsule is a small macOS quota runway capsule for heavy Codex users.
+**A local-first macOS quota runway assistant for Codex.**
 
-额度胶囊是一个面向 Codex 重度用户的 macOS 桌面小胶囊。
+**一个本地优先、面向 Codex 重度用户的 macOS 额度判断胶囊。**
 
-It answers the question a bare quota percentage cannot answer:
-
-> At the current pace, can I keep working until the next reset?
-
-它把 quota window 数据翻译成用户真正关心的判断：
-
+> At the current pace, can I keep working until the next weekly reset?
+>
 > 按现在这个速度，我能不能撑到下一次周额度重置？
+
+![Quota Capsule collapsed and expanded](docs/assets/product/quota-capsule-expanded.png)
 
 ## Why This Exists / 为什么做
 
-Heavy Codex users often run multiple tasks, check usage pages repeatedly, and still hold back even with paid quota available. A percentage is only evidence. The working decision is whether the current pace can last until reset.
+A quota percentage tells you how much has been used. It does not tell you whether the remaining quota can support the way you are working now.
 
-很多 Codex 重度用户会同时跑多个任务，也会反复查看 usage 页面。百分比只能提供证据。真正影响工作节奏的是：现在还能不能继续放心用。
+额度百分比只告诉你已经用了多少，却没有回答一个更直接的工作问题：**现在还能不能放心继续用？**
 
-Quota Capsule stays visible on the desktop and in the menu bar, then turns weekly quota pace into six honest states and a next-24-hour budget:
+Heavy AI-native users may run several tasks at once, repeatedly check the usage page, hold back even when paid quota is still available, or discover too late that a large balance will expire at reset. Quota Capsule closes that judgment gap by comparing quota usage with elapsed time, recent pace, current activity, and available history.
 
-额度胶囊常驻桌面和菜单栏，把周额度速度转换成六个明确状态和未来 24 小时建议：
+AI-native 重度用户经常同时运行多个任务，也会反复查看 usage 页面：有时明明还有大量已付费额度，却因为不知道够不够而刻意收着用；有时又在临近重置时才发现还有很多额度没有用完。额度胶囊把已用额度、时间进度、最近速度、当前活动和可用历史证据合并成一句能直接行动的判断。
 
-- Early estimate / 初步判断：从第一个有效周额度读数开始给出宽区间判断，并明确显示低置信度。
-- On track / 够用：保守预测区间仍能撑到周额度重置。
-- Running fast / 偏快：仍可能撑到重置，但余量区间已经偏薄。
-- May run out / 可能不够：即使乐观估计也可能在重置前见底。
-- Exhausted / 已用尽：本周额度已经用完，等待重置恢复。
-- Data unavailable / 数据暂不可用：实时读取失败或数据过期，只保留最后成功百分比，不给速度结论。
+It reports six honest states—Early estimate, On track, Running fast, May run out, Exhausted, and Data unavailable—plus a next-24-hour budget and a forecast range for the balance at reset.
 
-## Who It Is For / 适合谁
+它会给出“初步判断、够用、偏快、可能不够、已用尽、数据暂不可用”六种诚实状态，并显示未来 24 小时建议和重置时的预计余量区间。
 
-- Codex users who often run several tasks at once.
-- People who repeatedly check quota or usage pages while working.
-- Developers who want a local-first quota gauge they can inspect and modify.
-- Agent communities that want to add their own quota source adapters.
+## Product Surfaces / 产品形态
 
-- 经常同时跑多个 Codex 任务的用户。
-- 工作时反复查看额度或 usage 页面的人。
-- 想要本地优先、可检查、可修改工具的开发者。
-- 想为其他 Agent 产品贡献 source adapter 的社区。
+Quota Capsule is designed to stay quiet until the user needs more detail:
 
-## Quick Start / 快速开始
+- A small floating desktop capsule with the current judgment and weekly usage.
+- A menu bar status item for glanceable, always-available context.
+- An expanded panel with time and usage progress, pace evidence, forecast confidence, a sustainable line, reset timing, and local history.
 
-Early public testing uses GitHub + Codex-assisted installation. Open this repository and give the prompt below to your own Codex:
+额度胶囊尽量安静地常驻，只在用户需要时展开更多信息：
 
-早期公开试用采用 GitHub + Codex-assisted 安装。打开本仓库，把下面这段交给自己的 Codex：
+- 桌面悬浮胶囊显示当前判断与周已用比例。
+- 菜单栏提供随时可见的一眼状态。
+- 展开面板显示时间/用量进度、速度证据、预测置信度、可持续线、重置时间和本地历史。
+
+![Quota Capsule collapsed](docs/assets/product/quota-capsule-collapsed.png)
+
+![Quota Capsule in the macOS menu bar](docs/assets/product/quota-capsule-menu-bar.png)
+
+## Current Beta / 当前 Beta
+
+The current public prerelease is [v0.3.4-beta.1](https://github.com/Bono12138/codex-quota-capsule/releases/tag/v0.3.4-beta.1). It includes:
+
+当前公开预发布版本是 [v0.3.4-beta.1](https://github.com/Bono12138/codex-quota-capsule/releases/tag/v0.3.4-beta.1)，已经包括：
+
+- Native floating desktop capsule and menu bar item / 原生桌面悬浮胶囊和菜单栏入口。
+- Read-only Codex app-server rate-limit source / 只读 Codex app-server rate-limit 数据源。
+- Immediate first-reading estimate plus adaptive cycle, recent, activity, and historical pace evidence / 第一次有效读数即给初步估算，并逐步融合周期、近期、活动节奏和历史证据。
+- Next-24-hour budget, last-24-hour usage, reset-balance range, and plain-language confidence / 未来 24 小时建议、最近 24 小时实际用量、重置余量区间和置信原因。
+- Separate weekly-reset, last-successful-read, and next-automatic-read timing / 分开显示周额度重置、上次成功读取和下次自动读取。
+- Current-cycle trend with a sustainable line, forecast band, and reset marker / 带可持续线、预测区间和重置标记的当前周期趋势。
+- Local history snapshots and privacy-safe reset-credit lifecycle history / 本地历史快照与隐私安全的重置券生命周期历史。
+- Multilingual UI and public feedback links / 多语言界面和公开反馈入口。
+
+See [Forecast Methodology / 预测方法](docs/product/forecast-methodology.md) for equations, uncertainty, confidence, stale behavior, limits, and change control.
+
+## Install / 安装
+
+### Download the current beta / 下载当前 Beta
+
+Download `Quota-Capsule-Beta-macOS.zip` from the [v0.3.4-beta.1 release](https://github.com/Bono12138/codex-quota-capsule/releases/tag/v0.3.4-beta.1).
+
+从 [v0.3.4-beta.1 Release](https://github.com/Bono12138/codex-quota-capsule/releases/tag/v0.3.4-beta.1) 下载 `Quota-Capsule-Beta-macOS.zip`。
+
+The current beta uses ad-hoc signing and is not yet notarized. macOS may require opening the app from Finder with **Right-click → Open**. See [INSTALL.md](INSTALL.md) for system requirements and Gatekeeper guidance.
+
+当前 Beta 使用 ad-hoc 签名，尚未公证。macOS 可能要求在 Finder 中对应用执行**右键 → 打开**。系统要求和 Gatekeeper 处理方式见 [INSTALL.md](INSTALL.md)。
+
+<details>
+<summary>Codex-assisted installation / 使用 Codex 辅助安装</summary>
 
 ```text
 Please install and run Quota Capsule on this Mac:
@@ -57,12 +84,15 @@ Please install and run Quota Capsule on this Mac:
 4. Only do local clone, dependency install, build, test, and launch.
 5. Do not read, copy, print, or upload auth tokens, cookies, API keys, prompt text, session text, code content, or private file paths.
 6. If Node, npm, Swift, Xcode Command Line Tools, or Codex CLI is missing, tell me before changing the system.
-7. Run npm ci, npm test, npm run build, and swift run QuotaCapsuleCoreSpec.
+7. Run npm ci, npm test, npm run build, npm run audit:repository, swift test, and swift run QuotaCapsuleCoreSpec.
 8. Run npm run mac:install and verify exactly one running process comes from /Applications.
 9. After it launches, tell me how to open it again.
 ```
 
-Manual install:
+</details>
+
+<details>
+<summary>Build from source / 从源码构建</summary>
 
 ```bash
 git clone https://github.com/Bono12138/codex-quota-capsule.git
@@ -70,75 +100,44 @@ cd codex-quota-capsule
 npm ci
 npm test
 npm run build
+npm run audit:repository
+swift test
 swift run QuotaCapsuleCoreSpec
 npm run mac:install
 ```
 
+</details>
+
 ## Privacy Boundary / 隐私边界
 
-- By default, quota data is read and computed locally.
-- Product events are not uploaded unless an analytics endpoint is explicitly configured.
-- Prompt text, session text, code content, private file paths, account credentials, auth tokens, and cookies stay on this Mac.
-- Reset-credit raw IDs, descriptions, and referral payloads are not stored; only a SHA-256 identity fingerprint and safe timestamps/status facts remain in local history until the user clears it.
-- Missing or stale quota data is shown as `Data unavailable`, with stale percentages clearly marked.
+- Quota data is read and computed locally by default / 额度数据默认在本机读取和计算。
+- Product events are not uploaded unless an analytics endpoint is explicitly configured and the relevant consent is enabled / 未显式配置 analytics endpoint 并启用相应授权时，不上传产品事件。
+- Prompt text, session text, code content, private file paths, account credentials, auth tokens, and cookies stay on this Mac / prompt、session、代码、私有路径、账号凭据、auth token 和 cookie 留在本机。
+- Reset-credit raw IDs, descriptions, and referral payloads are not stored; only a SHA-256 identity fingerprint and safe timestamps/status facts remain in local history until the user clears it / 重置券原始 ID、描述和 referral 内容不落盘，仅保存 SHA-256 指纹以及安全的时间和状态事实。
+- Missing or stale quota data is shown as `Data unavailable`; stale percentages never produce a new safety judgment / 缺失或过期数据显示为“数据暂不可用”，不会用旧百分比生成新的安全判断。
 
-- 默认本地读取、本地计算。
-- 未显式配置 analytics endpoint 时，不上传产品事件。
-- prompt 正文、session 正文、代码内容、私有文件路径、账号凭据、auth token、cookie 留在本机。
-- 重置券原始 ID、描述和 referral 内容不落盘；仅用 SHA-256 指纹去重，并在用户清空本地历史前保存安全时间与状态事实。
-- 缺失或过期数据显示为“数据暂不可用”，过期百分比会被明确标记。
+## Reuse and Integration / 复用与集成
 
-## One App / 唯一应用
+Quota Capsule is MIT-licensed. Another macOS product can adopt the whole project or reuse selected layers:
 
-The public repository builds one `Quota Capsule Beta.app`. Development uses branches, tests, and previews rather than a second persistent app identity. This prevents duplicate capsules and keeps local history in one Beta data directory.
+额度胶囊采用 MIT License。其他 macOS 产品可以整体采用，也可以只复用其中一层：
 
-公开仓库只构建一个 `Quota Capsule Beta.app`。开发使用分支、测试和预览，不再安装第二个常驻应用，避免重复胶囊和数据目录分裂。
+- `Sources/QuotaCapsuleCore/`: provider-neutral Swift quota model, forecasting, history, and the read-only Codex source / Swift 通用额度模型、预测、历史和只读 Codex 数据源。
+- `Sources/QuotaCapsuleMac/`: native floating capsule, expanded panel, menu bar surface, settings, and local persistence / 原生悬浮胶囊、展开面板、菜单栏、设置和本地持久化。
+- `packages/core/` and `packages/source-codex/`: TypeScript model and source packages for Web, Chrome, or adapter exploration / 面向 Web、Chrome 或 adapter 探索的 TypeScript 模型和数据源包。
+- `docs/product/`: product contract, forecast methodology, acceptance criteria, and edge-case decisions / 产品契约、预测方法、验收标准和边界决策。
 
-## Current Status / 当前状态
+You are welcome to integrate, modify, merge, or redistribute the code under the terms of [LICENSE](LICENSE). Contributions for other agent-provider adapters are also welcome.
 
-The first public beta is a macOS app built from source. It currently includes:
-
-- Native floating desktop capsule and menu bar item.
-- Read-only Codex app-server rate-limit source.
-- Immediate first-reading estimate plus adaptive cycle, recent, activity, and historical pace evidence.
-- Next-24-hour budget, last-24-hour usage, reset-balance range, and plain-language confidence.
-- Separate weekly-reset, last-successful-read, and next-automatic-read timing.
-- Current-cycle trend with a sustainable line, forecast band, and reset marker.
-- Local history snapshots.
-- Current reset-credit count, per-credit local expiry minute, and privacy-safe local lifecycle history at the bottom of the expanded panel.
-- Multilingual UI.
-- Feedback links for GitHub Issues, email, X, and Douyin.
-
-当前公开内测版是从源码构建的 macOS app，已经包括：
-
-- 原生桌面悬浮胶囊和菜单栏入口。
-- 只读 Codex app-server rate-limit 数据源。
-- 第一次有效读数即给初步估算，并融合周期、近期、活动节奏和历史先验证据。
-- 未来 24 小时建议、最近 24 小时实际用量、重置余量区间和置信原因。
-- 分开显示周额度重置、上次成功读取和下次自动读取。
-- 带可持续线、预测区间和重置标记的当前周期趋势。
-- 本地历史快照。
-- 展开面板最下方显示重置券权威数量、逐张本地到期分钟，并保存隐私安全的本机生命周期历史。
-- 多语言界面。
-- GitHub Issues、邮箱、X、抖音反馈入口。
-
-算法公式、边界和变更规则见 [Forecast Methodology / 预测方法](docs/product/forecast-methodology.md)。
-
-最新市场比较见 [Competitor Landscape / 竞品更新](docs/research/competitor-landscape-2026-07-14.md)。给同事或合作者的简短介绍见 [Colleague Project Brief / 项目介绍](docs/distribution/colleague-project-brief.md)。
+欢迎按照 [LICENSE](LICENSE) 的条款集成、修改、合并或再发布代码，也欢迎为其他 Agent 产品贡献 source adapter。
 
 ## Roadmap / 路线图
 
-- Better onboarding and in-product guidance.
-- Longer-term history and usage-rhythm review.
-- Chrome version.
-- More agent provider adapters.
-- Signed, notarized, packaged macOS distribution after the beta stabilizes.
-
-- 更完整的新手引导和产品内提示。
-- 更长期的历史趋势和使用节奏复盘。
-- Chrome 独立版本。
-- 更多 Agent provider adapter。
-- 内测稳定后补签名、公证和正式 macOS 分发。
+- Better onboarding and in-product guidance / 更完整的新手引导和产品内提示。
+- Longer-term history and usage-rhythm review / 更长期的历史趋势和使用节奏复盘。
+- Chrome version / Chrome 独立版本。
+- More agent-provider adapters / 更多 Agent provider adapter。
+- Signed, notarized, packaged macOS distribution after the beta stabilizes / 内测稳定后补签名、公证和正式 macOS 分发。
 
 ## Feedback / 反馈
 
@@ -147,7 +146,7 @@ The first public beta is a macOS app built from source. It currently includes:
 - X: <https://x.com/starlightsz0>
 - Douyin / 抖音：火腿肠（`huotuichang439`）
 
-![Douyin QR code](docs/assets/douyin-qr-scan.png)
+<img src="docs/assets/douyin-qr-scan.png" alt="Douyin QR code" width="180" />
 
 ## License / 许可证
 
