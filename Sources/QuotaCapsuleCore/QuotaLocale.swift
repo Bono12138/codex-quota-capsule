@@ -247,6 +247,31 @@ public struct QuotaCopy: Equatable, Sendable {
         }
     }
 
+    public func forecastHorizonBandTitle(_ source: QuotaBurnHorizonSource) -> String {
+        switch source {
+        case .naturalReset:
+            forecastResetBandTitle
+        case .resetCreditExpiry:
+            switch locale {
+            case .zhHans: "预测刷新余量"
+            case .zhHant: "預測刷新餘量"
+            case .en: "Forecast balance at refresh"
+            }
+        }
+    }
+
+    public func horizonMarkerTitle(_ source: QuotaBurnHorizonSource) -> String {
+        switch source {
+        case .naturalReset:
+            resetMarkerTitle
+        case .resetCreditExpiry:
+            switch locale {
+            case .zhHans, .zhHant: "刷新"
+            case .en: "Refresh"
+            }
+        }
+    }
+
     public var trendLearningText: String {
         switch locale {
         case .zhHans: "正在积累当前周期的趋势点"
@@ -260,6 +285,14 @@ public struct QuotaCopy: Equatable, Sendable {
         case .zhHans: "额度变化确认后会自动恢复速度与预测趋势"
         case .zhHant: "額度變化確認後會自動恢復速度與預測趨勢"
         case .en: "Pace and forecast resume automatically after the quota change is confirmed"
+        }
+    }
+
+    public var trendWaitingForUsageText: String {
+        switch locale {
+        case .zhHans: "观察到额度消耗后会自动显示速度与预测趋势"
+        case .zhHant: "觀察到額度消耗後會自動顯示速度與預測趨勢"
+        case .en: "Pace and forecast appear automatically after quota usage is observed"
         }
     }
 
@@ -286,6 +319,13 @@ public struct QuotaCopy: Equatable, Sendable {
 
     public func confidenceReason(_ forecast: WeeklyRunwayForecast) -> String {
         let transitions = forecast.paceEvidence.map(\.transitionCount).max() ?? 0
+        if forecast.burnHorizonSource == .resetCreditExpiry {
+            return switch locale {
+            case .zhHans: "下一次刷新按最早到期的重置券计算"
+            case .zhHant: "下一次刷新按最早到期的重置券計算"
+            case .en: "The next refresh is based on the earliest expiring reset credit"
+            }
+        }
         if forecast.confidenceReason == "no-consumption-observed" {
             return switch locale {
             case .zhHans: "开始使用后会根据实际增长更新判断"
@@ -328,6 +368,20 @@ public struct QuotaCopy: Equatable, Sendable {
         case .zhHans: "周额度将在 \(timestamp) 重置（\(countdown)）"
         case .zhHant: "週額度將在 \(timestamp) 重設（\(countdown)）"
         case .en: "Weekly quota resets at \(timestamp) (\(countdown))"
+        }
+    }
+
+    public func resetCreditDeadlineDescription(
+        expiresAt: Date,
+        now: Date,
+        timeZone: TimeZone = .current
+    ) -> String {
+        let timestamp = dateFormatter(dateOnly: false, timeZone: timeZone).string(from: expiresAt)
+        let countdown = relativeCountdown(to: expiresAt, now: now)
+        return switch locale {
+        case .zhHans: "请在最早到期的重置券于 \(timestamp) 到期前使用并刷新额度（\(countdown)）"
+        case .zhHant: "請在最早到期的重置券於 \(timestamp) 到期前使用並刷新額度（\(countdown)）"
+        case .en: "Use the earliest reset credit before it expires at \(timestamp) to refresh quota (\(countdown))"
         }
     }
 

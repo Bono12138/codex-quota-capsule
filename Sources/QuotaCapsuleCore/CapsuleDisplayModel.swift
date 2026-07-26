@@ -41,15 +41,30 @@ public struct CapsuleDisplayModel: Equatable, Sendable {
         locale: QuotaLocale = .zhHans
     ) -> CapsuleDisplayModel {
         let copy = QuotaCopy(locale: locale)
-        let labels = copy.weeklyMetricLabels
+        let hasResetCreditDeadline = forecast.burnHorizonSource == .resetCreditExpiry
+            && forecast.state != .exhausted
+            && forecast.state != .unavailable
+        let promptsCreditUse = shouldPromptCreditUse(forecast)
+        var labels = copy.weeklyMetricLabels
+        if hasResetCreditDeadline {
+            labels[0] = switch locale {
+            case .zhHans: "刷新进度"
+            case .zhHant: "刷新進度"
+            case .en: "Refresh progress"
+            }
+        }
         let elapsed = safePercent(forecast.elapsedPercent)
         let used = safePercent(forecast.usedPercent)
         let budget = formatBudget(forecast.next24HourBudget, copy: copy)
         let recent = formatUsageBand(forecast.last24HourUsageBand, copy: copy)
         return CapsuleDisplayModel(
-            tone: tone(for: forecast.state),
-            statusLabel: copy.weeklyStatusLabel(forecast.state),
-            defaultText: weeklyDefaultText(forecast, copy: copy, locale: locale),
+            tone: promptsCreditUse ? .watch : tone(for: forecast.state),
+            statusLabel: promptsCreditUse
+                ? resetCreditDeadlineStatus(locale: locale)
+                : copy.weeklyStatusLabel(forecast.state),
+            defaultText: promptsCreditUse
+                ? resetCreditDeadlineText(locale: locale)
+                : weeklyDefaultText(forecast, copy: copy, locale: locale),
             compactDetail: weeklyCompactDetail(forecast, locale: locale),
             metrics: [
                 CapsuleMetric(label: labels[0], value: formatPercent(elapsed, copy: copy), numericValue: elapsed.map { Int($0.rounded()) }),
@@ -61,6 +76,7 @@ public struct CapsuleDisplayModel: Equatable, Sendable {
             showsLivePaceDetails: forecast.state != .unavailable
                 && forecast.state != .calibrating
                 && forecast.confidenceReason != "no-consumption-observed"
+                && (!hasResetCreditDeadline || !forecast.paceEvidence.isEmpty)
         )
     }
 
@@ -111,6 +127,35 @@ public struct CapsuleDisplayModel: Equatable, Sendable {
         case .watch: .watch
         case .mayRunOut, .exhausted: .danger
         case .calibrating, .earlyEstimate, .unavailable: .unknown
+        }
+    }
+
+    private static func resetCreditDeadlineStatus(locale: QuotaLocale) -> String {
+        switch locale {
+        case .zhHans: "抓紧使用"
+        case .zhHant: "把握時間使用"
+        case .en: "Use before reset"
+        }
+    }
+
+    private static func shouldPromptCreditUse(_ forecast: WeeklyRunwayForecast) -> Bool {
+        guard forecast.burnHorizonSource == .resetCreditExpiry else { return false }
+        switch forecast.state {
+        case .enough:
+            return true
+        case .earlyEstimate:
+            guard let band = forecast.projectedRemainingBandAtReset else { return true }
+            return min(band.lower, band.upper) >= 0
+        case .watch, .mayRunOut, .calibrating, .exhausted, .unavailable:
+            return false
+        }
+    }
+
+    private static func resetCreditDeadlineText(locale: QuotaLocale) -> String {
+        switch locale {
+        case .zhHans: "最早的重置券即将到期；建议在此之前尽量使用剩余额度"
+        case .zhHant: "最早的重置券即將到期；建議在此之前盡量使用剩餘額度"
+        case .en: "The earliest reset credit expires soon; use as much remaining quota as practical before then"
         }
     }
 

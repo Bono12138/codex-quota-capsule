@@ -480,11 +480,32 @@ struct ResetCreditFooterView: View {
     }
 }
 
+struct WeeklyTrendHorizon: Equatable {
+    let at: Date
+    let source: QuotaBurnHorizonSource
+
+    static func make(forecast: WeeklyRunwayForecast, window: QuotaWindow) -> WeeklyTrendHorizon {
+        let cycleStart = window.resetsAt.addingTimeInterval(-Double(window.windowMinutes) * 60)
+        guard let at = forecast.burnHorizonAt,
+              let source = forecast.burnHorizonSource,
+              at > cycleStart,
+              at <= window.resetsAt else {
+            return WeeklyTrendHorizon(at: window.resetsAt, source: .naturalReset)
+        }
+        return WeeklyTrendHorizon(at: at, source: source)
+    }
+}
+
 struct WeeklyTrendChartView: View {
     @ObservedObject var store: QuotaStore
 
     private var points: [WeeklyTrendPoint] {
         store.runwayForecast.currentCycleTrend
+    }
+
+    private var horizon: WeeklyTrendHorizon? {
+        guard let window = store.snapshot.weeklyWindow else { return nil }
+        return WeeklyTrendHorizon.make(forecast: store.runwayForecast, window: window)
     }
 
     var body: some View {
@@ -504,7 +525,7 @@ struct WeeklyTrendChartView: View {
                     VStack(alignment: .leading, spacing: 5) { chartLegend }
                 }
             } else if !store.displayModel.showsLivePaceDetails {
-                Label(store.copy.paceDetailsPausedText, systemImage: "pause.circle")
+                Label(pausedTrendText, systemImage: "pause.circle")
                     .font(.system(size: 11, weight: .semibold))
                     .foregroundStyle(.secondary)
                     .padding(.vertical, 12)
@@ -531,7 +552,8 @@ struct WeeklyTrendChartView: View {
             let width = max(1, size.width - inset * 2)
             let height = max(1, size.height - inset * 2)
             let cycleStart = window.resetsAt.addingTimeInterval(-Double(window.windowMinutes) * 60)
-            let duration = max(1, window.resetsAt.timeIntervalSince(cycleStart))
+            let horizon = WeeklyTrendHorizon.make(forecast: store.runwayForecast, window: window)
+            let duration = max(1, horizon.at.timeIntervalSince(cycleStart))
 
             func location(at date: Date, usedPercent: Double) -> CGPoint {
                 let progress = min(1, max(0, date.timeIntervalSince(cycleStart) / duration))
@@ -566,8 +588,8 @@ struct WeeklyTrendChartView: View {
                 let lowerUsed = 100 - min(100, max(0, band.upper))
                 let upperUsed = 100 - min(100, max(0, band.lower))
                 var forecastBand = Path()
-                forecastBand.move(to: location(at: window.resetsAt, usedPercent: lowerUsed))
-                forecastBand.addLine(to: location(at: window.resetsAt, usedPercent: upperUsed))
+                forecastBand.move(to: location(at: horizon.at, usedPercent: lowerUsed))
+                forecastBand.addLine(to: location(at: horizon.at, usedPercent: upperUsed))
                 context.stroke(
                     forecastBand,
                     with: .color(toneColor(store.displayModel.tone).opacity(0.52)),
@@ -592,11 +614,25 @@ struct WeeklyTrendChartView: View {
     private var chartLegend: some View {
         Label(store.copy.sustainableLineTitle, systemImage: "line.diagonal")
         Label(forecastBandText, systemImage: "arrow.up.and.down")
-        Label("\(store.copy.resetMarkerTitle) \(store.resetText)", systemImage: "flag.checkered")
+        Label("\(horizonMarkerTitle) \(store.resetText)", systemImage: "flag.checkered")
     }
 
     private var forecastBandText: String {
-        "\(store.copy.forecastResetBandTitle)：\(store.copy.forecastResetBandValue(store.runwayForecast.projectedRemainingBandAtReset))"
+        "\(forecastBandTitle)：\(store.copy.forecastResetBandValue(store.runwayForecast.projectedRemainingBandAtReset))"
+    }
+
+    private var horizonMarkerTitle: String {
+        store.copy.horizonMarkerTitle(horizon?.source ?? .naturalReset)
+    }
+
+    private var forecastBandTitle: String {
+        store.copy.forecastHorizonBandTitle(horizon?.source ?? .naturalReset)
+    }
+
+    private var pausedTrendText: String {
+        store.runwayForecast.confidenceReason == "no-consumption-observed"
+            ? store.copy.trendWaitingForUsageText
+            : store.copy.paceDetailsPausedText
     }
 }
 

@@ -14,6 +14,7 @@ export type {
   PaceEvidenceKind,
   ObservedUsageSummary,
   PercentageBand,
+  QuotaBurnHorizonSource,
   WeeklyObservation,
   WeeklyQualityFlag,
   WeeklyQualityResult,

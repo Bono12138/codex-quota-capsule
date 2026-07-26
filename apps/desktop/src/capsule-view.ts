@@ -28,19 +28,33 @@ const STATUS_LABELS: Record<WeeklyRunwayState, string> = {
 export function createCapsuleDisplayModel(forecast: WeeklyRunwayForecast): CapsuleDisplayModel {
   const elapsed = safePercent(forecast.elapsedPercent);
   const used = safePercent(forecast.usedPercent);
+  const hasResetCreditDeadline = forecast.burnHorizonSource === "resetCreditExpiry"
+    && forecast.state !== "exhausted"
+    && forecast.state !== "unavailable";
+  const promptsCreditUse = shouldPromptCreditUse(forecast);
   return {
-    tone: toneFor(forecast.state),
-    statusLabel: STATUS_LABELS[forecast.state],
-    defaultText: defaultText(forecast),
+    tone: promptsCreditUse ? "watch" : toneFor(forecast.state),
+    statusLabel: promptsCreditUse ? "抓紧使用" : STATUS_LABELS[forecast.state],
+    defaultText: promptsCreditUse
+      ? "最早的重置券即将到期；建议在此之前尽量使用剩余额度"
+      : defaultText(forecast),
     compactDetail: used === null ? "" : `本周已用 ${formatNumber(used)}%`,
     detailMetrics: [
-      { label: "本周时间", value: formatPercent(elapsed), numericValue: elapsed },
+      { label: hasResetCreditDeadline ? "刷新进度" : "本周时间", value: formatPercent(elapsed), numericValue: elapsed },
       { label: "本周已用", value: formatPercent(used), numericValue: used },
       { label: "未来 24 小时建议", value: formatBudget(forecast.next24HourBudget), numericValue: null },
       { label: "最近 24 小时", value: formatUsageBand(forecast.last24HourUsageBand), numericValue: null },
     ],
     confidenceText: confidenceReason(forecast),
   };
+}
+
+function shouldPromptCreditUse(forecast: WeeklyRunwayForecast): boolean {
+  if (forecast.burnHorizonSource !== "resetCreditExpiry") return false;
+  if (forecast.state === "enough") return true;
+  if (forecast.state !== "earlyEstimate") return false;
+  const band = forecast.projectedRemainingBandAtReset;
+  return band === null || Math.min(band.lower, band.upper) >= 0;
 }
 
 function toneFor(state: WeeklyRunwayState): CapsuleLevel {
@@ -87,6 +101,7 @@ function formatBudget(value: number | null): string {
 
 function confidenceReason(forecast: WeeklyRunwayForecast): string {
   const transitions = Math.max(0, ...forecast.paceEvidence.map((item) => item.transitionCount));
+  if (forecast.burnHorizonSource === "resetCreditExpiry") return "下一次刷新按最早到期的重置券计算";
   if (forecast.confidenceReason === "no-consumption-observed") return "开始使用后会根据实际增长更新判断";
   if (forecast.confidenceReason === "cycle-only" || forecast.state === "earlyEstimate") return "初步判断：仅依据当前周期平均速度";
   if (forecast.confidence === "high") return "可信度高：周期、最近 24 小时和活动节奏一致";

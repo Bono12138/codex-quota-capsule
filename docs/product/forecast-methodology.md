@@ -1,18 +1,32 @@
 # Adaptive Weekly Forecast Methodology
 
 Status: current product contract
-Updated: 2026-07-18
-Applies to: `v0.3.4-beta.1` and later until superseded
+Updated: 2026-07-26
+Applies to: current source candidate and later releases until superseded
 
 ## Product question
 
 Quota Capsule does not try to make a raw percentage look more precise than it is. It answers:
 
-> At the pace supported by the evidence available now, is the remaining weekly allowance likely to last until reset, and what is a sustainable next-24-hour budget?
+> Before the next unavoidable quota refresh, is the remaining allowance likely to run out or be wasted, and what should the next-24-hour budget be?
 
 The first valid reading must already provide value. It produces a wide early estimate from current-cycle evidence; there is no fixed waiting-time gate. More observations improve the estimate only when they add useful evidence.
 
-Quota reset time and data read time are separate concepts and must always be labelled separately in the interface.
+The next burn horizon, the natural weekly reset, and the local data-read time are separate concepts. Quota reset time and data read time must remain separately labelled, and the interface must name which event currently defines the horizon.
+
+## Current burn horizon
+
+The forecast always chooses one concrete endpoint:
+
+```text
+burn horizon = min(natural weekly reset, earliest known available reset-credit expiry)
+```
+
+Only a `codexRateLimits` credit whose status is `available`, whose expiry is known, and whose expiry is strictly after the current time is eligible. Redeemed, redeeming, expired, unknown-type, undated, and count-only credits never invent a deadline. If the provider returns no usable credit detail, the natural weekly reset remains the fallback.
+
+This is an explicit product assumption: a user with an available full reset credit will use the earliest-expiring credit before it expires. Its expiry therefore becomes the next planned quota refresh whenever it precedes the natural reset. After a redemption or natural reset, the app reads the new authoritative weekly reset and the remaining credit bank, then applies the same minimum rule again. The app does not predict a future reset timestamp before the upstream source confirms it.
+
+The weekly cycle start remains `natural reset - weekly duration`; a credit does not rewrite historical pace evidence. Time progress uses that real cycle start and the selected burn horizon as its endpoint. This preserves the true amount of quota already consumed while making the remaining-time budget answer the event the user will actually act on.
 
 ## Input quality
 
@@ -79,20 +93,20 @@ This median/MAD consensus prevents one burst from dominating while still widenin
 Let:
 
 - `R` = remaining percentage;
-- `H` = hours to reset;
+- `H` = hours to the selected burn horizon;
 - `P = [P_low, P_high]` = fused percentage-points-per-hour pace band.
 
 Then:
 
 ```text
-sustainable hourly pace = remaining / hours to reset
-next-24-hour budget = (remaining / hours to reset) * min(24, hours to reset)
-projected remaining at reset = R - P * H
+sustainable hourly pace = remaining / hours to burn horizon
+next-24-hour budget = (remaining / hours to burn horizon) * min(24, hours to burn horizon)
+projected remaining at refresh = R - P * H
 ```
 
 The projected interval is kept raw, including negative values. A range such as `[-20%, 44%]` means the faster evidence may exhaust the allowance before reset while the slower evidence may leave up to 44%; it must not be clamped into the misleading display `0%–44%`.
 
-The product rounds the next-24-hour budget down for display. It does not subtract an arbitrary hidden buffer; uncertainty is represented by the forecast interval and confidence explanation. The main surface describes the directly observed period and percentage change, for example “近 8 小时已用约 16%–18%”. A normalized `%/day` comparison is a diagnostic explanation only and never the primary user value.
+The product rounds the next-24-hour budget down for display. When the selected horizon is less than 24 hours away, the budget can legitimately equal the entire remaining allowance. It does not subtract an arbitrary hidden buffer; uncertainty is represented by the forecast interval and confidence explanation. The main surface describes the directly observed period and percentage change, for example “近 8 小时已用约 16%–18%”. A normalized `%/day` comparison is a diagnostic explanation only and never the primary user value.
 
 ## Outcome states
 
@@ -102,6 +116,8 @@ The product rounds the next-24-hour budget down for display. It does not subtrac
 - `mayRunOut`: even the optimistic fused projection is below zero and no reliable evidence supports lasting to reset.
 - `exhausted`: remaining allowance is effectively zero.
 - `unavailable`: the source, timestamps, reset, or quality evidence cannot support an honest current estimate.
+
+When an earlier reset-credit expiry defines the horizon and the projection still leaves non-negative quota, the presentation adds the contextual action state `抓紧使用 / Use before reset`. It changes “本周时间” to “刷新进度”, names the credit-based horizon, and encourages using the remaining allowance before refresh. It must not override `watch`, `mayRunOut`, or an early projection that already indicates the allowance may run out first.
 
 The calibrating state is a short, visible data-quality transition rather than a user waiting room. A first valid weekly window normally falls back to cycle evidence immediately. When a later reset or correction candidate is still unconfirmed, the UI keeps the last accepted percentages, labels them as accepted rather than newly updated, and pauses the pace judgment until confirmation.
 
@@ -123,7 +139,7 @@ When the latest data is stale or a refresh fails, the app may keep the last succ
 
 The stale surface also hides the pace-comparison sentence and forecast trend band; old percentages remain visibly labelled as the last successful reading rather than current guidance.
 
-## Reset-credit facts are separate from the forecast
+## Reset-credit facts and forecast interaction
 
 `rateLimitResetCredits.availableCount` is the authoritative current count. Per-credit details may be absent or capped, so the interface distinguishes a count-only response from a complete empty bank and explicitly states how many expiry details were not returned.
 
@@ -131,7 +147,9 @@ Normal UI shows each returned available credit's expiry in the Mac's local time 
 
 A reset credit that disappears after its expiry is classified as expired. A pre-expiry reset-credit disappearance remains unknown unless one complete bank transition and an accepted weekly reset in the same refresh support the conservative label likely redeemed. These are local classifications, not provider facts.
 
-Available credits do not change the weekly risk state, color, pace, or budget before an actual reset is confirmed. Redemption controls and optimal-use recommendations are outside this release and are governed separately by `docs/research/reset-credit-timing-optimization.md`.
+An available full reset credit with a known earlier expiry changes the burn horizon, time progress, sustainable pace, next-24-hour budget, projection endpoint, footer timestamp, and action copy. It does not change the measured weekly usage or fabricate a future weekly reset. No credit is automatically redeemed.
+
+This release implements the deterministic “use the earliest-expiring credit before it expires” policy requested by the product owner. It does not solve a general demand-weighted redemption optimization problem. Alternative policies, uncertain future workloads, and multi-credit dynamic programming remain research topics governed by `docs/research/reset-credit-timing-optimization.md`.
 
 ## Cross-runtime parity and change control
 
@@ -152,3 +170,5 @@ Every algorithm change must include, in the same pull request:
 - Historical behavior may not predict a new work pattern; its reliability is capped.
 - The product estimates allowance pace, not task complexity, tokens, monetary cost, or provider policy.
 - User-visible wording must distinguish a weekly allowance reset from a local data refresh.
+- Count-only credit responses cannot safely shorten the horizon because they contain no expiry timestamp.
+- Pace history stored on one Mac is incomplete when the same account is used elsewhere. Current upstream percentage changes still include cross-device consumption between reads, but activity attribution and local coverage do not.

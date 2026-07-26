@@ -67,6 +67,23 @@ describe("repository policy", () => {
     }));
   });
 
+  it("accepts the maintained contract when budget uses the next burn horizon", () => {
+    const document = [
+      "The first valid reading is useful.",
+      "Quantization is ±0.5.",
+      "Cycle evidence, recent evidence, activity evidence, and historical prior are fused.",
+      "Confidence is explicit.",
+      "sustainable pace = remaining / hours to burn horizon",
+      "Stale data is suppressed.",
+      "Quota reset and data read timestamps stay distinct.",
+      "burn horizon = min(natural weekly reset, earliest reset-credit expiry)",
+    ].join("\n");
+
+    expect(auditForecastDocumentation([
+      textFile("docs/product/forecast-methodology.md", document),
+    ])).toEqual([]);
+  });
+
   it("rejects mismatched package, app, bundle, and tag versions", () => {
     const findings = auditReleaseMetadata([
       textFile("package.json", '{"version":"0.3.0"}'),

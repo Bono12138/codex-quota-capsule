@@ -4,7 +4,7 @@ Languages: [简体中文](README.zh-CN.md) | [English](README.en.md) | [Bilingua
 
 **A local-first macOS quota runway assistant for heavy Codex users.**
 
-> At the current pace, can I keep working until the next weekly reset?
+> Before the next real refresh, will my quota run out—or be wasted?
 
 ![Quota Capsule collapsed and expanded](docs/assets/product/quota-capsule-expanded.png)
 
@@ -14,7 +14,9 @@ A quota percentage tells you how much has been used. It does not tell you whethe
 
 Heavy AI-native users may run several tasks at once, repeatedly check the usage page, hold back even when paid quota is still available, or discover too late that a large balance will expire at reset. Quota Capsule closes that judgment gap by comparing quota usage with elapsed time, recent pace, current activity, and available history.
 
-It reports six honest states—Early estimate, On track, Running fast, May run out, Exhausted, and Data unavailable—plus a next-24-hour budget and a forecast range for the balance at reset.
+It reports six honest states—Early estimate, On track, Running fast, May run out, Exhausted, and Data unavailable—plus a next-24-hour budget and a forecast range for the balance at refresh. The current refresh horizon is the earlier of the natural weekly reset or the earliest known available reset-credit expiry.
+
+When a reset credit expires first and quota would otherwise remain unused, the app says `Use before reset`, recalculates refresh progress and budget to that deadline, and shows the exact expiry. After redemption or a natural reset, it reads the new weekly reset and remaining credits before calculating again.
 
 Codex is the first supported provider, and the architecture remains agent-extensible. Other agent communities can contribute local source adapters while reusing the shared quota model, prediction engine, UI states, and product surface.
 
@@ -24,7 +26,7 @@ Quota Capsule is designed to stay quiet until the user needs more detail:
 
 - A small floating desktop capsule with the current judgment and weekly usage.
 - A menu bar status item for glanceable, always-available context.
-- An expanded panel with time and usage progress, pace evidence, forecast confidence, a sustainable line, reset timing, and local history.
+- An expanded panel with refresh and usage progress, pace evidence, forecast confidence, a sustainable line, the next refresh timing, and local history.
 
 ![Quota Capsule collapsed](docs/assets/product/quota-capsule-collapsed.png)
 

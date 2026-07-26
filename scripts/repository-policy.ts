@@ -123,7 +123,7 @@ export function auditForecastDocumentation(files: RepositoryFile[]): PolicyFindi
     /activity evidence/i,
     /historical prior/i,
     /confidence/i,
-    /remaining\s*\/\s*hours to reset/i,
+    /remaining\s*\/\s*hours to (?:reset|(?:selected )?burn horizon|next refresh)/i,
     /stale/i,
     /quota reset[^\n]{0,80}data read/i,
   ];

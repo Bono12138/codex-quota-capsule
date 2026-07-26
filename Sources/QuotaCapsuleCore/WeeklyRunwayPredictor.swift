@@ -95,6 +95,21 @@ public enum ForecastConfidence: String, Codable, Equatable, Sendable {
     case high
 }
 
+public enum QuotaBurnHorizonSource: String, Codable, Equatable, Sendable {
+    case naturalReset
+    case resetCreditExpiry
+}
+
+public struct QuotaBurnHorizon: Equatable, Sendable {
+    public let at: Date
+    public let source: QuotaBurnHorizonSource
+
+    public init(at: Date, source: QuotaBurnHorizonSource) {
+        self.at = at
+        self.source = source
+    }
+}
+
 public struct WeeklyRunwayForecast: Equatable, Sendable {
     public let state: WeeklyRunwayState
     public let confidence: ForecastConfidence
@@ -113,6 +128,8 @@ public struct WeeklyRunwayForecast: Equatable, Sendable {
     public let currentCycleTrend: [WeeklyTrendPoint]
     public let paceEvidence: [PaceEvidence]
     public let confidenceReason: String
+    public let burnHorizonAt: Date?
+    public let burnHorizonSource: QuotaBurnHorizonSource?
     public let headline: String
     public let detail: String
     public let qualityExplanation: String
@@ -135,6 +152,8 @@ public struct WeeklyRunwayForecast: Equatable, Sendable {
         currentCycleTrend: [WeeklyTrendPoint] = [],
         paceEvidence: [PaceEvidence] = [],
         confidenceReason: String = "",
+        burnHorizonAt: Date? = nil,
+        burnHorizonSource: QuotaBurnHorizonSource? = nil,
         headline: String = "",
         detail: String = "",
         qualityExplanation: String = ""
@@ -156,6 +175,8 @@ public struct WeeklyRunwayForecast: Equatable, Sendable {
         self.currentCycleTrend = currentCycleTrend
         self.paceEvidence = paceEvidence
         self.confidenceReason = confidenceReason
+        self.burnHorizonAt = burnHorizonAt
+        self.burnHorizonSource = burnHorizonSource
         self.headline = headline
         self.detail = detail
         self.qualityExplanation = qualityExplanation
@@ -181,12 +202,14 @@ public enum WeeklyRunwayPredictor {
             return calibratingFromAcceptedObservation(
                 quality.observations,
                 windowMinutes: window.windowMinutes,
+                resetCreditBank: snapshot.resetCreditBank,
                 now: now
             )
         }
 
-        let daysRemaining = window.resetsAt.timeIntervalSince(now) / 86_400
-        let elapsed = elapsedPercent(window: window, now: now)
+        let horizon = burnHorizon(window: window, resetCreditBank: snapshot.resetCreditBank, now: now)
+        let daysRemaining = horizon.at.timeIntervalSince(now) / 86_400
+        let elapsed = elapsedPercent(window: window, horizonAt: horizon.at, now: now)
         let sustainable = window.remainingPercent / daysRemaining
         let budget = min(window.remainingPercent, sustainable * min(1, daysRemaining))
         let active = quality.state == .stable ? activeCycleAndSegment(quality.observations) : []
@@ -211,7 +234,9 @@ public enum WeeklyRunwayPredictor {
                 estimatedEmptyAtRange: ExhaustionDateRange(earliest: now, latest: now),
                 next24HourBudget: 0,
                 currentCycleTrend: trend,
-                confidenceReason: "exhausted"
+                confidenceReason: "exhausted",
+                burnHorizonAt: horizon.at,
+                burnHorizonSource: horizon.source
             )
         }
 
@@ -243,7 +268,9 @@ public enum WeeklyRunwayPredictor {
                 next24HourBudget: budget,
                 currentCycleTrend: trend,
                 paceEvidence: [],
-                confidenceReason: "no-consumption-observed"
+                confidenceReason: "no-consumption-observed",
+                burnHorizonAt: horizon.at,
+                burnHorizonSource: horizon.source
             )
         }
 
@@ -342,8 +369,20 @@ public enum WeeklyRunwayPredictor {
                 confidence: confidence,
                 evidence: evidence,
                 transitionCount: transitionCount
-            )
+            ),
+            burnHorizonAt: horizon.at,
+            burnHorizonSource: horizon.source
         )
+    }
+
+    public static func burnHorizon(
+        snapshot: AgentQuotaSnapshot,
+        now: Date = Date()
+    ) -> QuotaBurnHorizon? {
+        guard let window = snapshot.weeklyWindow, isValid(window, now: now) else {
+            return nil
+        }
+        return burnHorizon(window: window, resetCreditBank: snapshot.resetCreditBank, now: now)
     }
 
     private static func isValid(_ window: QuotaWindow, now: Date) -> Bool {
@@ -356,9 +395,34 @@ public enum WeeklyRunwayPredictor {
             && window.resetsAt > now
     }
 
-    private static func elapsedPercent(window: QuotaWindow, now: Date) -> Double {
+    private static func burnHorizon(
+        window: QuotaWindow,
+        resetCreditBank: ResetCreditBankSummary?,
+        now: Date
+    ) -> QuotaBurnHorizon {
+        let eligibleCredits = resetCreditBank?.availableCount ?? 0 > 0
+            ? resetCreditBank?.credits
+            : nil
+        let earliestCreditExpiry = eligibleCredits?
+            .filter {
+                $0.status == .available
+                    && $0.resetType.caseInsensitiveCompare("codexRateLimits") == .orderedSame
+            }
+            .compactMap(\.expiresAt)
+            .filter { $0 > now && $0 < window.resetsAt }
+            .min()
+
+        if let earliestCreditExpiry {
+            return QuotaBurnHorizon(at: earliestCreditExpiry, source: .resetCreditExpiry)
+        }
+        return QuotaBurnHorizon(at: window.resetsAt, source: .naturalReset)
+    }
+
+    private static func elapsedPercent(window: QuotaWindow, horizonAt: Date, now: Date) -> Double {
         let start = window.resetsAt.addingTimeInterval(-Double(window.windowMinutes) * 60)
-        let elapsed = now.timeIntervalSince(start) / (Double(window.windowMinutes) * 60) * 100
+        let duration = horizonAt.timeIntervalSince(start)
+        guard duration > 0 else { return 0 }
+        let elapsed = now.timeIntervalSince(start) / duration * 100
         return min(100, max(0, elapsed))
     }
 
@@ -465,7 +529,9 @@ public enum WeeklyRunwayPredictor {
         budget: Double,
         cycleBand: PaceBand? = nil,
         last24HourUsageBand: PercentageBand? = nil,
-        trend: [WeeklyTrendPoint] = []
+        trend: [WeeklyTrendPoint] = [],
+        confidenceReason: String = "",
+        burnHorizon: QuotaBurnHorizon? = nil
     ) -> WeeklyRunwayForecast {
         WeeklyRunwayForecast(
             state: .calibrating,
@@ -481,13 +547,17 @@ public enum WeeklyRunwayPredictor {
             projectedRemainingBandAtReset: nil,
             estimatedEmptyAtRange: nil,
             next24HourBudget: budget,
-            currentCycleTrend: trend
+            currentCycleTrend: trend,
+            confidenceReason: confidenceReason,
+            burnHorizonAt: burnHorizon?.at,
+            burnHorizonSource: burnHorizon?.source
         )
     }
 
     private static func calibratingFromAcceptedObservation(
         _ observations: [WeeklyObservation],
         windowMinutes: Int,
+        resetCreditBank: ResetCreditBankSummary?,
         now: Date
     ) -> WeeklyRunwayForecast {
         guard let accepted = observations.last else { return unavailable() }
@@ -499,8 +569,9 @@ public enum WeeklyRunwayPredictor {
             resetsAt: accepted.canonicalResetAt
         )
         guard isValid(window, now: now) else { return unavailable() }
-        let daysRemaining = window.resetsAt.timeIntervalSince(now) / 86_400
-        let elapsed = elapsedPercent(window: window, now: now)
+        let horizon = burnHorizon(window: window, resetCreditBank: resetCreditBank, now: now)
+        let daysRemaining = horizon.at.timeIntervalSince(now) / 86_400
+        let elapsed = elapsedPercent(window: window, horizonAt: horizon.at, now: now)
         let sustainable = window.remainingPercent / daysRemaining
         let budget = min(window.remainingPercent, sustainable * min(1, daysRemaining))
         let active = activeCycleAndSegment(observations)
@@ -511,7 +582,8 @@ public enum WeeklyRunwayPredictor {
             sustainable: sustainable,
             budget: budget,
             last24HourUsageBand: last24HourUsageBand(active, now: now),
-            trend: trendPoints(active)
+            trend: trendPoints(active),
+            burnHorizon: horizon
         )
     }
 

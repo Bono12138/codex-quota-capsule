@@ -25,6 +25,8 @@ function forecast(overrides: Partial<WeeklyRunwayForecast> = {}): WeeklyRunwayFo
       { kind: "activity", bandPerDay: { lower: 5, upper: 9 }, reliability: 0.5, transitionCount: 2, coverageHours: 30 },
     ],
     confidenceReason: "transitions:2",
+    burnHorizonAt: null,
+    burnHorizonSource: null,
     ...overrides,
   };
 }
@@ -61,6 +63,63 @@ describe("createCapsuleDisplayModel", () => {
     expect(model.defaultText).toBe("初步判断：按本周平均速度可能不够");
     expect(model.confidenceText).toBe("初步判断：仅依据当前周期平均速度");
     expect(JSON.stringify(model)).not.toContain("6 小时");
+  });
+
+  it("tells the user to spend before an earlier reset-credit deadline", () => {
+    const model = createCapsuleDisplayModel(forecast({
+      state: "earlyEstimate",
+      usedPercent: 0,
+      remainingPercent: 100,
+      projectedRemainingBandAtReset: null,
+      next24HourBudget: 100,
+      paceEvidence: [],
+      confidenceReason: "no-consumption-observed",
+      burnHorizonSource: "resetCreditExpiry",
+    }));
+
+    expect(model.tone).toBe("watch");
+    expect(model.statusLabel).toBe("抓紧使用");
+    expect(model.defaultText).toBe("最早的重置券即将到期；建议在此之前尽量使用剩余额度");
+    expect(model.confidenceText).toBe("下一次刷新按最早到期的重置券计算");
+    expect(model.detailMetrics[2].value).toBe("≤100%");
+  });
+
+  it("keeps a runout warning when quota may be exhausted before the credit deadline", () => {
+    const model = createCapsuleDisplayModel(forecast({
+      state: "earlyEstimate",
+      usedPercent: 80,
+      remainingPercent: 20,
+      projectedRemainingBandAtReset: { lower: -18, upper: -4 },
+      next24HourBudget: 20,
+      paceEvidence: [{
+        kind: "cycle",
+        bandPerDay: { lower: 48, upper: 52 },
+        reliability: 0.2,
+        transitionCount: 0,
+        coverageHours: 8,
+      }],
+      confidenceReason: "cycle-only",
+      burnHorizonSource: "resetCreditExpiry",
+    }));
+
+    expect(model.tone).toBe("unknown");
+    expect(model.statusLabel).toBe("初步估算");
+    expect(model.defaultText).toBe("初步判断：按本周平均速度可能不够");
+    expect(model.confidenceText).toBe("下一次刷新按最早到期的重置券计算");
+  });
+
+  it("does not hide active data confirmation behind the credit reminder", () => {
+    const model = createCapsuleDisplayModel(forecast({
+      state: "calibrating",
+      projectedRemainingBandAtReset: null,
+      next24HourBudget: 100,
+      paceEvidence: [],
+      burnHorizonSource: "resetCreditExpiry",
+    }));
+
+    expect(model.tone).toBe("unknown");
+    expect(model.statusLabel).toBe("确认额度变化");
+    expect(model.defaultText).toContain("短暂确认");
   });
 
   it("explains that a quota change was read successfully during confirmation", () => {

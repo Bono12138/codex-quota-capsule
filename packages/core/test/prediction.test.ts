@@ -30,6 +30,162 @@ function readings(values: number[], resetsAt: Date): WeeklyQuotaReading[] {
 }
 
 describe("Weekly Only runway", () => {
+  it("uses an earlier reset-credit expiry as the current burn horizon", () => {
+    const resetsAt = new Date(now.getTime() + 7 * 86_400_000);
+    const creditExpiresAt = new Date(now.getTime() + 0.75 * 86_400_000);
+    const snapshot: AgentQuotaSnapshot = {
+      provider: "codex",
+      sourceStatus: "ok",
+      fetchedAt: now,
+      weeklyWindow: {
+        label: "weekly",
+        windowMinutes: 10_080,
+        usedPercent: 0,
+        remainingPercent: 100,
+        resetsAt,
+      },
+      resetCreditBank: {
+        availableCount: 1,
+        credits: [{
+          fingerprint: "credit-1",
+          resetType: "codexRateLimits",
+          status: "available",
+          grantedAt: null,
+          grantTimeSource: "unknown",
+          expiresAt: creditExpiresAt,
+          title: "Full reset",
+        }],
+        detailState: "complete",
+        fetchedAt: now,
+      },
+    };
+    const quality = analyzeWeeklyQuality(readings([0], resetsAt), now);
+    const forecast = predictWeeklyRunway(snapshot, quality, now);
+
+    expect(forecast.daysUntilReset).toBeCloseTo(0.75, 9);
+    expect(forecast.sustainableRatePerDay).toBeCloseTo(100 / 0.75, 9);
+    expect(forecast.next24HourBudget).toBe(100);
+    expect(forecast.burnHorizonAt).toEqual(creditExpiresAt);
+    expect(forecast.burnHorizonSource).toBe("resetCreditExpiry");
+    expect(forecast.confidenceReason).toBe("no-consumption-observed");
+  });
+
+  it("uses the real weekly start for progress and the credit deadline for its endpoint", () => {
+    const resetsAt = new Date(now.getTime() + 6.9 * 86_400_000);
+    const creditExpiresAt = new Date(now.getTime() + 0.75 * 86_400_000);
+    const snapshot: AgentQuotaSnapshot = {
+      provider: "codex",
+      sourceStatus: "ok",
+      fetchedAt: now,
+      weeklyWindow: {
+        label: "weekly",
+        windowMinutes: 10_080,
+        usedPercent: 2,
+        remainingPercent: 98,
+        resetsAt,
+      },
+      resetCreditBank: {
+        availableCount: 1,
+        credits: [{
+          fingerprint: "credit-1",
+          resetType: "codexRateLimits",
+          status: "available",
+          grantedAt: null,
+          grantTimeSource: "unknown",
+          expiresAt: creditExpiresAt,
+          title: "Full reset",
+        }],
+        detailState: "complete",
+        fetchedAt: now,
+      },
+    };
+    const quality = analyzeWeeklyQuality(readings([2], resetsAt), now);
+    const forecast = predictWeeklyRunway(snapshot, quality, now);
+
+    expect(forecast.elapsedPercent).toBeCloseTo((0.1 / 0.85) * 100, 9);
+  });
+
+  it("keeps the natural reset when it is earlier and ignores unusable credits", () => {
+    const resetsAt = new Date(now.getTime() + 0.5 * 86_400_000);
+    const credit = (
+      fingerprint: string,
+      status: "available" | "redeemed",
+      expiresAt: Date | null,
+    ) => ({
+      fingerprint,
+      resetType: "codexRateLimits",
+      status,
+      grantedAt: null,
+      grantTimeSource: "unknown" as const,
+      expiresAt,
+      title: "Full reset",
+    });
+    const snapshot: AgentQuotaSnapshot = {
+      provider: "codex",
+      sourceStatus: "ok",
+      fetchedAt: now,
+      weeklyWindow: {
+        label: "weekly",
+        windowMinutes: 10_080,
+        usedPercent: 20,
+        remainingPercent: 80,
+        resetsAt,
+      },
+      resetCreditBank: {
+        availableCount: 3,
+        credits: [
+          credit("later", "available", new Date(now.getTime() + 86_400_000)),
+          credit("expired", "available", new Date(now.getTime() - 1)),
+          credit("redeemed", "redeemed", new Date(now.getTime() + 0.25 * 86_400_000)),
+          credit("undated", "available", null),
+        ],
+        detailState: "complete",
+        fetchedAt: now,
+      },
+    };
+    const quality = analyzeWeeklyQuality(readings([20], resetsAt), now);
+    const forecast = predictWeeklyRunway(snapshot, quality, now);
+
+    expect(forecast.daysUntilReset).toBeCloseTo(0.5, 9);
+    expect(forecast.next24HourBudget).toBe(80);
+    expect(forecast.burnHorizonSource).toBe("naturalReset");
+  });
+
+  it("trusts an authoritative zero available count over stale detail rows", () => {
+    const resetsAt = new Date(now.getTime() + 4 * 86_400_000);
+    const snapshot: AgentQuotaSnapshot = {
+      provider: "codex",
+      sourceStatus: "ok",
+      fetchedAt: now,
+      weeklyWindow: {
+        label: "weekly",
+        windowMinutes: 10_080,
+        usedPercent: 20,
+        remainingPercent: 80,
+        resetsAt,
+      },
+      resetCreditBank: {
+        availableCount: 0,
+        credits: [{
+          fingerprint: "stale-detail",
+          resetType: "codexRateLimits",
+          status: "available",
+          grantedAt: null,
+          grantTimeSource: "unknown",
+          expiresAt: new Date(now.getTime() + 0.5 * 86_400_000),
+          title: "Full reset",
+        }],
+        detailState: "complete",
+        fetchedAt: now,
+      },
+    };
+    const quality = analyzeWeeklyQuality(readings([20], resetsAt), now);
+    const forecast = predictWeeklyRunway(snapshot, quality, now);
+
+    expect(forecast.burnHorizonSource).toBe("naturalReset");
+    expect(forecast.daysUntilReset).toBe(4);
+  });
+
   it("keeps every public mock scenario in its intended user state", () => {
     expect(forecastFor("enough").state).toBe("enough");
     expect(forecastFor("watch").state).toBe("watch");

@@ -2,6 +2,20 @@
 
 All notable user-visible and repository-governance changes are recorded here.
 
+## Unreleased
+
+### Changed
+
+- Calculate the current budget and projection to the earlier of the natural weekly reset or the earliest known available Codex reset-credit expiry.
+- Recompute the horizon after every confirmed reset or redemption instead of predicting an unconfirmed future weekly reset.
+- Show `抓紧使用 / Use before reset`, refresh progress, and the exact credit deadline when a credit-based refresh comes first and quota would otherwise remain unused.
+- Preserve runout warnings when the allowance may be exhausted before the credit deadline.
+- Separate the formal burn-horizon source and timestamp from pace-confidence reasons in both Swift and TypeScript.
+
+### Verification
+
+- Add Swift and TypeScript regressions for an earlier credit expiry, natural-reset precedence, invalid credit exclusion, calibration, shortened progress, 24-hour budget clamping, and non-overspending presentation.
+
 ## 0.3.4-beta.1 — 2026-07-18
 
 ### Fixed
