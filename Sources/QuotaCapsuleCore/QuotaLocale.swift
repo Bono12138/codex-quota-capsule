@@ -288,6 +288,14 @@ public struct QuotaCopy: Equatable, Sendable {
         }
     }
 
+    public var trendWaitingForLiveReadText: String {
+        switch locale {
+        case .zhHans: "实时读取恢复后会自动显示速度与预测趋势"
+        case .zhHant: "即時讀取恢復後會自動顯示速度與預測趨勢"
+        case .en: "Pace and forecast resume automatically after live reads recover"
+        }
+    }
+
     public var trendWaitingForUsageText: String {
         switch locale {
         case .zhHans: "观察到额度消耗后会自动显示速度与预测趋势"
@@ -502,9 +510,9 @@ public struct QuotaCopy: Equatable, Sendable {
 
     public var statusStale: String {
         switch locale {
-        case .zhHans: "已过期"
-        case .zhHant: "已過期"
-        case .en: "Stale"
+        case .zhHans: "读取失败"
+        case .zhHant: "讀取失敗"
+        case .en: "Read failed"
         }
     }
 

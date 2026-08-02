@@ -279,6 +279,7 @@ struct WeeklyDisplayModelTests {
         #expect(model.defaultText.contains("previous confirmed data"))
         #expect(copy.paceDetailsPausedText.contains("resume automatically"))
         #expect(!copy.paceDetailsPausedText.contains("live data recovers"))
+        #expect(copy.trendWaitingForLiveReadText.contains("live reads recover"))
         #expect(
             copy.confirmingDataRefreshDescription(
                 lastConfirmedText: "09:22:53",
@@ -307,6 +308,7 @@ struct WeeklyDisplayModelTests {
         #expect(copy.horizonMarkerTitle(.naturalReset) == "重置")
         #expect(copy.horizonMarkerTitle(.resetCreditExpiry) == "刷新")
         #expect(copy.trendWaitingForUsageText == "观察到额度消耗后会自动显示速度与预测趋势")
+        #expect(copy.trendWaitingForLiveReadText == "实时读取恢复后会自动显示速度与预测趋势")
         #expect(copy.resetTimeTitle == "周额度重置")
     }
 
@@ -377,7 +379,7 @@ struct WeeklyDisplayModelTests {
         )
 
         #expect(model.tone == .unknown)
-        #expect(model.statusLabel == "已过期")
+        #expect(model.statusLabel == "读取失败")
         #expect(model.defaultText.contains("上次成功"))
         #expect(model.metrics[0].value == "42%")
         #expect(model.metrics[1].value == "28%")

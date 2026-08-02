@@ -630,7 +630,10 @@ struct WeeklyTrendChartView: View {
     }
 
     private var pausedTrendText: String {
-        store.runwayForecast.confidenceReason == "no-consumption-observed"
+        if store.snapshot.sourceStatus == .stale {
+            return store.copy.trendWaitingForLiveReadText
+        }
+        return store.runwayForecast.confidenceReason == "no-consumption-observed"
             ? store.copy.trendWaitingForUsageText
             : store.copy.paceDetailsPausedText
     }

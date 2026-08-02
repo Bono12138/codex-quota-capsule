@@ -22,7 +22,7 @@ The forecast always chooses one concrete endpoint:
 burn horizon = min(natural weekly reset, earliest known available reset-credit expiry)
 ```
 
-Only a `codexRateLimits` credit whose status is `available`, whose expiry is known, and whose expiry is strictly after the current time is eligible. Redeemed, redeeming, expired, unknown-type, undated, and count-only credits never invent a deadline. If the provider returns no usable credit detail, the natural weekly reset remains the fallback.
+Only a reset credit of type `codexRateLimits` whose status is `available`, whose expiry is known, and whose expiry is strictly after the current time is eligible. Redeemed, redeeming, expired, unknown-type, undated, and count-only credits never invent a deadline. If the provider returns no usable credit detail, the natural weekly reset remains the fallback.
 
 This is an explicit product assumption: a user with an available full reset credit will use the earliest-expiring credit before it expires. Its expiry therefore becomes the next planned quota refresh whenever it precedes the natural reset. After a redemption or natural reset, the app reads the new authoritative weekly reset and the remaining credit bank, then applies the same minimum rule again. The app does not predict a future reset timestamp before the upstream source confirms it.
 
