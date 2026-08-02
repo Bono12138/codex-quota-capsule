@@ -6,6 +6,10 @@ All notable user-visible and repository-governance changes are recorded here.
 
 ### Changed
 
+- Promote the exact next quota reset or selected reset-credit deadline into the docked, collapsed, and top expanded surfaces so it is visible without scrolling.
+- Replace full-horizon extrapolation of correlated recent/activity bursts with a horizon-aware, one-day mean-reversion model anchored by cycle and historical pace.
+- Prevent recent and activity views of the same usage changes from double-counting toward high forecast confidence.
+- Keep slower supported scenarios visible while preventing a few hours of concentrated use from producing a meaningless week-long `0%–75%` style range.
 - Calculate the current budget and projection to the earlier of the natural weekly reset or the earliest known available Codex reset-credit expiry.
 - Recompute the horizon after every confirmed reset or redemption instead of predicting an unconfirmed future weekly reset.
 - Show `抓紧使用 / Use before reset`, refresh progress, and the exact credit deadline when a credit-based refresh comes first and quota would otherwise remain unused.
@@ -14,6 +18,7 @@ All notable user-visible and repository-governance changes are recorded here.
 
 ### Verification
 
+- Add Swift and TypeScript regressions reproducing a seven-hour burst followed by almost six forecast days, plus exact localized primary-horizon copy tests.
 - Add Swift and TypeScript regressions for an earlier credit expiry, natural-reset precedence, invalid credit exclusion, calibration, shortened progress, 24-hour budget clamping, and non-overspending presentation.
 
 ## 0.3.4-beta.1 — 2026-07-18

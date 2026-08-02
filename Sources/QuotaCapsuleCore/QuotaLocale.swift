@@ -350,9 +350,9 @@ public struct QuotaCopy: Equatable, Sendable {
         }
         if forecast.confidence == .high {
             return switch locale {
-            case .zhHans: "可信度高：周期、最近 24 小时和活动节奏一致"
-            case .zhHant: "可信度高：週期、最近 24 小時和活動節奏一致"
-            case .en: "High confidence: cycle, recent, and activity pace agree"
+            case .zhHans: "可信度高：周期、短期和历史节奏一致"
+            case .zhHant: "可信度高：週期、短期和歷史節奏一致"
+            case .en: "High confidence: cycle, short-term, and historical pace agree"
             }
         }
         if forecast.confidence == .medium, transitions > 0 {
@@ -376,6 +376,22 @@ public struct QuotaCopy: Equatable, Sendable {
         case .zhHans: "周额度将在 \(timestamp) 重置（\(countdown)）"
         case .zhHant: "週額度將在 \(timestamp) 重設（\(countdown)）"
         case .en: "Weekly quota resets at \(timestamp) (\(countdown))"
+        }
+    }
+
+    public func primaryHorizonLabel(
+        at: Date,
+        source: QuotaBurnHorizonSource,
+        timeZone: TimeZone = .current
+    ) -> String {
+        let timestamp = dateFormatter(dateOnly: false, timeZone: timeZone).string(from: at)
+        return switch (locale, source) {
+        case (.zhHans, .naturalReset): "下次重置 · \(timestamp)"
+        case (.zhHans, .resetCreditExpiry): "重置券到期 · \(timestamp)"
+        case (.zhHant, .naturalReset): "下次重設 · \(timestamp)"
+        case (.zhHant, .resetCreditExpiry): "重設券到期 · \(timestamp)"
+        case (.en, .naturalReset): "Next reset · \(timestamp)"
+        case (.en, .resetCreditExpiry): "Reset credit expires · \(timestamp)"
         }
     }
 

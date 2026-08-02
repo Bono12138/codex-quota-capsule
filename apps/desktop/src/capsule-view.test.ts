@@ -33,7 +33,10 @@ function forecast(overrides: Partial<WeeklyRunwayForecast> = {}): WeeklyRunwayFo
 
 describe("createCapsuleDisplayModel", () => {
   it("renders the same Weekly Only hierarchy as the native app", () => {
-    const model = createCapsuleDisplayModel(forecast());
+    const model = createCapsuleDisplayModel(forecast({
+      burnHorizonAt: new Date(2026, 6, 20, 8, 11),
+      burnHorizonSource: "naturalReset",
+    }));
 
     expect(model.statusLabel).toBe("够用");
     expect(model.defaultText).toContain("重置时预计剩 16%–23%");
@@ -45,6 +48,7 @@ describe("createCapsuleDisplayModel", () => {
     ]);
     expect(model.detailMetrics.map((metric) => metric.value)).toEqual(["42%", "28%", "≤12%", "4–6%"]);
     expect(model.confidenceText).toContain("已观察到 2 次实际增长");
+    expect(model.primaryHorizonText).toBe("下次重置 · 7月20日 08:11");
     expect(JSON.stringify(model)).not.toContain("5 小时");
   });
 

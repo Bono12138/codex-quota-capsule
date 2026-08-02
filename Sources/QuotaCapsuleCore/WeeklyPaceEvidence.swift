@@ -243,13 +243,7 @@ public enum WeeklyPaceEvidence {
     }
 
     public static func fuse(_ evidence: [PaceEvidence]) -> PaceBand? {
-        let valid = evidence.filter {
-            $0.reliability.isFinite && $0.reliability > 0
-                && $0.coverageHours.isFinite && $0.coverageHours >= 0
-                && $0.bandPerDay.lower.isFinite && $0.bandPerDay.upper.isFinite
-                && $0.bandPerDay.lower >= 0
-                && $0.bandPerDay.upper >= $0.bandPerDay.lower
-        }
+        let valid = evidence.filter(isValid)
         guard !valid.isEmpty else { return nil }
         if valid.count == 1 { return valid[0].bandPerDay }
         if valid.count == 2 {
@@ -267,19 +261,55 @@ public enum WeeklyPaceEvidence {
         return PaceBand(lower: max(0, center - halfWidth), upper: center + halfWidth)
     }
 
+    /// Converts pace evidence into a wall-clock forecast for the remaining horizon.
+    ///
+    /// Cycle and historical evidence describe the longer-run baseline. Recent and
+    /// activity evidence are correlated views of the same short run, so only the
+    /// recent view (or activity as a fallback) is allowed to perturb that baseline.
+    /// The perturbation mean-reverts with a one-day time constant instead of being
+    /// extrapolated unchanged across the rest of the week.
+    public static func horizonAdjustedForecast(
+        _ evidence: [PaceEvidence],
+        daysRemaining: Double
+    ) -> PaceBand? {
+        guard daysRemaining.isFinite, daysRemaining > 0 else {
+            return fuse(evidence)
+        }
+
+        let valid = evidence.filter(isValid)
+        guard !valid.isEmpty else { return nil }
+
+        let baselineEvidence = valid.filter { $0.kind == .cycle || $0.kind == .historical }
+        guard let baseline = weightedBand(baselineEvidence) ?? fuse(valid) else { return nil }
+
+        let shortTerm = valid.first(where: { $0.kind == .recent })
+            ?? valid.first(where: { $0.kind == .activity })
+        guard let shortTerm else { return baseline }
+
+        let coverageFactor = sqrt(min(1, max(0, shortTerm.coverageHours) / 24))
+        let meanReversionDays = 1.0
+        let integratedPersistence = meanReversionDays
+            * (1 - exp(-daysRemaining / meanReversionDays))
+            / daysRemaining
+        let shortTermWeight = min(1, max(0, coverageFactor * integratedPersistence))
+
+        let adjusted = PaceBand(
+            lower: baseline.lower + (shortTerm.bandPerDay.lower - baseline.lower) * shortTermWeight,
+            upper: baseline.upper + (shortTerm.bandPerDay.upper - baseline.upper) * shortTermWeight
+        )
+        return PaceBand(
+            lower: min(baseline.lower, shortTerm.bandPerDay.lower, adjusted.lower),
+            upper: max(baseline.upper, adjusted.upper)
+        )
+    }
+
     public static func confidence(
         evidence: [PaceEvidence],
         coverageHours: Double,
         transitionCount: Int,
         sustainable: Double
     ) -> ForecastConfidence {
-        let valid = evidence.filter {
-            $0.reliability.isFinite && $0.reliability > 0
-                && $0.coverageHours.isFinite && $0.coverageHours >= 0
-                && $0.bandPerDay.lower.isFinite && $0.bandPerDay.upper.isFinite
-                && $0.bandPerDay.lower >= 0
-                && $0.bandPerDay.upper >= $0.bandPerDay.lower
-        }
+        let valid = independentEvidence(evidence.filter(isValid))
         guard sustainable.isFinite, sustainable > 0,
               coverageHours.isFinite, coverageHours >= 0,
               valid.count >= 2, transitionCount > 0 else {
@@ -317,6 +347,35 @@ public enum WeeklyPaceEvidence {
         if midpoint < sustainable * 0.90 { return -1 }
         if midpoint > sustainable * 1.10 { return 1 }
         return 0
+    }
+
+    private static func isValid(_ evidence: PaceEvidence) -> Bool {
+        evidence.reliability.isFinite && evidence.reliability > 0
+            && evidence.coverageHours.isFinite && evidence.coverageHours >= 0
+            && evidence.bandPerDay.lower.isFinite && evidence.bandPerDay.upper.isFinite
+            && evidence.bandPerDay.lower >= 0
+            && evidence.bandPerDay.upper >= evidence.bandPerDay.lower
+    }
+
+    /// Recent and activity evidence are two views of the same short-term movement.
+    /// Treating them as independent would inflate agreement and confidence.
+    private static func independentEvidence(_ evidence: [PaceEvidence]) -> [PaceEvidence] {
+        var result = evidence.filter { $0.kind == .cycle || $0.kind == .historical }
+        if let shortTerm = evidence.first(where: { $0.kind == .recent })
+            ?? evidence.first(where: { $0.kind == .activity }) {
+            result.append(shortTerm)
+        }
+        return result
+    }
+
+    private static func weightedBand(_ evidence: [PaceEvidence]) -> PaceBand? {
+        let valid = evidence.filter(isValid)
+        let totalWeight = valid.map(\.reliability).reduce(0, +)
+        guard totalWeight > 0 else { return nil }
+        return PaceBand(
+            lower: valid.map { $0.bandPerDay.lower * $0.reliability }.reduce(0, +) / totalWeight,
+            upper: valid.map { $0.bandPerDay.upper * $0.reliability }.reduce(0, +) / totalWeight
+        )
     }
 
     static func quantizedInterval(_ value: Double) -> PercentageBand {

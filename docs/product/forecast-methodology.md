@@ -1,7 +1,7 @@
 # Adaptive Weekly Forecast Methodology
 
 Status: current product contract
-Updated: 2026-07-26
+Updated: 2026-08-02
 Applies to: current source candidate and later releases until superseded
 
 ## Product question
@@ -52,9 +52,9 @@ The upstream percentage is displayed at limited precision. An integer reading `p
 
 In other words, the measurement uncertainty is ±0.5 percentage point, clipped to `[0, 100]`. Pace and projection calculations propagate the lower and upper bounds. A displayed `0%` therefore does not prove that the true pace is exactly zero.
 
-## Independent pace evidence
+## Pace evidence
 
-Each estimator returns a daily pace band, reliability in `[0, 1]`, real transition count, and coverage hours.
+Each estimator returns a daily pace band, reliability in `[0, 1]`, real transition count, and coverage hours. Cycle and historical evidence describe a longer-run baseline. Recent and activity evidence are two correlated views of the same short-run observations; they must not be counted as independent votes.
 
 ### Cycle evidence
 
@@ -78,15 +78,20 @@ The estimator calculates active consumption rate, a duty ratio of `active + ordi
 
 Historical prior evidence is optional and deliberately weak. A completed cycle must contain at least 48 hours of clean coverage and two real transitions. The most complete clean segment in each completed cycle contributes a robust band; current-cycle evidence always has more influence. A short fragment never becomes a prior.
 
-## Robust fusion and disagreement
+## Horizon-aware fusion and disagreement
 
-The fusion rule depends on how many independent estimators are available:
+The runway forecast first forms a reliability-weighted long-run baseline from the current cycle and any eligible historical prior. It then selects one short-run view: recent evidence when available, otherwise activity evidence. This prevents the same transitions from being counted twice.
 
-- one source is preserved unchanged and remains low confidence;
-- two sources use the full hull of both pace bands;
-- three or more sources use the median midpoint and the widest of the median source half-width or `1.4826 × MAD(midpoints)`.
+The short-run deviation from baseline is treated as temporary and mean-reverts exponentially with a one-day time constant. For a remaining horizon of `H` days, its average influence is:
 
-This median/MAD consensus prevents one burst from dominating while still widening when the independent estimators materially disagree. Confidence is low whenever evidence sources cross the sustainable-survival decision boundary. High confidence additionally requires at least 24 hours of clean coverage, three real transitions, at least three agreeing sources, and a narrow relative spread.
+```text
+coverage weight = sqrt(min(1, short-run coverage hours / 24))
+mean-reversion weight = coverage weight × (1 - exp(-H)) / H
+```
+
+The short-run band is blended toward the baseline by that weight. The final lower pace retains the slowest supported lower bound, while the upper pace retains the larger of the baseline upper bound and the mean-reversion-adjusted upper bound. This keeps genuine “may or may not last” disagreement visible without projecting a seven-hour burst unchanged over the next six days.
+
+The generic `fuse` helper still preserves one source, uses the full hull for two sources, and median/MAD for three or more sources where a horizon-independent diagnostic is required. It is no longer the runway projection rule. Confidence remains low whenever evidence crosses the sustainable-survival boundary. Recent and activity evidence count as one short-term group for confidence. High confidence additionally requires at least 24 hours of clean coverage, three real transitions, agreement among the independent cycle, short-term, and historical groups, and a narrow relative spread.
 
 ## Budget and projection math
 
@@ -94,7 +99,7 @@ Let:
 
 - `R` = remaining percentage;
 - `H` = hours to the selected burn horizon;
-- `P = [P_low, P_high]` = fused percentage-points-per-hour pace band.
+- `P = [P_low, P_high]` = horizon-adjusted percentage-points-per-hour pace band.
 
 Then:
 
@@ -104,7 +109,7 @@ next-24-hour budget = (remaining / hours to burn horizon) * min(24, hours to bur
 projected remaining at refresh = R - P * H
 ```
 
-The projected interval is kept raw, including negative values. A range such as `[-20%, 44%]` means the faster evidence may exhaust the allowance before reset while the slower evidence may leave up to 44%; it must not be clamped into the misleading display `0%–44%`.
+The projected interval is kept raw, including negative values. A range such as `[-20%, 44%]` means the faster evidence may exhaust the allowance before reset while the slower evidence may leave up to 44%; it must not be clamped into the misleading display `0%–44%`. A short concentrated burst is first mean-reverted as described above, so this kind of very wide range should occur only when longer-run and recent evidence still support materially different outcomes.
 
 The product rounds the next-24-hour budget down for display. When the selected horizon is less than 24 hours away, the budget can legitimately equal the entire remaining allowance. It does not subtract an arbitrary hidden buffer; uncertainty is represented by the forecast interval and confidence explanation. The main surface describes the directly observed period and percentage change, for example “近 8 小时已用约 16%–18%”. A normalized `%/day` comparison is a diagnostic explanation only and never the primary user value.
 
@@ -130,8 +135,8 @@ For activity evidence, uncertainty is propagated through the first and last endp
 ## Confidence
 
 - Low confidence: cycle-only evidence, no real current-cycle transition, a single source, or evidence sources disagree across a decision boundary.
-- Medium confidence: at least two agreeing estimators, one real transition, at least three hours of clean coverage, and usable reliability.
-- High confidence: at least three agreeing estimators, at least three spread transitions, at least 24 hours of clean coverage, fresh data, and narrow relative spread.
+- Medium confidence: at least two agreeing independent groups, one real transition, at least three hours of clean coverage, and usable reliability.
+- High confidence: the cycle, one short-term view, and an eligible historical prior agree; there are at least three spread transitions, at least 24 hours of clean coverage, fresh data, and a narrow relative spread.
 
 The UI explains the reason in words, such as cycle-only evidence, observed transition count, or multi-source agreement. Color is never the only confidence or risk signal.
 
@@ -170,6 +175,7 @@ Every algorithm change must include, in the same pull request:
 - Upstream quota percentages are coarse and may change source behavior without notice.
 - A first-reading estimate can be wide and should never be presented as certainty.
 - Historical behavior may not predict a new work pattern; its reliability is capped.
+- The one-day mean-reversion constant is a product prior, not a learned personal parameter. It prevents short bursts from dominating before enough account-wide history exists and can be recalibrated only through replay tests.
 - The product estimates allowance pace, not task complexity, tokens, monetary cost, or provider policy.
 - User-visible wording must distinguish a weekly allowance reset from a local data refresh.
 - Count-only credit responses cannot safely shorten the horizon because they contain no expiry timestamp.

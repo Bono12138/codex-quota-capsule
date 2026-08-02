@@ -218,7 +218,11 @@ describe("adaptive weekly pace evidence", () => {
 
     expect(forecastConfidenceForEvidence(paths, 2.99, 1, 14)).toBe("low");
     expect(forecastConfidenceForEvidence(paths, 3, 1, 14)).toBe("medium");
-    expect(forecastConfidenceForEvidence(paths, 24, 3, 14)).toBe("high");
+    expect(forecastConfidenceForEvidence(paths, 24, 3, 14)).toBe("medium");
+    expect(forecastConfidenceForEvidence([
+      ...paths,
+      evidence("historical", 9, 11),
+    ], 24, 3, 14)).toBe("high");
   });
 });
 

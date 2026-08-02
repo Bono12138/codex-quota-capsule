@@ -415,6 +415,36 @@ describe("Weekly Only runway", () => {
     expect(polled.projectedRemainingBandAtReset!.lower).toBeGreaterThan(0);
   });
 
+  it("does not extrapolate a seven-hour burst across the rest of the week", () => {
+    const daysRemaining = 5.78;
+    const resetsAt = new Date(now.getTime() + daysRemaining * 86_400_000);
+    const points: Array<[number, number]> = [
+      [-7, 0], [-6.75, 1], [-4.7, 2], [-1.55, 4], [-0.7, 5], [0, 6],
+    ];
+    const liveReadings: WeeklyQuotaReading[] = points.map(([hours, usedPercent]) => ({
+      provider: "codex",
+      sourceStatus: "ok",
+      fetchedAt: new Date(now.getTime() + hours * 3_600_000),
+      windowMinutes: 10_080,
+      usedPercent,
+      remainingPercent: 100 - usedPercent,
+      resetsAt,
+    }));
+    const snapshot: AgentQuotaSnapshot = {
+      provider: "codex",
+      sourceStatus: "ok",
+      fetchedAt: now,
+      weeklyWindow: { label: "weekly", windowMinutes: 10_080, usedPercent: 6, remainingPercent: 94, resetsAt },
+    };
+
+    const forecast = predictWeeklyRunway(snapshot, analyzeWeeklyQuality(liveReadings, now), now);
+    const projected = forecast.projectedRemainingBandAtReset!;
+
+    expect(forecast.state).toBe("enough");
+    expect(projected.lower).toBeGreaterThan(35);
+    expect(projected.upper - projected.lower).toBeLessThan(25);
+  });
+
   it("exposes the same exhaustion interval contract as the native engine", () => {
     const forecast = forecastFor("mayRunOut");
 

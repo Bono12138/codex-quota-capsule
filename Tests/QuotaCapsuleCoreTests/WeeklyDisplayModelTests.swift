@@ -326,6 +326,17 @@ struct WeeklyDisplayModelTests {
         #expect(!copy.quotaResetDescription(resetsAt: resetsAt, now: now, timeZone: timeZone).contains("刷新时间"))
     }
 
+    @Test("the primary horizon label is compact, exact, and event-specific")
+    func primaryHorizonLabelIsGlanceable() throws {
+        let copy = QuotaCopy(locale: .zhHans)
+        let timeZone = try #require(TimeZone(identifier: "Asia/Shanghai"))
+        let at = try Date.ISO8601FormatStyle().parse("2026-07-20T00:11:00Z")
+
+        #expect(copy.primaryHorizonLabel(at: at, source: .naturalReset, timeZone: timeZone) == "下次重置 · 7月20日 08:11")
+        #expect(copy.primaryHorizonLabel(at: at, source: .resetCreditExpiry, timeZone: timeZone) == "重置券到期 · 7月20日 08:11")
+        #expect(QuotaCopy(locale: .en).primaryHorizonLabel(at: at, source: .naturalReset, timeZone: timeZone) == "Next reset · Jul 20, 08:11")
+    }
+
     @Test("reset-credit deadline copy names the action and exact refresh time")
     func resetCreditDeadlineDescriptionIsActionable() throws {
         let copy = QuotaCopy(locale: .zhHans)

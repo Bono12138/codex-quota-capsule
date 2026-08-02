@@ -228,16 +228,61 @@ export function fusePaceEvidence(evidence: PaceEvidence[]): PaceBand | null {
   return { lower: Math.max(0, center - halfWidth), upper: center + halfWidth };
 }
 
+export function horizonAdjustedPaceEvidence(
+  evidence: PaceEvidence[],
+  daysRemaining: number,
+): PaceBand | null {
+  if (!Number.isFinite(daysRemaining) || daysRemaining <= 0) return fusePaceEvidence(evidence);
+  const valid = evidence.filter(isValidEvidence);
+  if (!valid.length) return null;
+
+  const baseline = weightedBand(valid.filter((item) => item.kind === "cycle" || item.kind === "historical"))
+    ?? fusePaceEvidence(valid);
+  if (!baseline) return null;
+  const shortTerm = valid.find((item) => item.kind === "recent")
+    ?? valid.find((item) => item.kind === "activity");
+  if (!shortTerm) return baseline;
+
+  const coverageFactor = Math.sqrt(Math.min(1, Math.max(0, shortTerm.coverageHours) / 24));
+  const meanReversionDays = 1;
+  const integratedPersistence = meanReversionDays
+    * (1 - Math.exp(-daysRemaining / meanReversionDays))
+    / daysRemaining;
+  const shortTermWeight = Math.min(1, Math.max(0, coverageFactor * integratedPersistence));
+  const adjusted = {
+    lower: baseline.lower + (shortTerm.bandPerDay.lower - baseline.lower) * shortTermWeight,
+    upper: baseline.upper + (shortTerm.bandPerDay.upper - baseline.upper) * shortTermWeight,
+  };
+  return {
+    lower: Math.min(baseline.lower, shortTerm.bandPerDay.lower, adjusted.lower),
+    upper: Math.max(baseline.upper, adjusted.upper),
+  };
+}
+
+function isValidEvidence(item: PaceEvidence): boolean {
+  return Number.isFinite(item.reliability) && item.reliability > 0
+    && Number.isFinite(item.coverageHours) && item.coverageHours >= 0
+    && Number.isFinite(item.bandPerDay.lower) && Number.isFinite(item.bandPerDay.upper)
+    && item.bandPerDay.lower >= 0 && item.bandPerDay.upper >= item.bandPerDay.lower;
+}
+
+function weightedBand(evidence: PaceEvidence[]): PaceBand | null {
+  const valid = evidence.filter(isValidEvidence);
+  const totalWeight = valid.reduce((sum, item) => sum + item.reliability, 0);
+  if (totalWeight <= 0) return null;
+  return {
+    lower: valid.reduce((sum, item) => sum + item.bandPerDay.lower * item.reliability, 0) / totalWeight,
+    upper: valid.reduce((sum, item) => sum + item.bandPerDay.upper * item.reliability, 0) / totalWeight,
+  };
+}
+
 export function forecastConfidenceForEvidence(
   evidence: PaceEvidence[],
   coverageHours: number,
   transitionCount: number,
   sustainable: number,
 ): ForecastConfidence {
-  const valid = evidence.filter((item) => Number.isFinite(item.reliability) && item.reliability > 0
-    && Number.isFinite(item.coverageHours) && item.coverageHours >= 0
-    && Number.isFinite(item.bandPerDay.lower) && Number.isFinite(item.bandPerDay.upper)
-    && item.bandPerDay.lower >= 0 && item.bandPerDay.upper >= item.bandPerDay.lower);
+  const valid = independentEvidence(evidence.filter(isValidEvidence));
   if (!Number.isFinite(sustainable) || sustainable <= 0
     || !Number.isFinite(coverageHours) || coverageHours < 0
     || valid.length < 2 || transitionCount <= 0) return "low";
@@ -249,6 +294,14 @@ export function forecastConfidenceForEvidence(
   if (coverageHours >= 24 && transitionCount >= 3 && valid.length >= 3 && agreement <= 0.5) return "high";
   if (coverageHours >= 3 && Math.max(...valid.map((item) => item.reliability)) >= 0.25) return "medium";
   return "low";
+}
+
+function independentEvidence(evidence: PaceEvidence[]): PaceEvidence[] {
+  const result = evidence.filter((item) => item.kind === "cycle" || item.kind === "historical");
+  const shortTerm = evidence.find((item) => item.kind === "recent")
+    ?? evidence.find((item) => item.kind === "activity");
+  if (shortTerm) result.push(shortTerm);
+  return result;
 }
 
 export function countUpwardTransitions(observations: WeeklyObservation[]): number {

@@ -12,7 +12,7 @@ enum CapsuleViewMetrics {
     static let collapsedHeight: CGFloat = collapsedContentHeight + shadowPadding * 2
     static let expandedHeight: CGFloat = 560
     static let expandedDetailContentHeight: CGFloat = expandedHeight - shadowPadding * 2 - collapsedContentHeight - 8
-    static let dockedContentWidth: CGFloat = 116
+    static let dockedContentWidth: CGFloat = 178
     static let dockedContentHeight: CGFloat = 46
     static let dockedWidth: CGFloat = dockedContentWidth + shadowPadding * 2
     static let dockedHeight: CGFloat = dockedContentHeight + shadowPadding * 2
@@ -70,10 +70,11 @@ struct DockedCapsuleView: View {
                 }
                 .lineLimit(1)
                 .minimumScaleFactor(0.72)
-                Text(store.copy.compactUsageLabel)
+                Text(store.primaryHorizonText)
                     .font(.system(size: 9, weight: .bold))
                     .foregroundStyle(.secondary)
                     .lineLimit(1)
+                    .minimumScaleFactor(0.72)
             }
             .layoutPriority(1)
         }
@@ -127,7 +128,7 @@ struct CompactCapsuleView: View {
                     }
                 }
 
-                Text(store.compactProjectedText)
+                Label(store.primaryHorizonText, systemImage: "calendar.badge.clock")
                     .font(.system(size: 11, weight: .semibold))
                     .foregroundStyle(.primary)
                     .lineLimit(1)
@@ -373,6 +374,19 @@ struct DetailPopoverView: View {
                     .fixedSize(horizontal: false, vertical: true)
             }
 
+
+            Label(store.quotaResetDescription, systemImage: "calendar.badge.clock")
+                .font(.system(size: 11, weight: .bold))
+                .foregroundStyle(.primary.opacity(0.82))
+                .fixedSize(horizontal: false, vertical: true)
+                .padding(.horizontal, 11)
+                .padding(.vertical, 9)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .background(
+                    toneColor(store.displayModel.tone).opacity(0.13),
+                    in: RoundedRectangle(cornerRadius: 11, style: .continuous)
+                )
+
             VStack(alignment: .leading, spacing: 9) {
                 Text(store.copy.weeklyPaceTitle)
                     .font(.system(size: 10, weight: .bold))
@@ -408,10 +422,7 @@ struct DetailPopoverView: View {
 
             WeeklyTrendChartView(store: store)
 
-            VStack(alignment: .leading, spacing: 6) {
-                Label(store.quotaResetDescription, systemImage: "calendar.badge.clock")
-                Label(store.dataRefreshDescription, systemImage: "arrow.triangle.2.circlepath")
-            }
+            Label(store.dataRefreshDescription, systemImage: "arrow.triangle.2.circlepath")
             .font(.system(size: 10, weight: .semibold))
             .foregroundStyle(.secondary)
 

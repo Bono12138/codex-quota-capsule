@@ -356,6 +356,45 @@ struct WeeklyRunwayPredictorTests {
         #expect(sparseForecast.projectedRemainingBandAtReset == polledForecast.projectedRemainingBandAtReset)
     }
 
+    @Test("a short burst is not extrapolated across the rest of the week")
+    func shortBurstMeanRevertsTowardTheCyclePace() throws {
+        let daysRemaining = 5.78
+        let resetAt = now.addingTimeInterval(daysRemaining * 86_400)
+        let observations = [
+            (-7.0, 0.0),
+            (-6.75, 1.0),
+            (-4.7, 2.0),
+            (-1.55, 4.0),
+            (-0.7, 5.0),
+            (0.0, 6.0)
+        ].map { hours, used in
+            WeeklyObservation(
+                fetchedAt: now.addingTimeInterval(hours * 3_600),
+                canonicalResetAt: resetAt,
+                usedPercent: used,
+                remainingPercent: 100 - used,
+                cycleID: 0,
+                segmentID: 0
+            )
+        }
+
+        let forecast = WeeklyRunwayPredictor.predict(
+            snapshot: snapshot(remaining: 94, daysRemaining: daysRemaining),
+            quality: WeeklyQualityResult(
+                state: .stable,
+                observations: observations,
+                canonicalResetAt: resetAt,
+                flags: []
+            ),
+            now: now
+        )
+
+        let projected = try #require(forecast.projectedRemainingBandAtReset)
+        #expect(forecast.state == .enough)
+        #expect(projected.lower > 35)
+        #expect(projected.upper - projected.lower < 25)
+    }
+
     @Test("exhaustion takes precedence over low-confidence evidence")
     func exhaustedTakesPrecedenceOverCalibration() {
         let forecast = WeeklyRunwayPredictor.predict(

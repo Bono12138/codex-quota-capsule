@@ -290,6 +290,13 @@ struct WeeklyPaceEvidenceTests {
             coverageHours: 24,
             transitionCount: 3,
             sustainable: 14
+        ) == .medium)
+
+        #expect(WeeklyPaceEvidence.confidence(
+            evidence: paths + [evidence(.historical, 9, 11)],
+            coverageHours: 24,
+            transitionCount: 3,
+            sustainable: 14
         ) == .high)
     }
 

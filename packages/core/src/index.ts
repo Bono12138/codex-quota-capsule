@@ -37,6 +37,7 @@ export {
   cycleEvidence,
   forecastConfidenceForEvidence,
   fusePaceEvidence,
+  horizonAdjustedPaceEvidence,
   historicalEvidence,
   quantizedInterval,
   recentEvidence,

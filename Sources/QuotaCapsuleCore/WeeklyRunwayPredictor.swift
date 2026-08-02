@@ -305,7 +305,10 @@ public enum WeeklyRunwayPredictor {
             }
         }
 
-        guard let pace = WeeklyPaceEvidence.fuse(evidence) else {
+        guard let pace = WeeklyPaceEvidence.horizonAdjustedForecast(
+            evidence,
+            daysRemaining: daysRemaining
+        ) else {
             return unavailable(
                 used: window.usedPercent,
                 remaining: window.remainingPercent,

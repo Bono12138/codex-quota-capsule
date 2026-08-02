@@ -175,7 +175,7 @@
         { "fetchedAt": "2026-07-12T23:00:00Z", "usedPercent": 1, "resetsAt": "2026-07-19T12:00:01Z" },
         { "fetchedAt": "2026-07-13T00:00:00Z", "usedPercent": 2, "resetsAt": "2026-07-19T11:59:59Z" }
       ],
-      "expected": { "qualityState": "stable", "cycleCount": 2, "forecastState": "watch" }
+      "expected": { "qualityState": "stable", "cycleCount": 2, "forecastState": "enough" }
     },
     {
       "id": "exhausted",

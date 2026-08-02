@@ -15,6 +15,7 @@ import {
   cycleEvidence,
   forecastConfidenceForEvidence,
   fusePaceEvidence,
+  horizonAdjustedPaceEvidence,
   historicalEvidence,
   quantizedInterval,
   recentEvidence,
@@ -293,7 +294,7 @@ export function predictWeeklyRunway(
       if (historical) evidence.push(historical);
     }
   }
-  const pace = fusePaceEvidence(evidence);
+  const pace = horizonAdjustedPaceEvidence(evidence, daysRemaining);
   if (!pace) return { ...unavailableWeeklyForecast(), usedPercent: window.usedPercent, remainingPercent: window.remainingPercent, elapsedPercent, daysUntilReset: daysRemaining, burnHorizonAt: horizon.at, burnHorizonSource: horizon.source };
   const projected = {
     lower: window.remainingPercent - pace.upper * daysRemaining,

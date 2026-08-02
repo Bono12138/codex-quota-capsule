@@ -48,7 +48,7 @@ function App() {
         <section className={`quiet-capsule quiet-capsule--${model.tone}`} aria-live="polite">
           <span className="status-dot" aria-hidden="true" />
           <strong>{model.statusLabel}</strong>
-          <span>{model.compactDetail ? `${model.compactDetail} · ${model.defaultText}` : model.defaultText}</span>
+          <span>{model.primaryHorizonText || model.defaultText}</span>
           <button className="capsule-icon-button" aria-label="刷新"><RefreshCw aria-hidden="true" /></button>
         </section>
 
@@ -61,6 +61,7 @@ function App() {
             <span className={`verdict-badge verdict-badge--${model.tone}`}>{model.statusLabel}</span>
           </div>
           <p className="verdict-copy">{model.defaultText}</p>
+          {model.primaryHorizonText ? <p className="primary-horizon">{model.primaryHorizonText}</p> : null}
 
           <section aria-label="本周节奏">
             <p className="eyebrow">本周节奏</p>
@@ -82,7 +83,6 @@ function App() {
           </section>
 
           <div className="freshness-row">
-            <span>周额度重置：{formatTime(scenario.snapshot.weeklyWindow?.resetsAt)}</span>
             <span>{model.confidenceText || "正在积累可信趋势"}</span>
           </div>
         </section>
@@ -115,11 +115,6 @@ function MetricRow({ metric, tone }: { metric: ReturnType<typeof createCapsuleDi
       <div className="metric-track"><span className={`metric-fill metric-fill--${tone}`} style={{ width: `${Math.min(100, Math.max(0, width))}%` }} /></div>
     </div>
   );
-}
-
-function formatTime(date: Date | undefined): string {
-  if (!date) return "未知";
-  return new Intl.DateTimeFormat("zh-CN", { weekday: "short", hour: "2-digit", minute: "2-digit", hour12: false }).format(date);
 }
 
 ReactDOM.createRoot(document.getElementById("root")!).render(<React.StrictMode><App /></React.StrictMode>);

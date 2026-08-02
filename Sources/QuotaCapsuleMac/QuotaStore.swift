@@ -262,10 +262,17 @@ final class QuotaStore: ObservableObject {
         ) else {
             return copy.unknownValue
         }
-        let formatter = horizon.source == .resetCreditExpiry
-            ? QuotaStore.minuteTimeFormatter(for: locale)
-            : QuotaStore.timeFormatter(for: locale)
-        return formatter.string(from: horizon.at)
+        return QuotaStore.minuteTimeFormatter(for: locale).string(from: horizon.at)
+    }
+
+    var primaryHorizonText: String {
+        guard let horizon = WeeklyRunwayPredictor.burnHorizon(
+            snapshot: snapshot,
+            now: currentTime
+        ) else {
+            return "\(copy.resetTimeTitle) · \(copy.unknownValue)"
+        }
+        return copy.primaryHorizonLabel(at: horizon.at, source: horizon.source)
     }
 
     var quotaResetDescription: String {
