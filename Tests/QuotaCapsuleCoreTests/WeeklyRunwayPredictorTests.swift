@@ -314,6 +314,48 @@ struct WeeklyRunwayPredictorTests {
         #expect(forecast.projectedRemainingBandAtReset?.lower ?? 0 > 0)
     }
 
+    @Test("flat polling cannot turn a low-use week into running fast")
+    func flatPollingDoesNotCreateFastState() {
+        let resetAt = now.addingTimeInterval(5.8 * 86_400)
+        let sparse = [
+            (-24.0, 0.0),
+            (-6.0, 1.0),
+            (-4.0, 2.0),
+            (-1.0, 4.0),
+            (0.0, 4.0)
+        ]
+        var polled = sparse
+        for hour in 1..<18 { polled.append((Double(hour - 24), 0)) }
+        for minute in stride(from: -350, through: -250, by: 10) { polled.append((Double(minute) / 60, 1)) }
+        for minute in stride(from: -230, through: -70, by: 10) { polled.append((Double(minute) / 60, 2)) }
+        for minute in stride(from: -50, through: -10, by: 10) { polled.append((Double(minute) / 60, 4)) }
+
+        func forecast(_ samples: [(Double, Double)]) -> WeeklyRunwayForecast {
+            let observations = samples.sorted { $0.0 < $1.0 }.map { hours, used in
+                WeeklyObservation(
+                    fetchedAt: now.addingTimeInterval(hours * 3_600),
+                    canonicalResetAt: resetAt,
+                    usedPercent: used,
+                    remainingPercent: 100 - used,
+                    cycleID: 0,
+                    segmentID: 0
+                )
+            }
+            return WeeklyRunwayPredictor.predict(
+                snapshot: snapshot(remaining: 96, daysRemaining: 5.8),
+                quality: WeeklyQualityResult(state: .stable, observations: observations, canonicalResetAt: resetAt, flags: []),
+                now: now
+            )
+        }
+
+        let sparseForecast = forecast(sparse)
+        let polledForecast = forecast(polled)
+
+        #expect(sparseForecast.state == .enough)
+        #expect(polledForecast.state == .enough)
+        #expect(sparseForecast.projectedRemainingBandAtReset == polledForecast.projectedRemainingBandAtReset)
+    }
+
     @Test("exhaustion takes precedence over low-confidence evidence")
     func exhaustedTakesPrecedenceOverCalibration() {
         let forecast = WeeklyRunwayPredictor.predict(

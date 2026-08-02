@@ -22,9 +22,9 @@ Heavy AI-native users may run several tasks at once, repeatedly check the usage 
 
 AI-native 重度用户经常同时运行多个任务，也会反复查看 usage 页面：有时明明还有大量已付费额度，却因为不知道够不够而刻意收着用；有时又在临近重置时才发现还有很多额度没有用完。额度胶囊把已用额度、时间进度、最近速度、当前活动和可用历史证据合并成一句能直接行动的判断。
 
-It reports six honest states—Early estimate, On track, Running fast, May run out, Exhausted, and Data unavailable—plus a next-24-hour budget and a forecast range for the balance at refresh. The horizon is the earlier of the natural weekly reset or the earliest known available reset-credit expiry.
+It reports six honest states—Early estimate, On track, Uncertain pace, May run out, Exhausted, and Data unavailable—plus a next-24-hour budget and a forecast range for the balance at refresh. The horizon is the earlier of the natural weekly reset or the earliest known available reset-credit expiry.
 
-它会给出“初步判断、够用、偏快、可能不够、已用尽、数据暂不可用”六种诚实状态，并显示未来 24 小时建议和刷新时的预计余量区间。当前刷新终点取自然周重置与最早已知可用重置券到期时间中更早者。
+它会给出“初步判断、够用、波动较大、可能不够、已用尽、数据暂不可用”六种诚实状态，并显示未来 24 小时建议和刷新时的预计余量区间。当前刷新终点取自然周重置与最早已知可用重置券到期时间中更早者。
 
 When a reset credit expires first and quota would otherwise remain unused, the app shows `Use before reset`, recalculates progress and budget to that deadline, and displays the exact expiry. After redemption or a natural reset, it reads the new state before calculating again.
 

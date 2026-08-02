@@ -21,7 +21,7 @@ import "./styles.css";
 const now = new Date("2026-07-13T08:00:00+08:00");
 const scenarios: Array<{ id: WeeklyMockKind; label: string; icon: typeof CheckCircle2 }> = [
   { id: "enough", label: "够用", icon: CheckCircle2 },
-  { id: "watch", label: "偏快", icon: Gauge },
+  { id: "watch", label: "波动较大", icon: Gauge },
   { id: "mayRunOut", label: "可能不够", icon: AlertTriangle },
   { id: "earlyEstimate", label: "初步估算", icon: RefreshCw },
   { id: "calibrating", label: "数据确认", icon: RefreshCw },

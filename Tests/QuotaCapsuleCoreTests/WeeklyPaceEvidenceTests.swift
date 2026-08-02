@@ -59,6 +59,37 @@ struct WeeklyPaceEvidenceTests {
         ) == nil)
     }
 
+    @Test("recent pace is invariant to repeated flat polling")
+    func repeatedFlatPollsDoNotMoveRecentPace() throws {
+        let sparse = [
+            observation(at: now.addingTimeInterval(-24 * 3_600), used: 0),
+            observation(at: now.addingTimeInterval(-6 * 3_600), used: 1),
+            observation(at: now.addingTimeInterval(-4 * 3_600), used: 2),
+            observation(at: now.addingTimeInterval(-1 * 3_600), used: 4),
+            observation(at: now, used: 4)
+        ]
+        var polled = sparse
+        for hour in 1..<18 {
+            polled.append(observation(at: now.addingTimeInterval(Double(hour - 24) * 3_600), used: 0))
+        }
+        for minute in stride(from: -350, through: -250, by: 10) {
+            polled.append(observation(at: now.addingTimeInterval(Double(minute) * 60), used: 1))
+        }
+        for minute in stride(from: -230, through: -70, by: 10) {
+            polled.append(observation(at: now.addingTimeInterval(Double(minute) * 60), used: 2))
+        }
+        for minute in stride(from: -50, through: -10, by: 10) {
+            polled.append(observation(at: now.addingTimeInterval(Double(minute) * 60), used: 4))
+        }
+        polled.sort { $0.fetchedAt < $1.fetchedAt }
+
+        let sparseEvidence = try #require(WeeklyPaceEvidence.recent(observations: sparse, now: now))
+        let polledEvidence = try #require(WeeklyPaceEvidence.recent(observations: polled, now: now))
+
+        #expect(abs(sparseEvidence.bandPerDay.lower - polledEvidence.bandPerDay.lower) < 0.000_001)
+        #expect(abs(sparseEvidence.bandPerDay.upper - polledEvidence.bandPerDay.upper) < 0.000_001)
+    }
+
     @Test("activity pace decays after a burst becomes idle")
     func burstPaceDecaysDuringIdle() throws {
         let burstEnd = now.addingTimeInterval(-12 * 3_600)

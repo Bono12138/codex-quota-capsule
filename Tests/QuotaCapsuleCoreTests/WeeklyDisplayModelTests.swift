@@ -165,7 +165,7 @@ struct WeeklyDisplayModelTests {
             locale: .zhHans
         )
 
-        #expect(watch.statusLabel == "偏快")
+        #expect(watch.statusLabel == "波动较大")
         #expect(risk.statusLabel == "可能不够")
         #expect(risk.defaultText == "照最近速度，本周额度可能在重置前用完")
         #expect(exhausted.statusLabel == "已用尽")
@@ -247,7 +247,7 @@ struct WeeklyDisplayModelTests {
         #expect(copy.weeklyStatusLabel(.calibrating) == "Confirming change")
         #expect(copy.weeklyStatusLabel(.earlyEstimate) == "Early estimate")
         #expect(copy.weeklyStatusLabel(.enough) == "On track")
-        #expect(copy.weeklyStatusLabel(.watch) == "Running fast")
+        #expect(copy.weeklyStatusLabel(.watch) == "Uncertain pace")
         #expect(copy.weeklyStatusLabel(.mayRunOut) == "May run out")
     }
 

@@ -379,6 +379,42 @@ describe("Weekly Only runway", () => {
     expect(forecast.confidenceReason).toBe("no-consumption-observed");
   });
 
+  it("does not let flat polling turn a low-use week into running fast", () => {
+    const resetsAt = new Date(now.getTime() + 5.8 * 86_400_000);
+    const sparsePoints: Array<[number, number]> = [
+      [-24, 0], [-6, 1], [-4, 2], [-1, 4], [0, 4],
+    ];
+    const polledPoints = sparsePoints.slice();
+    for (let hour = 1; hour < 18; hour += 1) polledPoints.push([hour - 24, 0]);
+    for (let minute = -350; minute <= -250; minute += 10) polledPoints.push([minute / 60, 1]);
+    for (let minute = -230; minute <= -70; minute += 10) polledPoints.push([minute / 60, 2]);
+    for (let minute = -50; minute <= -10; minute += 10) polledPoints.push([minute / 60, 4]);
+    const makeReadings = (points: Array<[number, number]>): WeeklyQuotaReading[] => points
+      .slice()
+      .sort((left, right) => left[0] - right[0])
+      .map(([hours, usedPercent]) => ({
+        provider: "codex",
+        sourceStatus: "ok",
+        fetchedAt: new Date(now.getTime() + hours * 3_600_000),
+        windowMinutes: 10_080,
+        usedPercent,
+        remainingPercent: 100 - usedPercent,
+        resetsAt,
+      }));
+    const snapshot: AgentQuotaSnapshot = {
+      provider: "codex",
+      sourceStatus: "ok",
+      fetchedAt: now,
+      weeklyWindow: { label: "weekly", windowMinutes: 10_080, usedPercent: 4, remainingPercent: 96, resetsAt },
+    };
+    const sparse = predictWeeklyRunway(snapshot, analyzeWeeklyQuality(makeReadings(sparsePoints), now), now);
+    const polled = predictWeeklyRunway(snapshot, analyzeWeeklyQuality(makeReadings(polledPoints), now), now);
+
+    expect(sparse.state).toBe("enough");
+    expect(polled.state).toBe("enough");
+    expect(polled.projectedRemainingBandAtReset!.lower).toBeGreaterThan(0);
+  });
+
   it("exposes the same exhaustion interval contract as the native engine", () => {
     const forecast = forecastFor("mayRunOut");
 

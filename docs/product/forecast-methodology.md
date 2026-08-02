@@ -62,7 +62,7 @@ Cycle evidence is available from the first valid reading. The cycle start is `re
 
 ### Recent evidence
 
-Recent evidence uses cleaned observations from the latest 24 hours. It requires at least one real upward transition but never requires a fixed number of elapsed hours. Pairwise slopes separated by at least 30 minutes are calculated with quantized bounds; median and median-absolute-deviation filtering limit outlier influence. Repeated flat polling adds elapsed idle time but does not inflate transition count or measurement uncertainty.
+Recent evidence uses cleaned observations from the latest 24 hours. It requires at least one real upward transition but never requires a fixed number of elapsed hours. Consecutive equal readings are reduced to the first observation of each reported level plus the latest trailing observation. Pairwise slopes separated by at least 30 minutes are calculated only across genuine increases, with quantized bounds; median and median-absolute-deviation filtering limit outlier influence. Repeated flat polling therefore adds elapsed idle time but cannot gain statistical weight merely because the app polled more often.
 
 ### Activity evidence
 
@@ -111,11 +111,13 @@ The product rounds the next-24-hour budget down for display. When the selected h
 ## Outcome states
 
 - `earlyEstimate`: only sparse current-cycle evidence is available; a preliminary range and low-confidence reason are shown immediately.
-- `enough`: the conservative projected-remaining bound stays above zero and reliable evidence is not materially above the sustainable pace.
-- `watch`: the projection overlaps zero, reliable pace evidence is materially faster than sustainable, or estimators disagree across the survival boundary.
+- `enough`: the conservative fused projected-remaining bound stays above zero.
+- `watch`: the fused projection overlaps zero, so different supported pace scenarios lead to different survival outcomes. The user-facing label is `波动较大 / Uncertain pace`, not a definitive claim that usage is fast.
 - `mayRunOut`: even the optimistic fused projection is below zero and no reliable evidence supports lasting to reset.
 - `exhausted`: remaining allowance is effectively zero.
 - `unavailable`: the source, timestamps, reset, or quality evidence cannot support an honest current estimate.
+
+A single recent or activity estimator cannot directly promote the state to `watch`. It may widen the fused range or lower confidence, but only the final fused projection determines whether the allowance plausibly crosses zero.
 
 When an earlier reset-credit expiry defines the horizon and the projection still leaves non-negative quota, the presentation adds the contextual action state `抓紧使用 / Use before reset`. It changes “本周时间” to “刷新进度”, names the credit-based horizon, and encourages using the remaining allowance before refresh. It must not override `watch`, `mayRunOut`, or an early projection that already indicates the allowance may run out first.
 

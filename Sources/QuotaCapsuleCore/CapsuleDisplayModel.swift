@@ -253,13 +253,13 @@ public struct CapsuleDisplayModel: Equatable, Sendable {
         }
         return switch (locale, outcome) {
         case (.zhHans, 0): "初步判断：按本周平均速度目前可持续"
-        case (.zhHans, 1): "初步判断：按本周平均速度可能偏快"
+        case (.zhHans, 1): "初步判断：周速度波动较大"
         case (.zhHans, _): "初步判断：按本周平均速度可能不够"
         case (.zhHant, 0): "初步判斷：按本週平均速度目前可持續"
-        case (.zhHant, 1): "初步判斷：按本週平均速度可能偏快"
+        case (.zhHant, 1): "初步判斷：週速度波動較大"
         case (.zhHant, _): "初步判斷：按本週平均速度可能不夠"
         case (.en, 0): "Early estimate: the current-cycle average looks sustainable"
-        case (.en, 1): "Early estimate: the current-cycle average may be running fast"
+        case (.en, 1): "Early estimate: the weekly pace is still uncertain"
         case (.en, _): "Early estimate: the current-cycle average may not last"
         }
     }

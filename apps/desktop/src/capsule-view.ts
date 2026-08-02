@@ -21,7 +21,7 @@ const STATUS_LABELS: Record<WeeklyRunwayState, string> = {
   calibrating: "确认额度变化",
   earlyEstimate: "初步估算",
   enough: "够用",
-  watch: "偏快",
+  watch: "波动较大",
   mayRunOut: "可能不够",
 };
 
@@ -77,7 +77,7 @@ function defaultText(forecast: WeeklyRunwayForecast): string {
       if (band.upper < 0) return "初步判断：按本周平均速度可能不够";
       if (band.lower > 0) return "初步判断：按本周平均速度目前可持续";
     }
-    return "初步判断：按本周平均速度可能偏快";
+    return "初步判断：周速度波动较大";
   }
   if (forecast.state === "mayRunOut") return "照最近速度，本周额度可能在重置前用完";
   const range = safeRange(forecast.projectedRemainingBandAtReset);

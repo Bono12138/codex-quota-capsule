@@ -48,6 +48,15 @@ describe("createCapsuleDisplayModel", () => {
     expect(JSON.stringify(model)).not.toContain("5 小时");
   });
 
+  it("labels a cross-zero forecast as uncertain rather than definitively fast", () => {
+    const model = createCapsuleDisplayModel(forecast({
+      state: "watch",
+      projectedRemainingBandAtReset: { lower: -4, upper: 18 },
+    }));
+
+    expect(model.statusLabel).toBe("波动较大");
+  });
+
   it("shows a useful early estimate without a six-hour waiting room", () => {
     const model = createCapsuleDisplayModel(forecast({
       state: "earlyEstimate",

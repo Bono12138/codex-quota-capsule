@@ -342,7 +342,7 @@ public enum WeeklyRunwayPredictor {
             state = .earlyEstimate
         } else if projected.upper < 0 {
             state = .mayRunOut
-        } else if projected.lower <= 0 || evidenceContainsMaterialOverspeed(evidence, sustainable: sustainable) {
+        } else if projected.lower <= 0 {
             state = .watch
         } else {
             state = .enough
@@ -451,17 +451,6 @@ public enum WeeklyRunwayPredictor {
         )
     }
 
-
-    private static func evidenceContainsMaterialOverspeed(
-        _ evidence: [PaceEvidence],
-        sustainable: Double
-    ) -> Bool {
-        guard sustainable > 0 else { return true }
-        return evidence.contains {
-            $0.reliability >= 0.20
-                && ($0.bandPerDay.lower + $0.bandPerDay.upper) / 2 > sustainable * 1.15
-        }
-    }
 
     private static func confidenceReason(
         confidence: ForecastConfidence,

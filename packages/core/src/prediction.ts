@@ -310,7 +310,7 @@ export function predictWeeklyRunway(
     ? "earlyEstimate"
     : projected.upper < 0
       ? "mayRunOut"
-      : projected.lower <= 0 || evidenceContainsMaterialOverspeed(evidence, sustainable)
+      : projected.lower <= 0
         ? "watch"
         : "enough";
   const exhaustion = exhaustionRange(window.remainingPercent, pace, now);
@@ -512,15 +512,6 @@ function exhaustionRange(remainingPercent: number, pace: PaceBand, now: Date): {
     earliest: new Date(now.getTime() + (remainingPercent / pace.upper) * 86_400_000),
     latest: pace.lower > 0 ? new Date(now.getTime() + (remainingPercent / pace.lower) * 86_400_000) : null,
   };
-}
-
-function evidenceContainsMaterialOverspeed(
-  evidence: WeeklyRunwayForecast["paceEvidence"],
-  sustainable: number,
-): boolean {
-  if (sustainable <= 0) return true;
-  return evidence.some((item) => item.reliability >= 0.20
-    && (item.bandPerDay.lower + item.bandPerDay.upper) / 2 > sustainable * 1.15);
 }
 
 function confidenceReason(

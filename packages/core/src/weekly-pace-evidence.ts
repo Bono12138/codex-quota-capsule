@@ -39,7 +39,9 @@ export function cycleEvidence(window: QuotaWindow, now: Date): PaceEvidence | nu
 
 export function recentEvidence(observations: WeeklyObservation[], now: Date): PaceEvidence | null {
   const cutoff = now.getTime() - RECENT_HORIZON_MS;
-  const eligible = observations.filter((item) => item.fetchedAt.getTime() >= cutoff && item.fetchedAt.getTime() <= now.getTime());
+  const eligible = transitionAnchors(
+    observations.filter((item) => item.fetchedAt.getTime() >= cutoff && item.fetchedAt.getTime() <= now.getTime()),
+  );
   const transitions = countUpwardTransitions(eligible);
   const first = eligible[0];
   const last = eligible.at(-1);
@@ -85,10 +87,9 @@ export function activityEvidence(observations: WeeklyObservation[], now: Date): 
 
 export function activitySegments(observations: WeeklyObservation[], now: Date): ActivitySegmentSummary | null {
   const cutoff = now.getTime() - ACTIVITY_HORIZON_MS;
-  const eligible = observations
-    .filter((item) => item.fetchedAt.getTime() >= cutoff && item.fetchedAt.getTime() <= now.getTime())
-    .slice()
-    .sort((left, right) => left.fetchedAt.getTime() - right.fetchedAt.getTime());
+  const eligible = transitionAnchors(
+    observations.filter((item) => item.fetchedAt.getTime() >= cutoff && item.fetchedAt.getTime() <= now.getTime()),
+  );
   const first = eligible[0];
   const last = eligible.at(-1);
   if (!first || !last || eligible.length < 2) return null;
@@ -274,7 +275,7 @@ function robustBand(observations: WeeklyObservation[]): PaceBand | null {
   for (let earlier = 0; earlier < observations.length; earlier += 1) {
     for (let later = earlier + 1; later < observations.length; later += 1) {
       const duration = observations[later].fetchedAt.getTime() - observations[earlier].fetchedAt.getTime();
-      if (duration < MINIMUM_PAIR_MS) continue;
+      if (duration < MINIMUM_PAIR_MS || observations[later].usedPercent <= observations[earlier].usedPercent) continue;
       const first = quantizedInterval(observations[earlier].usedPercent);
       const second = quantizedInterval(observations[later].usedPercent);
       const scale = DAY_MS / duration;
@@ -294,6 +295,21 @@ function robustBand(observations: WeeklyObservation[]): PaceBand | null {
     lower: median(candidates.map((item) => item.lower)),
     upper: median(candidates.map((item) => item.upper)),
   } : null;
+}
+
+function transitionAnchors(observations: WeeklyObservation[]): WeeklyObservation[] {
+  const ordered = observations.slice().sort((left, right) => left.fetchedAt.getTime() - right.fetchedAt.getTime());
+  const first = ordered[0];
+  if (!first) return [];
+  const anchors = [first];
+  let previous = first;
+  for (const observation of ordered.slice(1)) {
+    if (observation.usedPercent !== previous.usedPercent) anchors.push(observation);
+    previous = observation;
+  }
+  const last = ordered.at(-1)!;
+  if (anchors.at(-1)?.fetchedAt.getTime() !== last.fetchedAt.getTime()) anchors.push(last);
+  return anchors;
 }
 
 function median(values: number[]): number {

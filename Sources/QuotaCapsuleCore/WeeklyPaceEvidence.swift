@@ -52,7 +52,9 @@ public enum WeeklyPaceEvidence {
         now: Date
     ) -> PaceEvidence? {
         let cutoff = now.addingTimeInterval(-recentHorizon)
-        let eligible = observations.filter { $0.fetchedAt >= cutoff && $0.fetchedAt <= now }
+        let eligible = transitionAnchors(
+            observations.filter { $0.fetchedAt >= cutoff && $0.fetchedAt <= now }
+        )
         let transitions = countUpwardTransitions(eligible)
         guard transitions > 0,
               let first = eligible.first,
@@ -116,9 +118,9 @@ public enum WeeklyPaceEvidence {
         now: Date
     ) -> ActivitySegmentSummary? {
         let cutoff = now.addingTimeInterval(-activityHorizon)
-        let eligible = observations
-            .filter { $0.fetchedAt >= cutoff && $0.fetchedAt <= now }
-            .sorted { $0.fetchedAt < $1.fetchedAt }
+        let eligible = transitionAnchors(
+            observations.filter { $0.fetchedAt >= cutoff && $0.fetchedAt <= now }
+        )
         guard let first = eligible.first, let last = eligible.last, eligible.count >= 2 else { return nil }
         let coverage = now.timeIntervalSince(first.fetchedAt)
         guard coverage >= minimumPairSeparation else { return nil }
@@ -337,7 +339,8 @@ public enum WeeklyPaceEvidence {
                 let earlier = observations[earlierIndex]
                 let later = observations[laterIndex]
                 let duration = later.fetchedAt.timeIntervalSince(earlier.fetchedAt)
-                guard duration >= minimumPairSeparation else { continue }
+                guard duration >= minimumPairSeparation,
+                      later.usedPercent > earlier.usedPercent else { continue }
                 let first = quantizedInterval(earlier.usedPercent)
                 let second = quantizedInterval(later.usedPercent)
                 let scale = day / duration
@@ -360,6 +363,23 @@ public enum WeeklyPaceEvidence {
             lower: median(candidates.map(\.lower)),
             upper: median(candidates.map(\.upper))
         )
+    }
+
+    private static func transitionAnchors(_ observations: [WeeklyObservation]) -> [WeeklyObservation] {
+        let ordered = observations.sorted { $0.fetchedAt < $1.fetchedAt }
+        guard let first = ordered.first else { return [] }
+        var anchors = [first]
+        var previous = first
+        for observation in ordered.dropFirst() {
+            if observation.usedPercent != previous.usedPercent {
+                anchors.append(observation)
+            }
+            previous = observation
+        }
+        if let last = ordered.last, anchors.last?.fetchedAt != last.fetchedAt {
+            anchors.append(last)
+        }
+        return anchors
     }
 
     private static func median(_ values: [Double]) -> Double {
