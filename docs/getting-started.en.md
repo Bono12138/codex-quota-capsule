@@ -1,9 +1,11 @@
 # First-time setup
 
-You do not need to understand GitHub to install Quota Capsule.
+You can install Quota Capsule without learning GitHub.
 
-GitHub hosts the project's source code, documentation, issue tracker, and downloadable releases.
-You do not need a GitHub account to download a public release.
+GitHub hosts this software project.
+It stores the code and documentation.
+It also provides issue reports and downloads.
+Public downloads do not require an account.
 
 ## Download and install
 
@@ -11,27 +13,33 @@ Before installing, confirm that:
 
 - Your Mac runs macOS 14 or later.
 - Codex is installed and signed in.
-- The page belongs to `Bono12138/codex-quota-capsule`.
+- You opened the [official repository](https://github.com/Bono12138/codex-quota-capsule).
 
 Installation steps:
 
 1. Open the [Quota Capsule v0.3.5-beta.1 release](https://github.com/Bono12138/codex-quota-capsule/releases/tag/v0.3.5-beta.1).
 2. Find the **Assets** section.
-3. Download `Quota-Capsule-Beta-macOS.zip`.
-4. Do not download `Source code (zip)`. That archive is for developers and is not a ready-to-run app.
+3. Download this installer:
+
+   ```text
+   Quota-Capsule-Beta-macOS.zip
+   ```
+
+4. Do not download `Source code (zip)`.
+   It cannot run as an app.
 5. Double-click the downloaded ZIP file to extract it.
-6. Move `Quota Capsule Beta.app` into Applications.
-7. Open `Quota Capsule Beta.app` from Applications.
+6. Move the extracted app into Applications.
+7. Open Quota Capsule from Applications.
 
 The floating capsule and its menu-bar icon should appear after launch.
 
-## If macOS blocks the first launch
+## If macOS blocks the app
 
 The current Beta is not notarized by Apple.
 macOS may say that it cannot verify the developer.
 
-First confirm that the app came from this project's official release page.
-Then follow Apple's current process:
+Confirm that you used the official Release page.
+Then follow Apple's current steps:
 
 1. Try to open the app once.
 2. Open System Settings.
@@ -40,40 +48,47 @@ Then follow Apple's current process:
 5. Click Open Anyway for Quota Capsule.
 6. Confirm Open.
 
-Stop if macOS says that the app is damaged or will harm your computer.
-Do not bypass that warning.
+Stop if macOS says the app is damaged.
+Also stop if it may harm your computer.
+Do not bypass either warning.
 
-Apple's guidance: [Safely open apps on your Mac](https://support.apple.com/en-us/102445).
+Apple's guidance: [Mac app safety](https://support.apple.com/en-us/102445).
 
-## When a GitHub account is useful
+## Why create a GitHub account
 
 Downloading the public app does not require an account.
 
 Create an account if you want to:
 
-- Star the project so you can find it later.
+- Star the project for later.
 - Report a problem in Issues.
 - Contribute code or documentation.
 
 To register:
 
 1. Open [GitHub sign-up](https://github.com/signup).
-2. Use an email address, Google, or Apple.
-3. Choose a username and follow the prompts.
+2. Use email, Google, or Apple.
+3. Choose a username.
 4. Verify your email address.
-5. Enable two-factor authentication after registration.
+5. Enable two-factor authentication.
 
-GitHub's guidance: [Creating an account on GitHub](https://docs.github.com/en/account-and-profile/how-tos/personal-account-management/creating-an-account-on-github).
+GitHub's guidance: [Create an account](https://docs.github.com/en/account-and-profile/how-tos/personal-account-management/creating-an-account-on-github).
 
 ## Report a problem
 
 1. Sign in to GitHub.
 2. Open the project's [Issues page](https://github.com/Bono12138/codex-quota-capsule/issues).
 3. Select **New issue**.
-4. Describe what happened and include the time, Quota Capsule version, and macOS version.
-5. Screenshots can help, but remove account names, project names, and other private information first.
+4. Describe what happened and when.
+5. Add the app and macOS versions.
+6. Remove private details from screenshots.
 
-Never upload Codex tokens, cookies, chat content, source code, private file paths, or account credentials.
+Never upload these items:
+
+- Codex tokens or cookies.
+- Chats or source code.
+- Private file paths.
+- Account credentials.
 
 If you do not want a GitHub account, email `mmz1218bono@gmail.com`.
 
@@ -81,11 +96,11 @@ If you do not want a GitHub account, email `mmz1218bono@gmail.com`.
 
 | Term | What it means for a user |
 | --- | --- |
-| Repository | The project's home page on GitHub. |
-| Release | A packaged version of the app. Users download the app here. |
-| Assets | Files attached to a release. |
-| Source code | Developer files. Most users do not need them. |
-| Issues | The place to report bugs, suggest changes, and read known problems. |
-| Star | A way to bookmark and support the project. |
+| Repository | The project's home page. |
+| Release | A packaged app version. |
+| Assets | Files in a Release. |
+| Source code | Developer files. |
+| Issues | Bug reports and suggestions. |
+| Star | Bookmark and support. |
 
-GitHub's explanation: [About releases](https://docs.github.com/en/repositories/releasing-projects-on-github/about-releases).
+GitHub's explanation: [What is a Release?](https://docs.github.com/en/repositories/releasing-projects-on-github/about-releases).

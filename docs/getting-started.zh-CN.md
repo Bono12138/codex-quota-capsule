@@ -2,10 +2,11 @@
 
 不懂 GitHub 也可以安装额度胶囊。
 
-GitHub 是一个保存和发布软件项目的网站。
-这个项目的代码、说明、问题反馈和安装包都放在 GitHub。
+GitHub 是一个发布软件项目的网站。
+这里保存项目代码和说明。
+这里也提供问题反馈和安装包。
 
-只想下载额度胶囊，不需要注册 GitHub 账号。
+下载额度胶囊不需要账号。
 
 ## 下载并安装
 
@@ -13,17 +14,23 @@ GitHub 是一个保存和发布软件项目的网站。
 
 - 电脑是 macOS 14 或更新版本。
 - Codex 已经安装并登录。
-- 你访问的是 `Bono12138/codex-quota-capsule` 官方仓库。
+- 你访问的是[这个官方仓库](https://github.com/Bono12138/codex-quota-capsule)。
 
 安装步骤：
 
 1. 打开 [额度胶囊 v0.3.5-beta.1 发布页](https://github.com/Bono12138/codex-quota-capsule/releases/tag/v0.3.5-beta.1)。
 2. 找到页面里的 **Assets** 区域。
-3. 下载 `Quota-Capsule-Beta-macOS.zip`。
-4. 不要下载 `Source code (zip)`。那是给开发者看的源代码，不能直接当应用使用。
+3. 下载下面这个安装包：
+
+   ```text
+   Quota-Capsule-Beta-macOS.zip
+   ```
+
+4. 不要下载 `Source code (zip)`。
+   它是源代码，不能直接当应用使用。
 5. 双击下载的 ZIP 文件，将它解压。
-6. 把 `Quota Capsule Beta.app` 拖进“应用程序”文件夹。
-7. 在“应用程序”里打开 `Quota Capsule Beta.app`。
+6. 把解压得到的应用拖进“应用程序”。
+7. 在“应用程序”里打开额度胶囊。
 
 启动后，桌面会出现一个额度胶囊。
 菜单栏也会出现额度胶囊图标。
@@ -43,10 +50,12 @@ macOS 可能提示无法验证开发者。
 5. 点击与额度胶囊对应的“仍要打开”。
 6. 再次确认“打开”。
 
-如果 macOS 明确提示应用已损坏或会损害电脑，请停止安装并提交反馈。
+如果 macOS 提示应用已损坏，请停止安装。
+如果系统提示它会损害电脑，也请停止安装。
+出现这两类提示时，请向项目反馈。
 不要绕过这类安全警告。
 
-Apple 官方说明：[安全地打开 Mac 上的 App](https://support.apple.com/zh-cn/102445)。
+Apple 官方说明：[Mac App 安全指南](https://support.apple.com/zh-cn/102445)。
 
 ## GitHub 账号有什么用
 
@@ -61,7 +70,7 @@ Apple 官方说明：[安全地打开 Mac 上的 App](https://support.apple.com/
 注册步骤：
 
 1. 打开 [GitHub 注册页面](https://github.com/signup)。
-2. 使用邮箱注册，或者选择 Google、Apple 登录。
+2. 使用邮箱、Google 或 Apple 注册。
 3. 按页面提示设置用户名。
 4. 完成邮箱验证。
 5. 注册完成后，建议开启双重身份验证。
@@ -73,10 +82,16 @@ GitHub 官方说明：[创建个人账号](https://docs.github.com/zh/account-an
 1. 登录 GitHub。
 2. 打开项目的 [Issues 页面](https://github.com/Bono12138/codex-quota-capsule/issues)。
 3. 点击 **New issue**。
-4. 写清楚你看到的现象、发生时间、额度胶囊版本和 macOS 版本。
-5. 截图可以帮助定位问题，但请先遮住账号、项目名称和其他私人信息。
+4. 写清楚你看到的现象和发生时间。
+5. 补充额度胶囊版本和 macOS 版本。
+6. 截图前遮住账号、项目名称和其他私人信息。
 
-请不要上传 Codex token、cookie、聊天内容、代码、私有文件路径或账号凭据。
+请不要上传下面这些内容：
+
+- Codex token 或 cookie。
+- 聊天内容或代码。
+- 私有文件路径。
+- 账号凭据。
 
 不想注册 GitHub，也可以发送邮件到 `mmz1218bono@gmail.com`。
 
@@ -84,11 +99,11 @@ GitHub 官方说明：[创建个人账号](https://docs.github.com/zh/account-an
 
 | 页面文字 | 普通用户需要知道什么 |
 | --- | --- |
-| Repository | 项目主页，也就是这个软件在 GitHub 上的家。 |
-| Release | 已经打包好的发布版本。普通用户从这里下载安装包。 |
-| Assets | 某个 Release 可以下载的文件。 |
-| Source code | 程序源代码。普通用户不用下载。 |
-| Issues | 报告 Bug、提出建议和查看已知问题的地方。 |
+| Repository | 软件在 GitHub 上的项目主页。 |
+| Release | 已经打包好的发布版本。 |
+| Assets | Release 中可以下载的文件。 |
+| Source code | 源代码。普通用户不用下载。 |
+| Issues | 报告 Bug 和提出建议的地方。 |
 | Star | 收藏并支持这个项目。 |
 
-GitHub 官方对 Release 的解释：[关于发布版本](https://docs.github.com/zh/repositories/releasing-projects-on-github/about-releases)。
+GitHub 官方说明：[Release 是什么](https://docs.github.com/zh/repositories/releasing-projects-on-github/about-releases)。
