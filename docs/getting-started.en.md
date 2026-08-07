@@ -1,10 +1,15 @@
 # First-time setup
 
-You can install Quota Capsule without learning GitHub.
+You can install Quota Capsule.
+
+GitHub experience is not required.
 
 GitHub hosts this software project.
+
 It stores the code and documentation.
+
 It also provides issue reports and downloads.
+
 Public downloads do not require an account.
 
 ## Download and install
@@ -27,18 +32,24 @@ Installation steps:
 
 4. Do not download `Source code (zip)`.
    It cannot run as an app.
-5. Double-click the downloaded ZIP file to extract it.
-6. Move the extracted app into Applications.
-7. Open Quota Capsule from Applications.
+5. Double-click the ZIP to extract it.
+6. Move the app into Applications.
+7. Open it from Applications.
 
-The floating capsule and its menu-bar icon should appear after launch.
+The floating capsule should appear.
+
+A menu-bar icon should also appear.
 
 ## If macOS blocks the app
 
 The current Beta is not notarized by Apple.
-macOS may say that it cannot verify the developer.
 
-Confirm that you used the official Release page.
+macOS may block an unknown developer.
+
+Confirm the download source.
+
+It must be the official Release page.
+
 Then follow Apple's current steps:
 
 1. Try to open the app once.
@@ -49,14 +60,16 @@ Then follow Apple's current steps:
 6. Confirm Open.
 
 Stop if macOS says the app is damaged.
+
 Also stop if it may harm your computer.
+
 Do not bypass either warning.
 
 Apple's guidance: [Mac app safety](https://support.apple.com/en-us/102445).
 
 ## Why create a GitHub account
 
-Downloading the public app does not require an account.
+Public downloads need no account.
 
 Create an account if you want to:
 
@@ -90,7 +103,11 @@ Never upload these items:
 - Private file paths.
 - Account credentials.
 
-If you do not want a GitHub account, email `mmz1218bono@gmail.com`.
+You can also send email without an account.
+
+```text
+mmz1218bono@gmail.com
+```
 
 ## Common GitHub terms
 

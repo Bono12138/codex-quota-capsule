@@ -3,7 +3,9 @@
 不懂 GitHub 也可以安装额度胶囊。
 
 GitHub 是一个发布软件项目的网站。
+
 这里保存项目代码和说明。
+
 这里也提供问题反馈和安装包。
 
 下载额度胶囊不需要账号。
@@ -27,20 +29,24 @@ GitHub 是一个发布软件项目的网站。
    ```
 
 4. 不要下载 `Source code (zip)`。
-   它是源代码，不能直接当应用使用。
+
+   它不是可运行的应用。
 5. 双击下载的 ZIP 文件，将它解压。
 6. 把解压得到的应用拖进“应用程序”。
 7. 在“应用程序”里打开额度胶囊。
 
 启动后，桌面会出现一个额度胶囊。
+
 菜单栏也会出现额度胶囊图标。
 
 ## macOS 阻止首次打开怎么办
 
 当前 Beta 还没有经过 Apple 公证。
+
 macOS 可能提示无法验证开发者。
 
 请先确认应用来自本项目的官方发布页。
+
 确认来源后，按照 Apple 当前的处理方式操作：
 
 1. 先尝试打开一次应用。
@@ -51,8 +57,11 @@ macOS 可能提示无法验证开发者。
 6. 再次确认“打开”。
 
 如果 macOS 提示应用已损坏，请停止安装。
+
 如果系统提示它会损害电脑，也请停止安装。
+
 出现这两类提示时，请向项目反馈。
+
 不要绕过这类安全警告。
 
 Apple 官方说明：[Mac App 安全指南](https://support.apple.com/zh-cn/102445)。
@@ -84,7 +93,7 @@ GitHub 官方说明：[创建个人账号](https://docs.github.com/zh/account-an
 3. 点击 **New issue**。
 4. 写清楚你看到的现象和发生时间。
 5. 补充额度胶囊版本和 macOS 版本。
-6. 截图前遮住账号、项目名称和其他私人信息。
+6. 截图前遮住私人信息。
 
 请不要上传下面这些内容：
 
@@ -93,17 +102,21 @@ GitHub 官方说明：[创建个人账号](https://docs.github.com/zh/account-an
 - 私有文件路径。
 - 账号凭据。
 
-不想注册 GitHub，也可以发送邮件到 `mmz1218bono@gmail.com`。
+不想注册 GitHub，也可以发邮件。
+
+```text
+mmz1218bono@gmail.com
+```
 
 ## GitHub 页面里几个常见词
 
 | 页面文字 | 普通用户需要知道什么 |
 | --- | --- |
-| Repository | 软件在 GitHub 上的项目主页。 |
+| Repository | GitHub 项目主页。 |
 | Release | 已经打包好的发布版本。 |
-| Assets | Release 中可以下载的文件。 |
-| Source code | 源代码。普通用户不用下载。 |
-| Issues | 报告 Bug 和提出建议的地方。 |
+| Assets | 可下载文件。 |
+| Source code | 源代码。普通用户无需使用。 |
+| Issues | 报告 Bug 和建议。 |
 | Star | 收藏并支持这个项目。 |
 
 GitHub 官方说明：[Release 是什么](https://docs.github.com/zh/repositories/releasing-projects-on-github/about-releases)。
