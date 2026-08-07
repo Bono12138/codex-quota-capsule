@@ -115,7 +115,7 @@ mmz1218bono@gmail.com
 | Repository | GitHub 项目主页。 |
 | Release | 已经打包好的发布版本。 |
 | Assets | 可下载文件。 |
-| Source code | 开发者文件。 |
+| Source&nbsp;code | 开发者文件。 |
 | Issues | 报告 Bug 和建议。 |
 | Star | 收藏并支持这个项目。 |
 

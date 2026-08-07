@@ -116,9 +116,9 @@ mmz1218bono@gmail.com
 | Term | Meaning |
 | --- | --- |
 | Repository | Project home page. |
-| Release | A packaged app version. |
+| Release | Packaged app. |
 | Assets | Files in a Release. |
-| Source code | Developer files. |
+| Source&nbsp;code | Developer files. |
 | Issues | Bugs and suggestions. |
 | Star | Bookmark and support. |
 
