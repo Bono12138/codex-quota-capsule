@@ -11,6 +11,7 @@ export type CapsuleDisplayModel = {
   statusLabel: string;
   defaultText: string;
   compactDetail: string;
+  primaryHorizonText: string;
   detailMetrics: CapsuleDisplayMetric[];
   confidenceText: string;
 };
@@ -21,26 +22,58 @@ const STATUS_LABELS: Record<WeeklyRunwayState, string> = {
   calibrating: "确认额度变化",
   earlyEstimate: "初步估算",
   enough: "够用",
-  watch: "偏快",
+  watch: "波动较大",
   mayRunOut: "可能不够",
 };
 
 export function createCapsuleDisplayModel(forecast: WeeklyRunwayForecast): CapsuleDisplayModel {
   const elapsed = safePercent(forecast.elapsedPercent);
   const used = safePercent(forecast.usedPercent);
+  const hasResetCreditDeadline = forecast.burnHorizonSource === "resetCreditExpiry"
+    && forecast.state !== "exhausted"
+    && forecast.state !== "unavailable";
+  const promptsCreditUse = shouldPromptCreditUse(forecast);
   return {
-    tone: toneFor(forecast.state),
-    statusLabel: STATUS_LABELS[forecast.state],
-    defaultText: defaultText(forecast),
+    tone: promptsCreditUse ? "watch" : toneFor(forecast.state),
+    statusLabel: promptsCreditUse ? "抓紧使用" : STATUS_LABELS[forecast.state],
+    defaultText: promptsCreditUse
+      ? "最早的重置券即将到期；建议在此之前尽量使用剩余额度"
+      : defaultText(forecast),
     compactDetail: used === null ? "" : `本周已用 ${formatNumber(used)}%`,
+    primaryHorizonText: formatPrimaryHorizon(forecast),
     detailMetrics: [
-      { label: "本周时间", value: formatPercent(elapsed), numericValue: elapsed },
+      { label: hasResetCreditDeadline ? "刷新进度" : "本周时间", value: formatPercent(elapsed), numericValue: elapsed },
       { label: "本周已用", value: formatPercent(used), numericValue: used },
       { label: "未来 24 小时建议", value: formatBudget(forecast.next24HourBudget), numericValue: null },
       { label: "最近 24 小时", value: formatUsageBand(forecast.last24HourUsageBand), numericValue: null },
     ],
     confidenceText: confidenceReason(forecast),
   };
+}
+
+function formatPrimaryHorizon(forecast: WeeklyRunwayForecast): string {
+  if (!forecast.burnHorizonAt || !forecast.burnHorizonSource) return "";
+  const parts = new Intl.DateTimeFormat("zh-CN", {
+    month: "numeric",
+    day: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+    hourCycle: "h23",
+  }).formatToParts(forecast.burnHorizonAt);
+  const value = (type: Intl.DateTimeFormatPartTypes) => parts.find((part) => part.type === type)?.value ?? "--";
+  const timestamp = `${value("month")}月${value("day")}日 ${value("hour")}:${value("minute")}`;
+  return forecast.burnHorizonSource === "resetCreditExpiry"
+    ? `重置券到期 · ${timestamp}`
+    : `下次重置 · ${timestamp}`;
+}
+
+function shouldPromptCreditUse(forecast: WeeklyRunwayForecast): boolean {
+  if (forecast.burnHorizonSource !== "resetCreditExpiry") return false;
+  if (forecast.state === "enough") return true;
+  if (forecast.state !== "earlyEstimate") return false;
+  const band = forecast.projectedRemainingBandAtReset;
+  return band === null || Math.min(band.lower, band.upper) >= 0;
 }
 
 function toneFor(state: WeeklyRunwayState): CapsuleLevel {
@@ -63,7 +96,7 @@ function defaultText(forecast: WeeklyRunwayForecast): string {
       if (band.upper < 0) return "初步判断：按本周平均速度可能不够";
       if (band.lower > 0) return "初步判断：按本周平均速度目前可持续";
     }
-    return "初步判断：按本周平均速度可能偏快";
+    return "初步判断：周速度波动较大";
   }
   if (forecast.state === "mayRunOut") return "照最近速度，本周额度可能在重置前用完";
   const range = safeRange(forecast.projectedRemainingBandAtReset);
@@ -87,9 +120,10 @@ function formatBudget(value: number | null): string {
 
 function confidenceReason(forecast: WeeklyRunwayForecast): string {
   const transitions = Math.max(0, ...forecast.paceEvidence.map((item) => item.transitionCount));
+  if (forecast.burnHorizonSource === "resetCreditExpiry") return "下一次刷新按最早到期的重置券计算";
   if (forecast.confidenceReason === "no-consumption-observed") return "开始使用后会根据实际增长更新判断";
   if (forecast.confidenceReason === "cycle-only" || forecast.state === "earlyEstimate") return "初步判断：仅依据当前周期平均速度";
-  if (forecast.confidence === "high") return "可信度高：周期、最近 24 小时和活动节奏一致";
+  if (forecast.confidence === "high") return "可信度高：周期、短期和历史节奏一致";
   if (forecast.confidence === "medium" && transitions > 0) return `可信度中：已观察到 ${transitions} 次实际增长`;
   return "";
 }

@@ -6,7 +6,12 @@ import Testing
 struct WeeklyRunwayPredictorTests {
     private let now = Date(timeIntervalSince1970: 2_000_000_000)
 
-    private func snapshot(remaining: Double, daysRemaining: Double) -> AgentQuotaSnapshot {
+    private func snapshot(
+        remaining: Double,
+        daysRemaining: Double,
+        resetCredits: [ResetCredit]? = nil,
+        availableCreditCount: Int? = nil
+    ) -> AgentQuotaSnapshot {
         AgentQuotaSnapshot(
             provider: "codex",
             sourceStatus: .ok,
@@ -18,7 +23,31 @@ struct WeeklyRunwayPredictorTests {
                 remainingPercent: remaining,
                 resetsAt: now.addingTimeInterval(daysRemaining * 86_400)
             ),
+            resetCreditBank: resetCredits.map {
+                ResetCreditBankSummary(
+                    availableCount: availableCreditCount
+                        ?? $0.filter { $0.status == .available }.count,
+                    credits: $0,
+                    detailState: .complete,
+                    fetchedAt: now
+                )
+            },
             errorMessage: nil
+        )
+    }
+
+    private func resetCredit(
+        status: ResetCreditStatus = .available,
+        expiresInDays: Double?
+    ) -> ResetCredit {
+        ResetCredit(
+            fingerprint: UUID().uuidString,
+            resetType: "codexRateLimits",
+            status: status,
+            grantedAt: nil,
+            grantTimeSource: .unknown,
+            expiresAt: expiresInDays.map { now.addingTimeInterval($0 * 86_400) },
+            title: "Full reset"
         )
     }
 
@@ -57,6 +86,134 @@ struct WeeklyRunwayPredictorTests {
 
         #expect(forecast.sustainableRatePerDay == 16.25)
         #expect(forecast.next24HourBudget == 16.25)
+    }
+
+    @Test("an earlier reset-credit expiry becomes the current burn horizon")
+    func resetCreditExpiryBecomesBurnHorizon() {
+        let forecast = WeeklyRunwayPredictor.predict(
+            snapshot: snapshot(
+                remaining: 100,
+                daysRemaining: 7,
+                resetCredits: [resetCredit(expiresInDays: 0.75)]
+            ),
+            quality: quality(values: [0], spacingHours: 1, resetDays: 7),
+            now: now
+        )
+        let model = CapsuleDisplayModel.make(forecast: forecast, locale: .zhHans)
+
+        #expect(abs((forecast.daysUntilReset ?? 0) - 0.75) < 0.000_001)
+        #expect(abs((forecast.sustainableRatePerDay ?? 0) - (100 / 0.75)) < 0.000_001)
+        #expect(forecast.next24HourBudget == 100)
+        #expect(forecast.burnHorizonAt == now.addingTimeInterval(0.75 * 86_400))
+        #expect(forecast.burnHorizonSource == .resetCreditExpiry)
+        #expect(forecast.confidenceReason == "no-consumption-observed")
+        #expect(model.statusLabel == "抓紧使用")
+        #expect(model.defaultText.contains("重置券"))
+        #expect(model.defaultText.contains("尽量使用"))
+        #expect(model.confidenceText == "下一次刷新按最早到期的重置券计算")
+    }
+
+    @Test("time progress keeps the real weekly start but ends at the earlier credit deadline")
+    func elapsedProgressEndsAtCreditDeadline() {
+        let forecast = WeeklyRunwayPredictor.predict(
+            snapshot: snapshot(
+                remaining: 98,
+                daysRemaining: 6.9,
+                resetCredits: [resetCredit(expiresInDays: 0.75)]
+            ),
+            quality: quality(values: [2], spacingHours: 1, resetDays: 6.9),
+            now: now
+        )
+
+        let expected = 0.1 / 0.85 * 100
+        #expect(abs((forecast.elapsedPercent ?? 0) - expected) < 0.000_001)
+    }
+
+    @Test("calibration keeps the earlier reset-credit burn horizon")
+    func calibrationKeepsCreditHorizon() {
+        let forecast = WeeklyRunwayPredictor.predict(
+            snapshot: snapshot(
+                remaining: 100,
+                daysRemaining: 7,
+                resetCredits: [resetCredit(expiresInDays: 0.75)]
+            ),
+            quality: quality(
+                values: [0],
+                spacingHours: 1,
+                resetDays: 7,
+                state: .calibrating
+            ),
+            now: now
+        )
+
+        #expect(forecast.state == .calibrating)
+        #expect(abs((forecast.daysUntilReset ?? 0) - 0.75) < 0.000_001)
+        #expect(forecast.next24HourBudget == 100)
+        #expect(forecast.burnHorizonSource == .resetCreditExpiry)
+    }
+
+    @Test("the natural weekly reset remains the horizon when it comes first")
+    func naturalResetWinsWhenEarlier() {
+        let forecast = WeeklyRunwayPredictor.predict(
+            snapshot: snapshot(
+                remaining: 80,
+                daysRemaining: 0.5,
+                resetCredits: [resetCredit(expiresInDays: 1)]
+            ),
+            quality: quality(values: [20], spacingHours: 1, resetDays: 0.5),
+            now: now
+        )
+
+        #expect(abs((forecast.daysUntilReset ?? 0) - 0.5) < 0.000_001)
+        #expect(forecast.next24HourBudget == 80)
+        #expect(forecast.burnHorizonSource == .naturalReset)
+    }
+
+    @Test("expired, redeemed, and undated credits do not move the burn horizon")
+    func unusableCreditsAreIgnored() {
+        let forecast = WeeklyRunwayPredictor.predict(
+            snapshot: snapshot(
+                remaining: 70,
+                daysRemaining: 4,
+                resetCredits: [
+                    resetCredit(expiresInDays: -1),
+                    resetCredit(status: .redeemed, expiresInDays: 0.5),
+                    resetCredit(expiresInDays: nil),
+                    ResetCredit(
+                        fingerprint: "wrong-reset-type",
+                        resetType: "chatgptMessages",
+                        status: .available,
+                        grantedAt: nil,
+                        grantTimeSource: .unknown,
+                        expiresAt: now.addingTimeInterval(0.25 * 86_400),
+                        title: nil
+                    )
+                ]
+            ),
+            quality: quality(values: [30], spacingHours: 1, resetDays: 4),
+            now: now
+        )
+
+        #expect(abs((forecast.daysUntilReset ?? 0) - 4) < 0.000_001)
+        #expect(forecast.next24HourBudget == 17.5)
+        #expect(forecast.burnHorizonSource == .naturalReset)
+    }
+
+    @Test("an authoritative zero available count prevents stale detail rows from moving the horizon")
+    func authoritativeZeroCountWinsOverDetails() {
+        let forecast = WeeklyRunwayPredictor.predict(
+            snapshot: snapshot(
+                remaining: 80,
+                daysRemaining: 4,
+                resetCredits: [resetCredit(expiresInDays: 0.5)],
+                availableCreditCount: 0
+            ),
+            quality: quality(values: [20], spacingHours: 1, resetDays: 4),
+            now: now
+        )
+
+        #expect(forecast.burnHorizonSource == .naturalReset)
+        #expect(forecast.daysUntilReset == 4)
     }
 
     @Test("the last-24-hour metric is actual consumption rather than a daily rate")
@@ -155,6 +312,87 @@ struct WeeklyRunwayPredictorTests {
 
         #expect(forecast.state == .enough)
         #expect(forecast.projectedRemainingBandAtReset?.lower ?? 0 > 0)
+    }
+
+    @Test("flat polling cannot turn a low-use week into running fast")
+    func flatPollingDoesNotCreateFastState() {
+        let resetAt = now.addingTimeInterval(5.8 * 86_400)
+        let sparse = [
+            (-24.0, 0.0),
+            (-6.0, 1.0),
+            (-4.0, 2.0),
+            (-1.0, 4.0),
+            (0.0, 4.0)
+        ]
+        var polled = sparse
+        for hour in 1..<18 { polled.append((Double(hour - 24), 0)) }
+        for minute in stride(from: -350, through: -250, by: 10) { polled.append((Double(minute) / 60, 1)) }
+        for minute in stride(from: -230, through: -70, by: 10) { polled.append((Double(minute) / 60, 2)) }
+        for minute in stride(from: -50, through: -10, by: 10) { polled.append((Double(minute) / 60, 4)) }
+
+        func forecast(_ samples: [(Double, Double)]) -> WeeklyRunwayForecast {
+            let observations = samples.sorted { $0.0 < $1.0 }.map { hours, used in
+                WeeklyObservation(
+                    fetchedAt: now.addingTimeInterval(hours * 3_600),
+                    canonicalResetAt: resetAt,
+                    usedPercent: used,
+                    remainingPercent: 100 - used,
+                    cycleID: 0,
+                    segmentID: 0
+                )
+            }
+            return WeeklyRunwayPredictor.predict(
+                snapshot: snapshot(remaining: 96, daysRemaining: 5.8),
+                quality: WeeklyQualityResult(state: .stable, observations: observations, canonicalResetAt: resetAt, flags: []),
+                now: now
+            )
+        }
+
+        let sparseForecast = forecast(sparse)
+        let polledForecast = forecast(polled)
+
+        #expect(sparseForecast.state == .enough)
+        #expect(polledForecast.state == .enough)
+        #expect(sparseForecast.projectedRemainingBandAtReset == polledForecast.projectedRemainingBandAtReset)
+    }
+
+    @Test("a short burst is not extrapolated across the rest of the week")
+    func shortBurstMeanRevertsTowardTheCyclePace() throws {
+        let daysRemaining = 5.78
+        let resetAt = now.addingTimeInterval(daysRemaining * 86_400)
+        let observations = [
+            (-7.0, 0.0),
+            (-6.75, 1.0),
+            (-4.7, 2.0),
+            (-1.55, 4.0),
+            (-0.7, 5.0),
+            (0.0, 6.0)
+        ].map { hours, used in
+            WeeklyObservation(
+                fetchedAt: now.addingTimeInterval(hours * 3_600),
+                canonicalResetAt: resetAt,
+                usedPercent: used,
+                remainingPercent: 100 - used,
+                cycleID: 0,
+                segmentID: 0
+            )
+        }
+
+        let forecast = WeeklyRunwayPredictor.predict(
+            snapshot: snapshot(remaining: 94, daysRemaining: daysRemaining),
+            quality: WeeklyQualityResult(
+                state: .stable,
+                observations: observations,
+                canonicalResetAt: resetAt,
+                flags: []
+            ),
+            now: now
+        )
+
+        let projected = try #require(forecast.projectedRemainingBandAtReset)
+        #expect(forecast.state == .enough)
+        #expect(projected.lower > 35)
+        #expect(projected.upper - projected.lower < 25)
     }
 
     @Test("exhaustion takes precedence over low-confidence evidence")

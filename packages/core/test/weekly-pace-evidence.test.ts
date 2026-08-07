@@ -49,6 +49,32 @@ describe("adaptive weekly pace evidence", () => {
     expect(recentEvidence(observations([9, 9, 9], 2), now)).toBeNull();
   });
 
+  it("keeps recent pace invariant under repeated flat polling", () => {
+    const sparse = [
+      observation(new Date(now.getTime() - 24 * 3_600_000), 0),
+      observation(new Date(now.getTime() - 6 * 3_600_000), 1),
+      observation(new Date(now.getTime() - 4 * 3_600_000), 2),
+      observation(new Date(now.getTime() - 1 * 3_600_000), 4),
+      observation(now, 4),
+    ];
+    const polled = sparse.slice();
+    for (let hour = 1; hour < 18; hour += 1) {
+      polled.push(observation(new Date(now.getTime() + (hour - 24) * 3_600_000), 0));
+    }
+    for (let minute = -350; minute <= -250; minute += 10) {
+      polled.push(observation(new Date(now.getTime() + minute * 60_000), 1));
+    }
+    for (let minute = -230; minute <= -70; minute += 10) {
+      polled.push(observation(new Date(now.getTime() + minute * 60_000), 2));
+    }
+    for (let minute = -50; minute <= -10; minute += 10) {
+      polled.push(observation(new Date(now.getTime() + minute * 60_000), 4));
+    }
+    polled.sort((left, right) => left.fetchedAt.getTime() - right.fetchedAt.getTime());
+
+    expect(recentEvidence(polled, now)?.bandPerDay).toEqual(recentEvidence(sparse, now)?.bandPerDay);
+  });
+
   it("decays activity pace after a burst becomes idle", () => {
     const burstEnd = new Date(now.getTime() - 12 * 3_600_000);
     const samples = [observation(new Date(burstEnd.getTime() - 2 * 3_600_000), 5), observation(burstEnd, 9)];
@@ -192,7 +218,11 @@ describe("adaptive weekly pace evidence", () => {
 
     expect(forecastConfidenceForEvidence(paths, 2.99, 1, 14)).toBe("low");
     expect(forecastConfidenceForEvidence(paths, 3, 1, 14)).toBe("medium");
-    expect(forecastConfidenceForEvidence(paths, 24, 3, 14)).toBe("high");
+    expect(forecastConfidenceForEvidence(paths, 24, 3, 14)).toBe("medium");
+    expect(forecastConfidenceForEvidence([
+      ...paths,
+      evidence("historical", 9, 11),
+    ], 24, 3, 14)).toBe("high");
   });
 });
 

@@ -2,6 +2,35 @@
 
 All notable user-visible and repository-governance changes are recorded here.
 
+## 0.3.5-beta.1 — 2026-08-07
+
+### Changed
+
+- Promote the exact next quota reset or selected reset-credit deadline into the docked, collapsed, and top expanded surfaces so it is visible without scrolling.
+- Replace full-horizon extrapolation of correlated recent/activity bursts with a horizon-aware, one-day mean-reversion model anchored by cycle and historical pace.
+- Prevent recent and activity views of the same usage changes from double-counting toward high forecast confidence.
+- Keep slower supported scenarios visible while preventing a few hours of concentrated use from producing a meaningless week-long `0%–75%` style range.
+- Calculate the current budget and projection to the earlier of the natural weekly reset or the earliest known available Codex reset-credit expiry.
+- Recompute the horizon after every confirmed reset or redemption instead of predicting an unconfirmed future weekly reset.
+- Show `抓紧使用 / Use before reset`, refresh progress, and the exact credit deadline when a credit-based refresh comes first and quota would otherwise remain unused.
+- Preserve runout warnings when the allowance may be exhausted before the credit deadline.
+- Separate the formal burn-horizon source and timestamp from pace-confidence reasons in both Swift and TypeScript.
+
+### Fixed
+
+- Bring the floating capsule back inside an active display whenever it is shown, including after an external monitor is disconnected.
+
+### Verification
+
+- Add Swift and TypeScript regressions reproducing a seven-hour burst followed by almost six forecast days, plus exact localized primary-horizon copy tests.
+- Add Swift and TypeScript regressions for an earlier credit expiry, natural-reset precedence, invalid credit exclusion, calibration, shortened progress, 24-hour budget clamping, and non-overspending presentation.
+- Add native placement regressions for disconnected-display recovery and preserving the capsule's current active display.
+
+### Documentation
+
+- Add Chinese and English first-time guides that explain GitHub, direct Release downloads, optional account registration, safe macOS first launch, and privacy-safe issue reporting.
+- Remove quarantine-clearing commands from the ordinary installation path and follow Apple's current Privacy & Security guidance instead.
+
 ## 0.3.4-beta.1 — 2026-07-18
 
 ### Fixed

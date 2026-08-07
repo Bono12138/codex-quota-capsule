@@ -9,6 +9,9 @@
 
 公开仓库是唯一安装来源：<https://github.com/Bono12138/codex-quota-capsule>。
 
+普通用户不需要注册 GitHub，也不需要安装开发工具。
+请直接阅读：[第一次使用额度胶囊](docs/getting-started.zh-CN.md)。
+
 ## Codex-assisted 安装
 
 可以把下面的提示交给本机 Codex：
@@ -48,12 +51,12 @@ npm run mac:install
 | Build output | `dist/beta/Quota Capsule Beta.app` |
 | Zip | `dist/beta/Quota-Capsule-Beta-macOS.zip` |
 
-如果首次打开被 Gatekeeper 拦截，请在 Finder 中右键应用并选择“打开”。必要时：
+如果首次打开被 Gatekeeper 拦截，请先确认应用来自官方 Release。
+然后打开“系统设置 → 隐私与安全性”，找到额度胶囊并点击“仍要打开”。
+完整步骤见 [Apple 官方说明](https://support.apple.com/zh-cn/102445)。
 
-```bash
-xattr -dr com.apple.quarantine "/Applications/Quota Capsule Beta.app"
-open "/Applications/Quota Capsule Beta.app"
-```
+如果 macOS 明确提示应用已损坏或会损害电脑，请停止安装并反馈。
+不要用命令跳过这类安全警告。
 
 ## 使用方式
 
@@ -61,7 +64,7 @@ open "/Applications/Quota Capsule Beta.app"
 - 点击展开后可查看未来 24 小时预算、预测区间、速度证据、重置时间和数据更新时间。
 - 展开面板最下方显示当前重置券权威数量，以及 app-server 已返回的每张可用券到期时间（本机时区，精确到分钟）。
 - 菜单栏可手动刷新、显示/隐藏胶囊、打开反馈和退出。
-- 后台每 60 秒自动读取；读取失败时保留最后成功数据并明确标记为旧数据。
+- 后台每 60 秒自动读取；读取失败时保留最后成功数据并明确标记为“读取失败”，不会把额度本身说成“已过期”。
 
 “周额度重置时间”和“数据更新时间”是两个不同概念，界面会分别显示。
 
@@ -95,6 +98,17 @@ npm run probe:codex:rate-limits
 ```
 
 确认 CLI 可用且已登录。找不到 CLI、未登录、读取超时、字段缺失和数据过期会显示不同诊断；应用不会修改 Codex 安装或登录状态。
+
+如果 `codex --version` 显示预发布版（例如带 `alpha`），且额度探针持续报网络错误，可用同一账号交叉验证官方稳定版：
+
+```bash
+npm install -g @openai/codex@latest
+hash -r
+codex --version
+npm run probe:codex:rate-limits
+```
+
+探针恢复后再启动 Quota Capsule。不要为绕过读取失败而把账号令牌复制进应用；Quota Capsule 仍只通过本机 Codex app-server 读取。
 
 如果出现两个胶囊，维护者应先运行 `./script/retire_legacy_dev.sh --dry-run`。只有本地退休归档已经完成并通过校验时，才允许使用 `--apply`；普通用户不需要此步骤。
 

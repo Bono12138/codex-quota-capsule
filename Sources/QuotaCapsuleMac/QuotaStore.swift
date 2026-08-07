@@ -256,17 +256,38 @@ final class QuotaStore: ObservableObject {
     }
 
     var resetText: String {
-        guard let resetsAt = snapshot.weeklyWindow?.resetsAt else {
+        guard let horizon = WeeklyRunwayPredictor.burnHorizon(
+            snapshot: snapshot,
+            now: currentTime
+        ) else {
             return copy.unknownValue
         }
-        return QuotaStore.timeFormatter(for: locale).string(from: resetsAt)
+        return QuotaStore.minuteTimeFormatter(for: locale).string(from: horizon.at)
+    }
+
+    var primaryHorizonText: String {
+        guard let horizon = WeeklyRunwayPredictor.burnHorizon(
+            snapshot: snapshot,
+            now: currentTime
+        ) else {
+            return "\(copy.resetTimeTitle) · \(copy.unknownValue)"
+        }
+        return copy.primaryHorizonLabel(at: horizon.at, source: horizon.source)
     }
 
     var quotaResetDescription: String {
-        guard let resetsAt = snapshot.weeklyWindow?.resetsAt else {
+        guard let horizon = WeeklyRunwayPredictor.burnHorizon(
+            snapshot: snapshot,
+            now: currentTime
+        ) else {
             return "\(copy.resetTimeTitle)：\(copy.unknownValue)"
         }
-        return copy.quotaResetDescription(resetsAt: resetsAt, now: currentTime)
+        switch horizon.source {
+        case .naturalReset:
+            return copy.quotaResetDescription(resetsAt: horizon.at, now: currentTime)
+        case .resetCreditExpiry:
+            return copy.resetCreditDeadlineDescription(expiresAt: horizon.at, now: currentTime)
+        }
     }
 
     var dataRefreshDescription: String {
@@ -850,6 +871,12 @@ final class QuotaStore: ObservableObject {
             formatter.locale = Locale(identifier: "en_US_POSIX")
         }
         formatter.dateFormat = "HH:mm:ss"
+        return formatter
+    }
+
+    static func minuteTimeFormatter(for locale: QuotaLocale) -> DateFormatter {
+        let formatter = timeFormatter(for: locale)
+        formatter.dateFormat = "HH:mm"
         return formatter
     }
 

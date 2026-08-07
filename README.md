@@ -6,9 +6,9 @@ Languages: [简体中文](README.zh-CN.md) | [English](README.en.md)
 
 **一个本地优先、面向 Codex 重度用户的 macOS 额度判断胶囊。**
 
-> At the current pace, can I keep working until the next weekly reset?
+> Before the next real refresh, will my quota run out—or be wasted?
 >
-> 按现在这个速度，我能不能撑到下一次周额度重置？
+> 在下一次实际刷新前，我的额度会不够，还是会被白白浪费？
 
 ![Quota Capsule collapsed and expanded](docs/assets/product/quota-capsule-expanded.png)
 
@@ -22,9 +22,13 @@ Heavy AI-native users may run several tasks at once, repeatedly check the usage 
 
 AI-native 重度用户经常同时运行多个任务，也会反复查看 usage 页面：有时明明还有大量已付费额度，却因为不知道够不够而刻意收着用；有时又在临近重置时才发现还有很多额度没有用完。额度胶囊把已用额度、时间进度、最近速度、当前活动和可用历史证据合并成一句能直接行动的判断。
 
-It reports six honest states—Early estimate, On track, Running fast, May run out, Exhausted, and Data unavailable—plus a next-24-hour budget and a forecast range for the balance at reset.
+It reports six honest states—Early estimate, On track, Uncertain pace, May run out, Exhausted, and Data unavailable—plus a next-24-hour budget and a forecast range for the balance at refresh. The horizon is the earlier of the natural weekly reset or the earliest known available reset-credit expiry.
 
-它会给出“初步判断、够用、偏快、可能不够、已用尽、数据暂不可用”六种诚实状态，并显示未来 24 小时建议和重置时的预计余量区间。
+它会给出“初步判断、够用、波动较大、可能不够、已用尽、数据暂不可用”六种诚实状态，并显示未来 24 小时建议和刷新时的预计余量区间。当前刷新终点取自然周重置与最早已知可用重置券到期时间中更早者。
+
+When a reset credit expires first and quota would otherwise remain unused, the app shows `Use before reset`, recalculates progress and budget to that deadline, and displays the exact expiry. After redemption or a natural reset, it reads the new state before calculating again.
+
+如果重置券先到期且额度可能被浪费，应用会显示“抓紧使用”，按券到期时间重算进度和预算，并展示精确截止时间。使用重置券或自然重置后，再读取新状态重新计算。
 
 ## Product Surfaces / 产品形态
 
@@ -32,13 +36,13 @@ Quota Capsule is designed to stay quiet until the user needs more detail:
 
 - A small floating desktop capsule with the current judgment and weekly usage.
 - A menu bar status item for glanceable, always-available context.
-- An expanded panel with time and usage progress, pace evidence, forecast confidence, a sustainable line, reset timing, and local history.
+- An expanded panel with refresh and usage progress, pace evidence, forecast confidence, a sustainable line, next-refresh timing, and local history.
 
 额度胶囊尽量安静地常驻，只在用户需要时展开更多信息：
 
 - 桌面悬浮胶囊显示当前判断与周已用比例。
 - 菜单栏提供随时可见的一眼状态。
-- 展开面板显示时间/用量进度、速度证据、预测置信度、可持续线、重置时间和本地历史。
+- 展开面板显示刷新/用量进度、速度证据、预测置信度、可持续线、下一刷新点和本地历史。
 
 ![Quota Capsule collapsed](docs/assets/product/quota-capsule-collapsed.png)
 
@@ -46,9 +50,9 @@ Quota Capsule is designed to stay quiet until the user needs more detail:
 
 ## Current Beta / 当前 Beta
 
-The current public prerelease is [v0.3.4-beta.1](https://github.com/Bono12138/codex-quota-capsule/releases/tag/v0.3.4-beta.1). It includes:
+The current public prerelease is [v0.3.5-beta.1](https://github.com/Bono12138/codex-quota-capsule/releases/tag/v0.3.5-beta.1). It includes:
 
-当前公开预发布版本是 [v0.3.4-beta.1](https://github.com/Bono12138/codex-quota-capsule/releases/tag/v0.3.4-beta.1)，已经包括：
+当前公开预发布版本是 [v0.3.5-beta.1](https://github.com/Bono12138/codex-quota-capsule/releases/tag/v0.3.5-beta.1)，已经包括：
 
 - Native floating desktop capsule and menu bar item / 原生桌面悬浮胶囊和菜单栏入口。
 - Read-only Codex app-server rate-limit source / 只读 Codex app-server rate-limit 数据源。
@@ -65,9 +69,15 @@ See [Forecast Methodology / 预测方法](docs/product/forecast-methodology.md) 
 
 ### Download the current beta / 下载当前 Beta
 
-Download `Quota-Capsule-Beta-macOS.zip` from the [v0.3.4-beta.1 release](https://github.com/Bono12138/codex-quota-capsule/releases/tag/v0.3.4-beta.1).
+No GitHub account is required to download the public app.
+You can follow the [English first-time guide](docs/getting-started.en.md) or the [中文新手教程](docs/getting-started.zh-CN.md).
 
-从 [v0.3.4-beta.1 Release](https://github.com/Bono12138/codex-quota-capsule/releases/tag/v0.3.4-beta.1) 下载 `Quota-Capsule-Beta-macOS.zip`。
+Download `Quota-Capsule-Beta-macOS.zip` from the [v0.3.5-beta.1 release](https://github.com/Bono12138/codex-quota-capsule/releases/tag/v0.3.5-beta.1).
+
+下载公开安装包不需要 GitHub 账号。
+请阅读 [中文新手教程](docs/getting-started.zh-CN.md) 或 [English first-time guide](docs/getting-started.en.md)。
+
+从 [v0.3.5-beta.1 Release](https://github.com/Bono12138/codex-quota-capsule/releases/tag/v0.3.5-beta.1) 下载 `Quota-Capsule-Beta-macOS.zip`。
 
 The current beta uses ad-hoc signing and is not yet notarized. macOS may require opening the app from Finder with **Right-click → Open**. See [INSTALL.md](INSTALL.md) for system requirements and Gatekeeper guidance.
 

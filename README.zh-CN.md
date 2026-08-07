@@ -4,7 +4,7 @@
 
 **一个本地优先、面向 Codex 重度用户的 macOS 额度判断胶囊。**
 
-> 按现在这个速度，我能不能撑到下一次周额度重置？
+> 在下一次实际刷新前，我的额度会不够，还是会被白白浪费？
 
 ![额度胶囊收起与展开状态](docs/assets/product/quota-capsule-expanded.png)
 
@@ -14,16 +14,18 @@
 
 AI-native 重度用户经常同时运行多个任务，也会反复查看 usage 页面：有时明明还有大量已付费额度，却因为不知道够不够而刻意收着用；有时又在临近重置时才发现还有很多额度没有用完。
 
-额度胶囊把已用额度、时间进度、最近速度、当前活动和可用历史证据合并成一句能直接行动的判断，并显示未来 24 小时建议和重置时的预计余量区间。
+额度胶囊把已用额度、时间进度、最近速度、当前活动和可用历史证据合并成一句能直接行动的判断。下一刷新点取自然周重置与最早可用重置券到期时间中更早者，并据此显示未来 24 小时建议和刷新时的预计余量区间。
 
 它提供六种诚实状态：
 
 - 初步判断：从第一个有效周额度读数开始给出宽区间，并明确标记低置信度。
 - 够用：保守预测区间仍能撑到周额度重置。
-- 偏快：仍可能撑到重置，但余量区间偏薄。
+- 波动较大：不同速度情景给出不同结论，暂不把短期波动说成确定的“偏快”。
 - 可能不够：即使乐观估计也可能在重置前见底。
 - 已用尽：本周额度已经用完，等待重置恢复。
-- 数据暂不可用：实时读取失败或数据过期，只保留最后成功百分比，不给速度结论。
+- 读取失败：保留最后成功百分比并暂停速度结论，同时明确说明这是读取故障，不代表额度已经到期。
+
+如果一张可用重置券会在自然周重置前到期，产品会改用券到期时间计算刷新进度和预算；预计仍会剩下额度时显示“抓紧使用”。使用重置券或自然重置后，再按 Codex 返回的新周重置时间和剩余券重新计算。
 
 Codex 是第一个适配对象。项目保持 agent-extensible：其他 Agent 产品可以添加自己的本地 source adapter，复用同一套额度模型、预测引擎、UI 状态和产品形态。
 
@@ -33,7 +35,7 @@ Codex 是第一个适配对象。项目保持 agent-extensible：其他 Agent �
 
 - 桌面悬浮胶囊显示当前判断与周已用比例。
 - 菜单栏提供随时可见的一眼状态。
-- 展开面板显示时间/用量进度、速度证据、预测置信度、可持续线、重置时间和本地历史。
+- 展开面板显示刷新/用量进度、速度证据、预测置信度、可持续线、下一刷新点和本地历史。
 
 ![额度胶囊收起状态](docs/assets/product/quota-capsule-collapsed.png)
 
@@ -41,7 +43,7 @@ Codex 是第一个适配对象。项目保持 agent-extensible：其他 Agent �
 
 ## 当前 Beta
 
-当前公开预发布版本是 [v0.3.4-beta.1](https://github.com/Bono12138/codex-quota-capsule/releases/tag/v0.3.4-beta.1)，已经包括：
+当前公开预发布版本是 [v0.3.5-beta.1](https://github.com/Bono12138/codex-quota-capsule/releases/tag/v0.3.5-beta.1)，已经包括：
 
 - 原生桌面悬浮胶囊和菜单栏入口。
 - 只读 Codex app-server rate-limit 数据源。
@@ -58,7 +60,11 @@ Codex 是第一个适配对象。项目保持 agent-extensible：其他 Agent �
 
 ### 下载当前 Beta
 
-从 [v0.3.4-beta.1 Release](https://github.com/Bono12138/codex-quota-capsule/releases/tag/v0.3.4-beta.1) 下载 `Quota-Capsule-Beta-macOS.zip`。
+不懂 GitHub 也可以安装，而且下载公开版本不需要注册账号。
+
+请阅读：[第一次使用额度胶囊](docs/getting-started.zh-CN.md)。
+
+从 [v0.3.5-beta.1 Release](https://github.com/Bono12138/codex-quota-capsule/releases/tag/v0.3.5-beta.1) 下载 `Quota-Capsule-Beta-macOS.zip`。
 
 当前 Beta 使用 ad-hoc 签名，尚未公证。macOS 可能要求在 Finder 中对应用执行**右键 → 打开**。系统要求和 Gatekeeper 处理方式见 [INSTALL.md](INSTALL.md)。
 

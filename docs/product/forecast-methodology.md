@@ -1,18 +1,32 @@
 # Adaptive Weekly Forecast Methodology
 
 Status: current product contract
-Updated: 2026-07-18
-Applies to: `v0.3.4-beta.1` and later until superseded
+Updated: 2026-08-02
+Applies to: current source candidate and later releases until superseded
 
 ## Product question
 
 Quota Capsule does not try to make a raw percentage look more precise than it is. It answers:
 
-> At the pace supported by the evidence available now, is the remaining weekly allowance likely to last until reset, and what is a sustainable next-24-hour budget?
+> Before the next unavoidable quota refresh, is the remaining allowance likely to run out or be wasted, and what should the next-24-hour budget be?
 
 The first valid reading must already provide value. It produces a wide early estimate from current-cycle evidence; there is no fixed waiting-time gate. More observations improve the estimate only when they add useful evidence.
 
-Quota reset time and data read time are separate concepts and must always be labelled separately in the interface.
+The next burn horizon, the natural weekly reset, and the local data-read time are separate concepts. Quota reset time and data read time must remain separately labelled, and the interface must name which event currently defines the horizon.
+
+## Current burn horizon
+
+The forecast always chooses one concrete endpoint:
+
+```text
+burn horizon = min(natural weekly reset, earliest known available reset-credit expiry)
+```
+
+Only a reset credit of type `codexRateLimits` whose status is `available`, whose expiry is known, and whose expiry is strictly after the current time is eligible. Redeemed, redeeming, expired, unknown-type, undated, and count-only credits never invent a deadline. If the provider returns no usable credit detail, the natural weekly reset remains the fallback.
+
+This is an explicit product assumption: a user with an available full reset credit will use the earliest-expiring credit before it expires. Its expiry therefore becomes the next planned quota refresh whenever it precedes the natural reset. After a redemption or natural reset, the app reads the new authoritative weekly reset and the remaining credit bank, then applies the same minimum rule again. The app does not predict a future reset timestamp before the upstream source confirms it.
+
+The weekly cycle start remains `natural reset - weekly duration`; a credit does not rewrite historical pace evidence. Time progress uses that real cycle start and the selected burn horizon as its endpoint. This preserves the true amount of quota already consumed while making the remaining-time budget answer the event the user will actually act on.
 
 ## Input quality
 
@@ -38,9 +52,9 @@ The upstream percentage is displayed at limited precision. An integer reading `p
 
 In other words, the measurement uncertainty is ±0.5 percentage point, clipped to `[0, 100]`. Pace and projection calculations propagate the lower and upper bounds. A displayed `0%` therefore does not prove that the true pace is exactly zero.
 
-## Independent pace evidence
+## Pace evidence
 
-Each estimator returns a daily pace band, reliability in `[0, 1]`, real transition count, and coverage hours.
+Each estimator returns a daily pace band, reliability in `[0, 1]`, real transition count, and coverage hours. Cycle and historical evidence describe a longer-run baseline. Recent and activity evidence are two correlated views of the same short-run observations; they must not be counted as independent votes.
 
 ### Cycle evidence
 
@@ -48,7 +62,7 @@ Cycle evidence is available from the first valid reading. The cycle start is `re
 
 ### Recent evidence
 
-Recent evidence uses cleaned observations from the latest 24 hours. It requires at least one real upward transition but never requires a fixed number of elapsed hours. Pairwise slopes separated by at least 30 minutes are calculated with quantized bounds; median and median-absolute-deviation filtering limit outlier influence. Repeated flat polling adds elapsed idle time but does not inflate transition count or measurement uncertainty.
+Recent evidence uses cleaned observations from the latest 24 hours. It requires at least one real upward transition but never requires a fixed number of elapsed hours. Consecutive equal readings are reduced to the first observation of each reported level plus the latest trailing observation. Pairwise slopes separated by at least 30 minutes are calculated only across genuine increases, with quantized bounds; median and median-absolute-deviation filtering limit outlier influence. Repeated flat polling therefore adds elapsed idle time but cannot gain statistical weight merely because the app polled more often.
 
 ### Activity evidence
 
@@ -64,44 +78,53 @@ The estimator calculates active consumption rate, a duty ratio of `active + ordi
 
 Historical prior evidence is optional and deliberately weak. A completed cycle must contain at least 48 hours of clean coverage and two real transitions. The most complete clean segment in each completed cycle contributes a robust band; current-cycle evidence always has more influence. A short fragment never becomes a prior.
 
-## Robust fusion and disagreement
+## Horizon-aware fusion and disagreement
 
-The fusion rule depends on how many independent estimators are available:
+The runway forecast first forms a reliability-weighted long-run baseline from the current cycle and any eligible historical prior. It then selects one short-run view: recent evidence when available, otherwise activity evidence. This prevents the same transitions from being counted twice.
 
-- one source is preserved unchanged and remains low confidence;
-- two sources use the full hull of both pace bands;
-- three or more sources use the median midpoint and the widest of the median source half-width or `1.4826 × MAD(midpoints)`.
+The short-run deviation from baseline is treated as temporary and mean-reverts exponentially with a one-day time constant. For a remaining horizon of `H` days, its average influence is:
 
-This median/MAD consensus prevents one burst from dominating while still widening when the independent estimators materially disagree. Confidence is low whenever evidence sources cross the sustainable-survival decision boundary. High confidence additionally requires at least 24 hours of clean coverage, three real transitions, at least three agreeing sources, and a narrow relative spread.
+```text
+coverage weight = sqrt(min(1, short-run coverage hours / 24))
+mean-reversion weight = coverage weight × (1 - exp(-H)) / H
+```
+
+The short-run band is blended toward the baseline by that weight. The final lower pace retains the slowest supported lower bound, while the upper pace retains the larger of the baseline upper bound and the mean-reversion-adjusted upper bound. This keeps genuine “may or may not last” disagreement visible without projecting a seven-hour burst unchanged over the next six days.
+
+The generic `fuse` helper still preserves one source, uses the full hull for two sources, and median/MAD for three or more sources where a horizon-independent diagnostic is required. It is no longer the runway projection rule. Confidence remains low whenever evidence crosses the sustainable-survival boundary. Recent and activity evidence count as one short-term group for confidence. High confidence additionally requires at least 24 hours of clean coverage, three real transitions, agreement among the independent cycle, short-term, and historical groups, and a narrow relative spread.
 
 ## Budget and projection math
 
 Let:
 
 - `R` = remaining percentage;
-- `H` = hours to reset;
-- `P = [P_low, P_high]` = fused percentage-points-per-hour pace band.
+- `H` = hours to the selected burn horizon;
+- `P = [P_low, P_high]` = horizon-adjusted percentage-points-per-hour pace band.
 
 Then:
 
 ```text
-sustainable hourly pace = remaining / hours to reset
-next-24-hour budget = (remaining / hours to reset) * min(24, hours to reset)
-projected remaining at reset = R - P * H
+sustainable hourly pace = remaining / hours to burn horizon
+next-24-hour budget = (remaining / hours to burn horizon) * min(24, hours to burn horizon)
+projected remaining at refresh = R - P * H
 ```
 
-The projected interval is kept raw, including negative values. A range such as `[-20%, 44%]` means the faster evidence may exhaust the allowance before reset while the slower evidence may leave up to 44%; it must not be clamped into the misleading display `0%–44%`.
+The projected interval is kept raw, including negative values. A range such as `[-20%, 44%]` means the faster evidence may exhaust the allowance before reset while the slower evidence may leave up to 44%; it must not be clamped into the misleading display `0%–44%`. A short concentrated burst is first mean-reverted as described above, so this kind of very wide range should occur only when longer-run and recent evidence still support materially different outcomes.
 
-The product rounds the next-24-hour budget down for display. It does not subtract an arbitrary hidden buffer; uncertainty is represented by the forecast interval and confidence explanation. The main surface describes the directly observed period and percentage change, for example “近 8 小时已用约 16%–18%”. A normalized `%/day` comparison is a diagnostic explanation only and never the primary user value.
+The product rounds the next-24-hour budget down for display. When the selected horizon is less than 24 hours away, the budget can legitimately equal the entire remaining allowance. It does not subtract an arbitrary hidden buffer; uncertainty is represented by the forecast interval and confidence explanation. The main surface describes the directly observed period and percentage change, for example “近 8 小时已用约 16%–18%”. A normalized `%/day` comparison is a diagnostic explanation only and never the primary user value.
 
 ## Outcome states
 
 - `earlyEstimate`: only sparse current-cycle evidence is available; a preliminary range and low-confidence reason are shown immediately.
-- `enough`: the conservative projected-remaining bound stays above zero and reliable evidence is not materially above the sustainable pace.
-- `watch`: the projection overlaps zero, reliable pace evidence is materially faster than sustainable, or estimators disagree across the survival boundary.
+- `enough`: the conservative fused projected-remaining bound stays above zero.
+- `watch`: the fused projection overlaps zero, so different supported pace scenarios lead to different survival outcomes. The user-facing label is `波动较大 / Uncertain pace`, not a definitive claim that usage is fast.
 - `mayRunOut`: even the optimistic fused projection is below zero and no reliable evidence supports lasting to reset.
 - `exhausted`: remaining allowance is effectively zero.
 - `unavailable`: the source, timestamps, reset, or quality evidence cannot support an honest current estimate.
+
+A single recent or activity estimator cannot directly promote the state to `watch`. It may widen the fused range or lower confidence, but only the final fused projection determines whether the allowance plausibly crosses zero.
+
+When an earlier reset-credit expiry defines the horizon and the projection still leaves non-negative quota, the presentation adds the contextual action state `抓紧使用 / Use before reset`. It changes “本周时间” to “刷新进度”, names the credit-based horizon, and encourages using the remaining allowance before refresh. It must not override `watch`, `mayRunOut`, or an early projection that already indicates the allowance may run out first.
 
 The calibrating state is a short, visible data-quality transition rather than a user waiting room. A first valid weekly window normally falls back to cycle evidence immediately. When a later reset or correction candidate is still unconfirmed, the UI keeps the last accepted percentages, labels them as accepted rather than newly updated, and pauses the pace judgment until confirmation.
 
@@ -112,8 +135,8 @@ For activity evidence, uncertainty is propagated through the first and last endp
 ## Confidence
 
 - Low confidence: cycle-only evidence, no real current-cycle transition, a single source, or evidence sources disagree across a decision boundary.
-- Medium confidence: at least two agreeing estimators, one real transition, at least three hours of clean coverage, and usable reliability.
-- High confidence: at least three agreeing estimators, at least three spread transitions, at least 24 hours of clean coverage, fresh data, and narrow relative spread.
+- Medium confidence: at least two agreeing independent groups, one real transition, at least three hours of clean coverage, and usable reliability.
+- High confidence: the cycle, one short-term view, and an eligible historical prior agree; there are at least three spread transitions, at least 24 hours of clean coverage, fresh data, and a narrow relative spread.
 
 The UI explains the reason in words, such as cycle-only evidence, observed transition count, or multi-source agreement. Color is never the only confidence or risk signal.
 
@@ -123,7 +146,7 @@ When the latest data is stale or a refresh fails, the app may keep the last succ
 
 The stale surface also hides the pace-comparison sentence and forecast trend band; old percentages remain visibly labelled as the last successful reading rather than current guidance.
 
-## Reset-credit facts are separate from the forecast
+## Reset-credit facts and forecast interaction
 
 `rateLimitResetCredits.availableCount` is the authoritative current count. Per-credit details may be absent or capped, so the interface distinguishes a count-only response from a complete empty bank and explicitly states how many expiry details were not returned.
 
@@ -131,7 +154,9 @@ Normal UI shows each returned available credit's expiry in the Mac's local time 
 
 A reset credit that disappears after its expiry is classified as expired. A pre-expiry reset-credit disappearance remains unknown unless one complete bank transition and an accepted weekly reset in the same refresh support the conservative label likely redeemed. These are local classifications, not provider facts.
 
-Available credits do not change the weekly risk state, color, pace, or budget before an actual reset is confirmed. Redemption controls and optimal-use recommendations are outside this release and are governed separately by `docs/research/reset-credit-timing-optimization.md`.
+An available full reset credit with a known earlier expiry changes the burn horizon, time progress, sustainable pace, next-24-hour budget, projection endpoint, footer timestamp, and action copy. It does not change the measured weekly usage or fabricate a future weekly reset. No credit is automatically redeemed.
+
+This release implements the deterministic “use the earliest-expiring credit before it expires” policy requested by the product owner. It does not solve a general demand-weighted redemption optimization problem. Alternative policies, uncertain future workloads, and multi-credit dynamic programming remain research topics governed by `docs/research/reset-credit-timing-optimization.md`.
 
 ## Cross-runtime parity and change control
 
@@ -150,5 +175,8 @@ Every algorithm change must include, in the same pull request:
 - Upstream quota percentages are coarse and may change source behavior without notice.
 - A first-reading estimate can be wide and should never be presented as certainty.
 - Historical behavior may not predict a new work pattern; its reliability is capped.
+- The one-day mean-reversion constant is a product prior, not a learned personal parameter. It prevents short bursts from dominating before enough account-wide history exists and can be recalibrated only through replay tests.
 - The product estimates allowance pace, not task complexity, tokens, monetary cost, or provider policy.
 - User-visible wording must distinguish a weekly allowance reset from a local data refresh.
+- Count-only credit responses cannot safely shorten the horizon because they contain no expiry timestamp.
+- Pace history stored on one Mac is incomplete when the same account is used elsewhere. Current upstream percentage changes still include cross-device consumption between reads, but activity attribution and local coverage do not.

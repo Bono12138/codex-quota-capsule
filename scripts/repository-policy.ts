@@ -123,7 +123,7 @@ export function auditForecastDocumentation(files: RepositoryFile[]): PolicyFindi
     /activity evidence/i,
     /historical prior/i,
     /confidence/i,
-    /remaining\s*\/\s*hours to reset/i,
+    /remaining\s*\/\s*hours to (?:reset|(?:selected )?burn horizon|next refresh)/i,
     /stale/i,
     /quota reset[^\n]{0,80}data read/i,
   ];
@@ -209,7 +209,10 @@ export function auditReleaseEvidence(files: RepositoryFile[]): PolicyFinding[] {
       findings.push(finding(path, "missing-release-evidence", "required release record is missing"));
     }
   }
-  const evidence = files.find((file) => /^docs\/operations\/release-evidence\/v[^/]+\.md$/.test(file.path.replaceAll("\\", "/")))?.text;
+  const evidence = files
+    .filter((file) => /^docs\/operations\/release-evidence\/v[^/]+\.md$/.test(file.path.replaceAll("\\", "/")))
+    .sort((left, right) => right.path.localeCompare(left.path, undefined, { numeric: true }))
+    .at(0)?.text;
   const requiredSections = [
     /Automated verification/i,
     /Installed app verification/i,

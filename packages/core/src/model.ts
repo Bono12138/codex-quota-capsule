@@ -86,6 +86,7 @@ export type ExhaustionDateRange = { earliest: Date; latest: Date | null };
 export type WeeklyTrendPoint = { at: Date; usedPercent: number };
 export type WeeklyRunwayState = "unavailable" | "exhausted" | "calibrating" | "earlyEstimate" | "enough" | "watch" | "mayRunOut";
 export type ForecastConfidence = "low" | "medium" | "high";
+export type QuotaBurnHorizonSource = "naturalReset" | "resetCreditExpiry";
 
 export type WeeklyRunwayForecast = {
   state: WeeklyRunwayState;
@@ -105,4 +106,6 @@ export type WeeklyRunwayForecast = {
   currentCycleTrend: WeeklyTrendPoint[];
   paceEvidence: PaceEvidence[];
   confidenceReason: string;
+  burnHorizonAt: Date | null;
+  burnHorizonSource: QuotaBurnHorizonSource | null;
 };

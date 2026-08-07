@@ -19,7 +19,8 @@ struct WeeklyDisplayModelTests {
             PaceEvidence(kind: .recent, bandPerDay: PaceBand(lower: 6, upper: 8), reliability: 0.6, transitionCount: 2, coverageHours: 24),
             PaceEvidence(kind: .activity, bandPerDay: PaceBand(lower: 5, upper: 9), reliability: 0.5, transitionCount: 2, coverageHours: 30)
         ],
-        confidenceReason: String = "transitions:2"
+        confidenceReason: String = "transitions:2",
+        burnHorizonSource: QuotaBurnHorizonSource? = nil
     ) -> WeeklyRunwayForecast {
         WeeklyRunwayForecast(
             state: state,
@@ -36,7 +37,8 @@ struct WeeklyDisplayModelTests {
             estimatedEmptyAtRange: nil,
             next24HourBudget: budget,
             paceEvidence: evidence,
-            confidenceReason: confidenceReason
+            confidenceReason: confidenceReason,
+            burnHorizonSource: burnHorizonSource
         )
     }
 
@@ -77,6 +79,77 @@ struct WeeklyDisplayModelTests {
         #expect(!model.confidenceText.contains("6 小时"))
     }
 
+    @Test("a reset credit deadline tells the user to consume allowance before refresh")
+    func resetCreditDeadlineIsActionable() {
+        let model = CapsuleDisplayModel.make(
+            forecast: forecast(
+                state: .earlyEstimate,
+                used: 0,
+                remaining: 100,
+                projected: nil,
+                budget: 100,
+                evidence: [],
+                confidenceReason: "no-consumption-observed",
+                burnHorizonSource: .resetCreditExpiry
+            ),
+            locale: .zhHans
+        )
+
+        #expect(model.tone == .watch)
+        #expect(model.statusLabel == "抓紧使用")
+        #expect(model.defaultText == "最早的重置券即将到期；建议在此之前尽量使用剩余额度")
+        #expect(model.confidenceText == "下一次刷新按最早到期的重置券计算")
+        #expect(model.metrics[2].value == "≤100%")
+    }
+
+    @Test("a credit deadline does not encourage overspending when quota may run out first")
+    func resetCreditDeadlinePreservesRunoutWarning() {
+        let model = CapsuleDisplayModel.make(
+            forecast: forecast(
+                state: .earlyEstimate,
+                used: 80,
+                remaining: 20,
+                projected: PercentageBand(lower: -18, upper: -4),
+                budget: 20,
+                evidence: [
+                    PaceEvidence(
+                        kind: .cycle,
+                        bandPerDay: PaceBand(lower: 48, upper: 52),
+                        reliability: 0.2,
+                        transitionCount: 0,
+                        coverageHours: 8
+                    )
+                ],
+                confidenceReason: "cycle-only",
+                burnHorizonSource: .resetCreditExpiry
+            ),
+            locale: .zhHans
+        )
+
+        #expect(model.tone == .unknown)
+        #expect(model.statusLabel == "初步估算")
+        #expect(model.defaultText == "初步判断：按本周平均速度可能不够")
+        #expect(model.confidenceText == "下一次刷新按最早到期的重置券计算")
+    }
+
+    @Test("a credit deadline does not hide active data confirmation")
+    func resetCreditDeadlinePreservesCalibration() {
+        let model = CapsuleDisplayModel.make(
+            forecast: forecast(
+                state: .calibrating,
+                projected: nil,
+                budget: 100,
+                evidence: [],
+                burnHorizonSource: .resetCreditExpiry
+            ),
+            locale: .zhHans
+        )
+
+        #expect(model.tone == .unknown)
+        #expect(model.statusLabel == "确认额度变化")
+        #expect(model.defaultText.contains("短暂确认"))
+    }
+
     @Test("risk states use distinct, non-alarmist conclusions")
     func riskStatesAreDistinct() {
         let watch = CapsuleDisplayModel.make(
@@ -92,7 +165,7 @@ struct WeeklyDisplayModelTests {
             locale: .zhHans
         )
 
-        #expect(watch.statusLabel == "偏快")
+        #expect(watch.statusLabel == "波动较大")
         #expect(risk.statusLabel == "可能不够")
         #expect(risk.defaultText == "照最近速度，本周额度可能在重置前用完")
         #expect(exhausted.statusLabel == "已用尽")
@@ -174,7 +247,7 @@ struct WeeklyDisplayModelTests {
         #expect(copy.weeklyStatusLabel(.calibrating) == "Confirming change")
         #expect(copy.weeklyStatusLabel(.earlyEstimate) == "Early estimate")
         #expect(copy.weeklyStatusLabel(.enough) == "On track")
-        #expect(copy.weeklyStatusLabel(.watch) == "Running fast")
+        #expect(copy.weeklyStatusLabel(.watch) == "Uncertain pace")
         #expect(copy.weeklyStatusLabel(.mayRunOut) == "May run out")
     }
 
@@ -206,6 +279,7 @@ struct WeeklyDisplayModelTests {
         #expect(model.defaultText.contains("previous confirmed data"))
         #expect(copy.paceDetailsPausedText.contains("resume automatically"))
         #expect(!copy.paceDetailsPausedText.contains("live data recovers"))
+        #expect(copy.trendWaitingForLiveReadText.contains("live reads recover"))
         #expect(
             copy.confirmingDataRefreshDescription(
                 lastConfirmedText: "09:22:53",
@@ -229,6 +303,12 @@ struct WeeklyDisplayModelTests {
         #expect(!copy.sustainableLineTitle.contains("5%"))
         #expect(copy.forecastResetBandTitle.contains("重置余量"))
         #expect(copy.resetMarkerTitle == "重置")
+        #expect(copy.forecastHorizonBandTitle(.naturalReset) == "预测重置余量")
+        #expect(copy.forecastHorizonBandTitle(.resetCreditExpiry) == "预测刷新余量")
+        #expect(copy.horizonMarkerTitle(.naturalReset) == "重置")
+        #expect(copy.horizonMarkerTitle(.resetCreditExpiry) == "刷新")
+        #expect(copy.trendWaitingForUsageText == "观察到额度消耗后会自动显示速度与预测趋势")
+        #expect(copy.trendWaitingForLiveReadText == "实时读取恢复后会自动显示速度与预测趋势")
         #expect(copy.resetTimeTitle == "周额度重置")
     }
 
@@ -244,6 +324,36 @@ struct WeeklyDisplayModelTests {
         #expect(copy.quotaResetDescription(resetsAt: resetsAt, now: now, timeZone: timeZone) == "周额度将在 7月20日 08:11 重置（6天18小时后）")
         #expect(copy.dataRefreshDescription(lastSuccess: lastSuccess, nextAttempt: nextAttempt, now: now, timeZone: timeZone) == "数据更新于 13:49:44，下次自动读取约 47 秒后")
         #expect(!copy.quotaResetDescription(resetsAt: resetsAt, now: now, timeZone: timeZone).contains("刷新时间"))
+    }
+
+    @Test("the primary horizon label is compact, exact, and event-specific")
+    func primaryHorizonLabelIsGlanceable() throws {
+        let copy = QuotaCopy(locale: .zhHans)
+        let timeZone = try #require(TimeZone(identifier: "Asia/Shanghai"))
+        let at = try Date.ISO8601FormatStyle().parse("2026-07-20T00:11:00Z")
+
+        #expect(copy.primaryHorizonLabel(at: at, source: .naturalReset, timeZone: timeZone) == "下次重置 · 7月20日 08:11")
+        #expect(copy.primaryHorizonLabel(at: at, source: .resetCreditExpiry, timeZone: timeZone) == "重置券到期 · 7月20日 08:11")
+        #expect(QuotaCopy(locale: .en).primaryHorizonLabel(at: at, source: .naturalReset, timeZone: timeZone) == "Next reset · Jul 20, 08:11")
+    }
+
+    @Test("reset-credit deadline copy names the action and exact refresh time")
+    func resetCreditDeadlineDescriptionIsActionable() throws {
+        let copy = QuotaCopy(locale: .zhHans)
+        let timeZone = try #require(TimeZone(identifier: "Asia/Shanghai"))
+        let now = try Date.ISO8601FormatStyle().parse("2026-07-26T05:22:00Z")
+        let expiresAt = try Date.ISO8601FormatStyle().parse("2026-07-26T23:49:00Z")
+
+        let text = copy.resetCreditDeadlineDescription(
+            expiresAt: expiresAt,
+            now: now,
+            timeZone: timeZone
+        )
+
+        #expect(text.contains("最早到期的重置券"))
+        #expect(text.contains("前使用"))
+        #expect(text.contains("刷新额度"))
+        #expect(text.contains("07:49"))
     }
 
     @Test("the displayed next-24-hour budget rounds down")
@@ -280,7 +390,7 @@ struct WeeklyDisplayModelTests {
         )
 
         #expect(model.tone == .unknown)
-        #expect(model.statusLabel == "已过期")
+        #expect(model.statusLabel == "读取失败")
         #expect(model.defaultText.contains("上次成功"))
         #expect(model.metrics[0].value == "42%")
         #expect(model.metrics[1].value == "28%")

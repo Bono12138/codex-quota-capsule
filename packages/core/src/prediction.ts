@@ -15,6 +15,7 @@ import {
   cycleEvidence,
   forecastConfidenceForEvidence,
   fusePaceEvidence,
+  horizonAdjustedPaceEvidence,
   historicalEvidence,
   quantizedInterval,
   recentEvidence,
@@ -197,9 +198,13 @@ export function predictWeeklyRunway(
       resetsAt: accepted.canonicalResetAt,
     };
     if (!isValidWeeklyWindow(acceptedWindow, now)) return unavailableWeeklyForecast();
-    const acceptedDaysRemaining = (acceptedWindow.resetsAt.getTime() - now.getTime()) / 86_400_000;
+    const acceptedHorizon = quotaBurnHorizon(acceptedWindow, snapshot, now);
+    const acceptedDaysRemaining = (acceptedHorizon.at.getTime() - now.getTime()) / 86_400_000;
     const acceptedStart = acceptedWindow.resetsAt.getTime() - acceptedWindow.windowMinutes * 60_000;
-    const acceptedElapsed = Math.min(100, Math.max(0, ((now.getTime() - acceptedStart) / (acceptedWindow.windowMinutes * 60_000)) * 100));
+    const acceptedDuration = acceptedHorizon.at.getTime() - acceptedStart;
+    const acceptedElapsed = acceptedDuration > 0
+      ? Math.min(100, Math.max(0, ((now.getTime() - acceptedStart) / acceptedDuration) * 100))
+      : 0;
     const acceptedSustainable = acceptedWindow.remainingPercent / acceptedDaysRemaining;
     const acceptedBudget = Math.min(acceptedWindow.remainingPercent, acceptedSustainable * Math.min(1, acceptedDaysRemaining));
     const acceptedActive = activeCycleAndSegment(quality.observations);
@@ -217,12 +222,21 @@ export function predictWeeklyRunway(
       observedLast24HourUsageBand(acceptedActive, now),
       null,
       trendPoints(acceptedActive),
+      [],
+      "",
+      null,
+      acceptedHorizon.at,
+      acceptedHorizon.source,
     );
   }
 
-  const daysRemaining = (window.resetsAt.getTime() - now.getTime()) / 86_400_000;
+  const horizon = quotaBurnHorizon(window, snapshot, now);
+  const daysRemaining = (horizon.at.getTime() - now.getTime()) / 86_400_000;
   const start = window.resetsAt.getTime() - window.windowMinutes * 60_000;
-  const elapsedPercent = Math.min(100, Math.max(0, ((now.getTime() - start) / (window.windowMinutes * 60_000)) * 100));
+  const horizonDuration = horizon.at.getTime() - start;
+  const elapsedPercent = horizonDuration > 0
+    ? Math.min(100, Math.max(0, ((now.getTime() - start) / horizonDuration) * 100))
+    : 0;
   const sustainable = window.remainingPercent / daysRemaining;
   const budget = Math.min(window.remainingPercent, sustainable * Math.min(1, daysRemaining));
   const active = quality.state === "stable" ? activeCycleAndSegment(quality.observations) : [];
@@ -231,10 +245,10 @@ export function predictWeeklyRunway(
   const trend = trendPoints(active);
 
   if (window.remainingPercent <= 0) {
-    return makeWeeklyForecast("exhausted", "low", window, elapsedPercent, daysRemaining, 0, null, null, { lower: 0, upper: 0 }, 0, last24HourUsage, { earliest: now, latest: now }, trend, [], "exhausted");
+    return makeWeeklyForecast("exhausted", "low", window, elapsedPercent, daysRemaining, 0, null, null, { lower: 0, upper: 0 }, 0, last24HourUsage, { earliest: now, latest: now }, trend, [], "exhausted", null, horizon.at, horizon.source);
   }
   if (quality.state === "stale" || quality.state === "unavailable" || quality.state === "unstable") {
-    return { ...unavailableWeeklyForecast(), usedPercent: window.usedPercent, remainingPercent: window.remainingPercent, elapsedPercent, daysUntilReset: daysRemaining };
+    return { ...unavailableWeeklyForecast(), usedPercent: window.usedPercent, remainingPercent: window.remainingPercent, elapsedPercent, daysUntilReset: daysRemaining, burnHorizonAt: horizon.at, burnHorizonSource: horizon.source };
   }
 
   if (window.usedPercent === 0) {
@@ -254,11 +268,14 @@ export function predictWeeklyRunway(
       trend,
       [],
       "no-consumption-observed",
+      null,
+      horizon.at,
+      horizon.source,
     );
   }
 
   const cycle = cycleEvidence(window, now);
-  if (!cycle) return { ...unavailableWeeklyForecast(), usedPercent: window.usedPercent, remainingPercent: window.remainingPercent, elapsedPercent, daysUntilReset: daysRemaining };
+  if (!cycle) return { ...unavailableWeeklyForecast(), usedPercent: window.usedPercent, remainingPercent: window.remainingPercent, elapsedPercent, daysUntilReset: daysRemaining, burnHorizonAt: horizon.at, burnHorizonSource: horizon.source };
 
   const latest = active.at(-1);
   const historyMatchesLiveWindow = quality.state === "stable"
@@ -277,8 +294,8 @@ export function predictWeeklyRunway(
       if (historical) evidence.push(historical);
     }
   }
-  const pace = fusePaceEvidence(evidence);
-  if (!pace) return { ...unavailableWeeklyForecast(), usedPercent: window.usedPercent, remainingPercent: window.remainingPercent, elapsedPercent, daysUntilReset: daysRemaining };
+  const pace = horizonAdjustedPaceEvidence(evidence, daysRemaining);
+  if (!pace) return { ...unavailableWeeklyForecast(), usedPercent: window.usedPercent, remainingPercent: window.remainingPercent, elapsedPercent, daysUntilReset: daysRemaining, burnHorizonAt: horizon.at, burnHorizonSource: horizon.source };
   const projected = {
     lower: window.remainingPercent - pace.upper * daysRemaining,
     upper: window.remainingPercent - pace.lower * daysRemaining,
@@ -294,7 +311,7 @@ export function predictWeeklyRunway(
     ? "earlyEstimate"
     : projected.upper < 0
       ? "mayRunOut"
-      : projected.lower <= 0 || evidenceContainsMaterialOverspeed(evidence, sustainable)
+      : projected.lower <= 0
         ? "watch"
         : "enough";
   const exhaustion = exhaustionRange(window.remainingPercent, pace, now);
@@ -315,7 +332,35 @@ export function predictWeeklyRunway(
     evidence,
     confidenceReason(confidence, evidence.length, transitionCount),
     observedUsage,
+    horizon.at,
+    horizon.source,
   );
+}
+
+function quotaBurnHorizon(
+  window: QuotaWindow,
+  snapshot: AgentQuotaSnapshot,
+  now: Date,
+): { at: Date; source: "naturalReset" | "resetCreditExpiry" } {
+  const naturalResetAt = window.resetsAt;
+  const eligibleCredits = (snapshot.resetCreditBank?.availableCount ?? 0) > 0
+    ? snapshot.resetCreditBank?.credits
+    : null;
+  const earliestCreditExpiry = eligibleCredits
+    ?.filter((credit) =>
+      credit.status === "available"
+        && credit.resetType.toLowerCase() === "codexratelimits"
+        && credit.expiresAt instanceof Date
+        && Number.isFinite(credit.expiresAt.getTime())
+        && credit.expiresAt.getTime() > now.getTime()
+        && credit.expiresAt.getTime() < naturalResetAt.getTime())
+    .map((credit) => credit.expiresAt!)
+    .sort((left, right) => left.getTime() - right.getTime())
+    .at(0);
+
+  return earliestCreditExpiry
+    ? { at: earliestCreditExpiry, source: "resetCreditExpiry" }
+    : { at: naturalResetAt, source: "naturalReset" };
 }
 
 function isUsableWeeklyReading(reading: WeeklyQuotaReading, now: Date): boolean {
@@ -470,15 +515,6 @@ function exhaustionRange(remainingPercent: number, pace: PaceBand, now: Date): {
   };
 }
 
-function evidenceContainsMaterialOverspeed(
-  evidence: WeeklyRunwayForecast["paceEvidence"],
-  sustainable: number,
-): boolean {
-  if (sustainable <= 0) return true;
-  return evidence.some((item) => item.reliability >= 0.20
-    && (item.bandPerDay.lower + item.bandPerDay.upper) / 2 > sustainable * 1.15);
-}
-
 function confidenceReason(
   confidence: WeeklyRunwayForecast["confidence"],
   evidenceCount: number,
@@ -512,10 +548,12 @@ function makeWeeklyForecast(
   paceEvidence: WeeklyRunwayForecast["paceEvidence"] = [],
   confidenceReason = "",
   observedUsage: WeeklyRunwayForecast["observedUsage"] = null,
+  burnHorizonAt: Date | null = null,
+  burnHorizonSource: WeeklyRunwayForecast["burnHorizonSource"] = null,
 ): WeeklyRunwayForecast {
-  return { state, confidence, usedPercent: window.usedPercent, remainingPercent: window.remainingPercent, elapsedPercent, daysUntilReset, sustainableRatePerDay, recentRateBandPerDay, cycleRateBandPerDay, last24HourUsageBand, observedUsage, projectedRemainingBandAtReset, estimatedEmptyAtRange, next24HourBudget, currentCycleTrend, paceEvidence, confidenceReason };
+  return { state, confidence, usedPercent: window.usedPercent, remainingPercent: window.remainingPercent, elapsedPercent, daysUntilReset, sustainableRatePerDay, recentRateBandPerDay, cycleRateBandPerDay, last24HourUsageBand, observedUsage, projectedRemainingBandAtReset, estimatedEmptyAtRange, next24HourBudget, currentCycleTrend, paceEvidence, confidenceReason, burnHorizonAt, burnHorizonSource };
 }
 
 function unavailableWeeklyForecast(): WeeklyRunwayForecast {
-  return { state: "unavailable", confidence: "low", usedPercent: null, remainingPercent: null, elapsedPercent: null, daysUntilReset: null, sustainableRatePerDay: null, recentRateBandPerDay: null, cycleRateBandPerDay: null, last24HourUsageBand: null, observedUsage: null, projectedRemainingBandAtReset: null, estimatedEmptyAtRange: null, next24HourBudget: null, currentCycleTrend: [], paceEvidence: [], confidenceReason: "" };
+  return { state: "unavailable", confidence: "low", usedPercent: null, remainingPercent: null, elapsedPercent: null, daysUntilReset: null, sustainableRatePerDay: null, recentRateBandPerDay: null, cycleRateBandPerDay: null, last24HourUsageBand: null, observedUsage: null, projectedRemainingBandAtReset: null, estimatedEmptyAtRange: null, next24HourBudget: null, currentCycleTrend: [], paceEvidence: [], confidenceReason: "", burnHorizonAt: null, burnHorizonSource: null };
 }

@@ -20,6 +20,33 @@ private enum CapsuleResizeEdge {
     case trailing
 }
 
+enum CapsulePanelPlacement {
+    static func visibleFrame(
+        for frame: NSRect,
+        available: [NSRect],
+        preferred: NSRect?
+    ) -> NSRect? {
+        let intersections = available.map { visible in
+            (visible: visible, area: visible.intersection(frame).area)
+        }
+        if let best = intersections.max(by: { $0.area < $1.area }), best.area > 0 {
+            return best.visible
+        }
+        return preferred ?? available.first
+    }
+
+    static func clampedOrigin(for frame: NSRect, visible: NSRect, margin: CGFloat) -> NSPoint {
+        let minX = visible.minX + margin
+        let maxX = max(minX, visible.maxX - frame.width - margin)
+        let minY = visible.minY + margin
+        let maxY = max(minY, visible.maxY - frame.height - margin)
+        return NSPoint(
+            x: min(max(frame.origin.x, minX), maxX),
+            y: min(max(frame.origin.y, minY), maxY)
+        )
+    }
+}
+
 @MainActor
 final class CapsulePanelController {
     private let panel: NSPanel
@@ -86,6 +113,7 @@ final class CapsulePanelController {
     func show() {
         let wasVisible = panel.isVisible
         placeNearTopRightIfNeeded()
+        clampPanelToVisibleArea()
         panel.orderFrontRegardless()
         if !wasVisible {
             visibleStartedAt = Date()
@@ -372,12 +400,7 @@ final class CapsulePanelController {
     }
 
     private func clampedOrigin(for frame: NSRect, visible: NSRect) -> NSPoint {
-        let minX = visible.minX + edgeMargin
-        let maxX = max(minX, visible.maxX - frame.width - edgeMargin)
-        return NSPoint(
-            x: min(max(frame.origin.x, minX), maxX),
-            y: clampedY(frame.origin.y, height: frame.height, visible: visible)
-        )
+        CapsulePanelPlacement.clampedOrigin(for: frame, visible: visible, margin: edgeMargin)
     }
 
     private func clampedY(_ y: CGFloat, height: CGFloat, visible: NSRect) -> CGFloat {
@@ -387,7 +410,15 @@ final class CapsulePanelController {
     }
 
     private func activeScreen() -> NSScreen? {
-        panel.screen ?? NSScreen.bestScreen(for: panel.frame) ?? NSScreen.currentPlacementScreen
+        let screens = NSScreen.screens
+        guard let visible = CapsulePanelPlacement.visibleFrame(
+            for: panel.frame,
+            available: screens.map(\.visibleFrame),
+            preferred: NSScreen.currentPlacementScreen?.visibleFrame
+        ) else {
+            return nil
+        }
+        return screens.first { $0.visibleFrame == visible } ?? NSScreen.currentPlacementScreen
     }
 }
 
@@ -395,12 +426,6 @@ extension NSScreen {
     static var currentPlacementScreen: NSScreen? {
         let mouse = NSEvent.mouseLocation
         return NSScreen.screens.first { $0.frame.contains(mouse) } ?? NSScreen.main ?? NSScreen.screens.first
-    }
-
-    static func bestScreen(for frame: NSRect) -> NSScreen? {
-        NSScreen.screens.max { first, second in
-            first.frame.intersection(frame).area < second.frame.intersection(frame).area
-        }
     }
 }
 

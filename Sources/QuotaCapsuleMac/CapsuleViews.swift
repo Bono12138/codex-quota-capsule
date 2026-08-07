@@ -12,7 +12,7 @@ enum CapsuleViewMetrics {
     static let collapsedHeight: CGFloat = collapsedContentHeight + shadowPadding * 2
     static let expandedHeight: CGFloat = 560
     static let expandedDetailContentHeight: CGFloat = expandedHeight - shadowPadding * 2 - collapsedContentHeight - 8
-    static let dockedContentWidth: CGFloat = 116
+    static let dockedContentWidth: CGFloat = 178
     static let dockedContentHeight: CGFloat = 46
     static let dockedWidth: CGFloat = dockedContentWidth + shadowPadding * 2
     static let dockedHeight: CGFloat = dockedContentHeight + shadowPadding * 2
@@ -70,10 +70,11 @@ struct DockedCapsuleView: View {
                 }
                 .lineLimit(1)
                 .minimumScaleFactor(0.72)
-                Text(store.copy.compactUsageLabel)
+                Text(store.primaryHorizonText)
                     .font(.system(size: 9, weight: .bold))
                     .foregroundStyle(.secondary)
                     .lineLimit(1)
+                    .minimumScaleFactor(0.72)
             }
             .layoutPriority(1)
         }
@@ -127,7 +128,7 @@ struct CompactCapsuleView: View {
                     }
                 }
 
-                Text(store.compactProjectedText)
+                Label(store.primaryHorizonText, systemImage: "calendar.badge.clock")
                     .font(.system(size: 11, weight: .semibold))
                     .foregroundStyle(.primary)
                     .lineLimit(1)
@@ -373,6 +374,19 @@ struct DetailPopoverView: View {
                     .fixedSize(horizontal: false, vertical: true)
             }
 
+
+            Label(store.quotaResetDescription, systemImage: "calendar.badge.clock")
+                .font(.system(size: 11, weight: .bold))
+                .foregroundStyle(.primary.opacity(0.82))
+                .fixedSize(horizontal: false, vertical: true)
+                .padding(.horizontal, 11)
+                .padding(.vertical, 9)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .background(
+                    toneColor(store.displayModel.tone).opacity(0.13),
+                    in: RoundedRectangle(cornerRadius: 11, style: .continuous)
+                )
+
             VStack(alignment: .leading, spacing: 9) {
                 Text(store.copy.weeklyPaceTitle)
                     .font(.system(size: 10, weight: .bold))
@@ -408,10 +422,7 @@ struct DetailPopoverView: View {
 
             WeeklyTrendChartView(store: store)
 
-            VStack(alignment: .leading, spacing: 6) {
-                Label(store.quotaResetDescription, systemImage: "calendar.badge.clock")
-                Label(store.dataRefreshDescription, systemImage: "arrow.triangle.2.circlepath")
-            }
+            Label(store.dataRefreshDescription, systemImage: "arrow.triangle.2.circlepath")
             .font(.system(size: 10, weight: .semibold))
             .foregroundStyle(.secondary)
 
@@ -480,11 +491,32 @@ struct ResetCreditFooterView: View {
     }
 }
 
+struct WeeklyTrendHorizon: Equatable {
+    let at: Date
+    let source: QuotaBurnHorizonSource
+
+    static func make(forecast: WeeklyRunwayForecast, window: QuotaWindow) -> WeeklyTrendHorizon {
+        let cycleStart = window.resetsAt.addingTimeInterval(-Double(window.windowMinutes) * 60)
+        guard let at = forecast.burnHorizonAt,
+              let source = forecast.burnHorizonSource,
+              at > cycleStart,
+              at <= window.resetsAt else {
+            return WeeklyTrendHorizon(at: window.resetsAt, source: .naturalReset)
+        }
+        return WeeklyTrendHorizon(at: at, source: source)
+    }
+}
+
 struct WeeklyTrendChartView: View {
     @ObservedObject var store: QuotaStore
 
     private var points: [WeeklyTrendPoint] {
         store.runwayForecast.currentCycleTrend
+    }
+
+    private var horizon: WeeklyTrendHorizon? {
+        guard let window = store.snapshot.weeklyWindow else { return nil }
+        return WeeklyTrendHorizon.make(forecast: store.runwayForecast, window: window)
     }
 
     var body: some View {
@@ -504,7 +536,7 @@ struct WeeklyTrendChartView: View {
                     VStack(alignment: .leading, spacing: 5) { chartLegend }
                 }
             } else if !store.displayModel.showsLivePaceDetails {
-                Label(store.copy.paceDetailsPausedText, systemImage: "pause.circle")
+                Label(pausedTrendText, systemImage: "pause.circle")
                     .font(.system(size: 11, weight: .semibold))
                     .foregroundStyle(.secondary)
                     .padding(.vertical, 12)
@@ -531,7 +563,8 @@ struct WeeklyTrendChartView: View {
             let width = max(1, size.width - inset * 2)
             let height = max(1, size.height - inset * 2)
             let cycleStart = window.resetsAt.addingTimeInterval(-Double(window.windowMinutes) * 60)
-            let duration = max(1, window.resetsAt.timeIntervalSince(cycleStart))
+            let horizon = WeeklyTrendHorizon.make(forecast: store.runwayForecast, window: window)
+            let duration = max(1, horizon.at.timeIntervalSince(cycleStart))
 
             func location(at date: Date, usedPercent: Double) -> CGPoint {
                 let progress = min(1, max(0, date.timeIntervalSince(cycleStart) / duration))
@@ -566,8 +599,8 @@ struct WeeklyTrendChartView: View {
                 let lowerUsed = 100 - min(100, max(0, band.upper))
                 let upperUsed = 100 - min(100, max(0, band.lower))
                 var forecastBand = Path()
-                forecastBand.move(to: location(at: window.resetsAt, usedPercent: lowerUsed))
-                forecastBand.addLine(to: location(at: window.resetsAt, usedPercent: upperUsed))
+                forecastBand.move(to: location(at: horizon.at, usedPercent: lowerUsed))
+                forecastBand.addLine(to: location(at: horizon.at, usedPercent: upperUsed))
                 context.stroke(
                     forecastBand,
                     with: .color(toneColor(store.displayModel.tone).opacity(0.52)),
@@ -592,11 +625,28 @@ struct WeeklyTrendChartView: View {
     private var chartLegend: some View {
         Label(store.copy.sustainableLineTitle, systemImage: "line.diagonal")
         Label(forecastBandText, systemImage: "arrow.up.and.down")
-        Label("\(store.copy.resetMarkerTitle) \(store.resetText)", systemImage: "flag.checkered")
+        Label("\(horizonMarkerTitle) \(store.resetText)", systemImage: "flag.checkered")
     }
 
     private var forecastBandText: String {
-        "\(store.copy.forecastResetBandTitle)：\(store.copy.forecastResetBandValue(store.runwayForecast.projectedRemainingBandAtReset))"
+        "\(forecastBandTitle)：\(store.copy.forecastResetBandValue(store.runwayForecast.projectedRemainingBandAtReset))"
+    }
+
+    private var horizonMarkerTitle: String {
+        store.copy.horizonMarkerTitle(horizon?.source ?? .naturalReset)
+    }
+
+    private var forecastBandTitle: String {
+        store.copy.forecastHorizonBandTitle(horizon?.source ?? .naturalReset)
+    }
+
+    private var pausedTrendText: String {
+        if store.snapshot.sourceStatus == .stale {
+            return store.copy.trendWaitingForLiveReadText
+        }
+        return store.runwayForecast.confidenceReason == "no-consumption-observed"
+            ? store.copy.trendWaitingForUsageText
+            : store.copy.paceDetailsPausedText
     }
 }
 
