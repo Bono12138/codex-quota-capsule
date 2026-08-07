@@ -43,7 +43,7 @@ Codex 是第一个适配对象。项目保持 agent-extensible：其他 Agent �
 
 ## 当前 Beta
 
-当前公开预发布版本是 [v0.3.5-beta.1](https://github.com/Bono12138/codex-quota-capsule/releases/tag/v0.3.5-beta.1)，已经包括：
+当前公开预发布版本是 [v0.3.6-beta.1](https://github.com/Bono12138/codex-quota-capsule/releases/tag/v0.3.6-beta.1)，已经包括：
 
 - 原生桌面悬浮胶囊和菜单栏入口。
 - 只读 Codex app-server rate-limit 数据源。
@@ -64,7 +64,7 @@ Codex 是第一个适配对象。项目保持 agent-extensible：其他 Agent �
 
 请阅读：[第一次使用额度胶囊](docs/getting-started.zh-CN.md)。
 
-从 [v0.3.5-beta.1 Release](https://github.com/Bono12138/codex-quota-capsule/releases/tag/v0.3.5-beta.1) 下载 `Quota-Capsule-Beta-macOS.zip`。
+从 [v0.3.6-beta.1 Release](https://github.com/Bono12138/codex-quota-capsule/releases/tag/v0.3.6-beta.1) 下载 `Quota-Capsule-Beta-macOS.zip`。
 
 当前 Beta 使用 ad-hoc 签名，尚未公证。macOS 可能要求在 Finder 中对应用执行**右键 → 打开**。系统要求和 Gatekeeper 处理方式见 [INSTALL.md](INSTALL.md)。
 

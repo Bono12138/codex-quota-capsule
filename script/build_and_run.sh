@@ -4,7 +4,7 @@ set -euo pipefail
 MODE="${1:-run}"
 PRODUCT_NAME="QuotaCapsuleMac"
 MIN_SYSTEM_VERSION="14.0"
-APP_VERSION="${QUOTA_CAPSULE_VERSION:-0.3.5}"
+APP_VERSION="${QUOTA_CAPSULE_VERSION:-0.3.6}"
 APP_BUILD="${QUOTA_CAPSULE_BUILD:-$(date -u +%Y%m%d%H%M)}"
 BUNDLE_NAME="${QUOTA_CAPSULE_BUNDLE_NAME:-Quota Capsule Beta}"
 BUNDLE_ID="${QUOTA_CAPSULE_BUNDLE_ID:-com.bono.quota-capsule.beta}"
@@ -48,6 +48,7 @@ rm -rf "$APP_BUNDLE"
 mkdir -p "$APP_MACOS" "$APP_RESOURCES"
 cp "$BUILD_BINARY" "$APP_BINARY"
 chmod +x "$APP_BINARY"
+/usr/bin/strip -S "$APP_BINARY"
 if [[ -d "$APP_RESOURCE_SOURCE" ]]; then
   cp -R "$APP_RESOURCE_SOURCE/." "$APP_RESOURCES/"
 fi

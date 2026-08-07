@@ -1,7 +1,7 @@
 {
   "name": "codex-quota-capsule",
   "private": true,
-  "version": "0.3.5",
+  "version": "0.3.6",
   "description": "A local-first macOS weekly quota runway assistant for Codex.",
   "license": "MIT",
   "type": "module",
@@ -16,6 +16,7 @@
     "dev": "npm run dev -w apps/desktop",
     "lint": "tsc -p tsconfig.base.json --noEmit",
     "audit:repository": "tsx scripts/repository-policy.ts",
+    "audit:release-artifact": "tsx scripts/audit-release-artifact.ts",
     "audit:weekly-only": "tsx scripts/audit-weekly-only-surface.ts",
     "mac:package": "./script/package_macos.sh",
     "mac:run": "./script/build_and_run.sh",

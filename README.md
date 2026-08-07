@@ -50,9 +50,9 @@ Quota Capsule is designed to stay quiet until the user needs more detail:
 
 ## Current Beta / 当前 Beta
 
-The current public prerelease is [v0.3.5-beta.1](https://github.com/Bono12138/codex-quota-capsule/releases/tag/v0.3.5-beta.1). It includes:
+The current public prerelease is [v0.3.6-beta.1](https://github.com/Bono12138/codex-quota-capsule/releases/tag/v0.3.6-beta.1). It includes:
 
-当前公开预发布版本是 [v0.3.5-beta.1](https://github.com/Bono12138/codex-quota-capsule/releases/tag/v0.3.5-beta.1)，已经包括：
+当前公开预发布版本是 [v0.3.6-beta.1](https://github.com/Bono12138/codex-quota-capsule/releases/tag/v0.3.6-beta.1)，已经包括：
 
 - Native floating desktop capsule and menu bar item / 原生桌面悬浮胶囊和菜单栏入口。
 - Read-only Codex app-server rate-limit source / 只读 Codex app-server rate-limit 数据源。
@@ -72,12 +72,12 @@ See [Forecast Methodology / 预测方法](docs/product/forecast-methodology.md) 
 No GitHub account is required to download the public app.
 You can follow the [English first-time guide](docs/getting-started.en.md) or the [中文新手教程](docs/getting-started.zh-CN.md).
 
-Download `Quota-Capsule-Beta-macOS.zip` from the [v0.3.5-beta.1 release](https://github.com/Bono12138/codex-quota-capsule/releases/tag/v0.3.5-beta.1).
+Download `Quota-Capsule-Beta-macOS.zip` from the [v0.3.6-beta.1 release](https://github.com/Bono12138/codex-quota-capsule/releases/tag/v0.3.6-beta.1).
 
 下载公开安装包不需要 GitHub 账号。
 请阅读 [中文新手教程](docs/getting-started.zh-CN.md) 或 [English first-time guide](docs/getting-started.en.md)。
 
-从 [v0.3.5-beta.1 Release](https://github.com/Bono12138/codex-quota-capsule/releases/tag/v0.3.5-beta.1) 下载 `Quota-Capsule-Beta-macOS.zip`。
+从 [v0.3.6-beta.1 Release](https://github.com/Bono12138/codex-quota-capsule/releases/tag/v0.3.6-beta.1) 下载 `Quota-Capsule-Beta-macOS.zip`。
 
 The current beta uses ad-hoc signing and is not yet notarized. macOS may require opening the app from Finder with **Right-click → Open**. See [INSTALL.md](INSTALL.md) for system requirements and Gatekeeper guidance.
 

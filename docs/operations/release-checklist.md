@@ -11,6 +11,7 @@
 
 - [ ] `npm run audit:repository` passes over all tracked and non-ignored working-tree files.
 - [ ] No local database, raw authenticated response, secret, personal path, or private repository address is tracked.
+- [ ] The signed application and a fresh extraction of the release ZIP pass `npm run audit:release-artifact -- <path>` with no private user-home or temporary build path.
 - [ ] README, install guide, docs index, decisions, product contract, acceptance criteria, changelog, and release notes match shipped behavior.
 - [ ] Analytics schema and consent boundary are unchanged or explicitly reviewed.
 
@@ -22,6 +23,7 @@ npm run build
 npm run lint
 npm run audit:repository
 npm run audit:weekly-only
+npm run audit:release-artifact -- "dist/beta/Quota Capsule Beta.app"
 swift test
 swift run QuotaCapsuleCoreSpec
 swift build --product QuotaCapsuleMac

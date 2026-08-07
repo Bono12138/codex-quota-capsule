@@ -229,6 +229,7 @@ export function auditReleaseEvidence(files: RepositoryFile[]): PolicyFinding[] {
 function allowsPolicyFixtures(path: string): boolean {
   return path === "scripts/repository-policy.ts"
     || path === "scripts/repository-policy.test.ts"
+    || path === "scripts/release-artifact-privacy.test.ts"
     || path === "scripts/single-channel.test.ts";
 }
 

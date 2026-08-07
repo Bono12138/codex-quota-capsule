@@ -24,7 +24,7 @@ Before installing, confirm that:
 
 Installation steps:
 
-1. Open the [current Release page](https://github.com/Bono12138/codex-quota-capsule/releases/tag/v0.3.5-beta.1).
+1. Open the [current Release page](https://github.com/Bono12138/codex-quota-capsule/releases/tag/v0.3.6-beta.1).
 2. Find the **Assets** section.
 3. Download this installer:
 

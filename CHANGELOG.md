@@ -2,6 +2,20 @@
 
 All notable user-visible and repository-governance changes are recorded here.
 
+## 0.3.6-beta.1 — 2026-08-07
+
+### Privacy
+
+- Remove private local build and source paths from the packaged macOS executable.
+- Stop compiling SwiftPM's absolute resource-bundle fallback into the application; packaged images continue to load from the application bundle.
+- Strip release-only debug information before signing and archiving the application.
+- Scan both the signed application and a fresh extraction of the ZIP for macOS, Linux, and Windows user-home paths, while allowing the app's intentional redacted placeholder and approved public contact details.
+
+### Verification
+
+- Add red–green regression coverage proving the release scanner rejects a binary containing a private macOS path without repeating the username in its error output.
+- Make the release artifact privacy scan a mandatory packaging step instead of relying only on the tracked-source repository audit.
+
 ## 0.3.5-beta.1 — 2026-08-07
 
 ### Changed
