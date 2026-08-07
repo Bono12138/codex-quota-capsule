@@ -47,7 +47,7 @@ macOS 可能提示无法验证开发者。
 
 请先确认应用来自本项目的官方发布页。
 
-确认来源后，按照 Apple 当前的处理方式操作：
+然后按 Apple 的步骤操作：
 
 1. 先尝试打开一次应用。
 2. 打开“系统设置”。
@@ -115,7 +115,7 @@ mmz1218bono@gmail.com
 | Repository | GitHub 项目主页。 |
 | Release | 已经打包好的发布版本。 |
 | Assets | 可下载文件。 |
-| Source code | 源代码。普通用户无需使用。 |
+| Source code | 开发者文件。 |
 | Issues | 报告 Bug 和建议。 |
 | Star | 收藏并支持这个项目。 |
 

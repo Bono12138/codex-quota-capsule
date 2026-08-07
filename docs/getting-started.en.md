@@ -8,7 +8,9 @@ GitHub hosts this software project.
 
 It stores the code and documentation.
 
-It also provides issue reports and downloads.
+It provides issue reports.
+
+It provides app downloads.
 
 Public downloads do not require an account.
 
@@ -22,7 +24,7 @@ Before installing, confirm that:
 
 Installation steps:
 
-1. Open the [Quota Capsule v0.3.5-beta.1 release](https://github.com/Bono12138/codex-quota-capsule/releases/tag/v0.3.5-beta.1).
+1. Open the [current Release page](https://github.com/Bono12138/codex-quota-capsule/releases/tag/v0.3.5-beta.1).
 2. Find the **Assets** section.
 3. Download this installer:
 
@@ -94,7 +96,7 @@ GitHub's guidance: [Create an account](https://docs.github.com/en/account-and-pr
 3. Select **New issue**.
 4. Describe what happened and when.
 5. Add the app and macOS versions.
-6. Remove private details from screenshots.
+6. Hide private details.
 
 Never upload these items:
 
@@ -111,13 +113,13 @@ mmz1218bono@gmail.com
 
 ## Common GitHub terms
 
-| Term | What it means for a user |
+| Term | Meaning |
 | --- | --- |
-| Repository | The project's home page. |
+| Repository | Project home page. |
 | Release | A packaged app version. |
 | Assets | Files in a Release. |
 | Source code | Developer files. |
-| Issues | Bug reports and suggestions. |
+| Issues | Bugs and suggestions. |
 | Star | Bookmark and support. |
 
 GitHub's explanation: [What is a Release?](https://docs.github.com/en/repositories/releasing-projects-on-github/about-releases).
