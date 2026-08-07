@@ -20,7 +20,7 @@ GitHub 是一个发布软件项目的网站。
 
 安装步骤：
 
-1. 打开 [额度胶囊 v0.3.5-beta.1 发布页](https://github.com/Bono12138/codex-quota-capsule/releases/tag/v0.3.5-beta.1)。
+1. 打开 [额度胶囊 v0.3.6-beta.1 发布页](https://github.com/Bono12138/codex-quota-capsule/releases/tag/v0.3.6-beta.1)。
 2. 找到页面里的 **Assets** 区域。
 3. 下载下面这个安装包：
 

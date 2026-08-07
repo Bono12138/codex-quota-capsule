@@ -2075,19 +2075,6 @@ private func bundledImage(named name: String, extension fileExtension: String) -
         return NSImage(contentsOf: url)
     }
 
-    #if SWIFT_PACKAGE
-    if let url = Bundle.module.url(forResource: name, withExtension: fileExtension) {
-        return NSImage(contentsOf: url)
-    }
-    #endif
-
-    let sourceURL = URL(fileURLWithPath: #filePath)
-        .deletingLastPathComponent()
-        .appendingPathComponent("Resources/\(name).\(fileExtension)")
-    if FileManager.default.fileExists(atPath: sourceURL.path) {
-        return NSImage(contentsOf: sourceURL)
-    }
-
     return nil
 }
 
