@@ -34,7 +34,7 @@ Quota Capsule is designed to stay quiet until the user needs more detail:
 
 ## Current Beta
 
-The current public prerelease is [v0.3.4-beta.1](https://github.com/Bono12138/codex-quota-capsule/releases/tag/v0.3.4-beta.1). It includes:
+The current public prerelease is [v0.3.5-beta.1](https://github.com/Bono12138/codex-quota-capsule/releases/tag/v0.3.5-beta.1). It includes:
 
 - Native floating desktop capsule and menu bar item.
 - Read-only Codex app-server rate-limit source.
@@ -51,7 +51,11 @@ See [Forecast Methodology](docs/product/forecast-methodology.md) for equations, 
 
 ### Download the current beta
 
-Download `Quota-Capsule-Beta-macOS.zip` from the [v0.3.4-beta.1 release](https://github.com/Bono12138/codex-quota-capsule/releases/tag/v0.3.4-beta.1).
+You do not need a GitHub account to download the public app.
+
+Read [First-time setup](docs/getting-started.en.md) for a non-developer walkthrough.
+
+Download `Quota-Capsule-Beta-macOS.zip` from the [v0.3.5-beta.1 release](https://github.com/Bono12138/codex-quota-capsule/releases/tag/v0.3.5-beta.1).
 
 The current beta uses ad-hoc signing and is not yet notarized. macOS may require opening the app from Finder with **Right-click → Open**. See [INSTALL.md](INSTALL.md) for system requirements and Gatekeeper guidance.
 

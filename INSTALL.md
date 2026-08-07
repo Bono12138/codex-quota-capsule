@@ -9,6 +9,9 @@
 
 公开仓库是唯一安装来源：<https://github.com/Bono12138/codex-quota-capsule>。
 
+普通用户不需要注册 GitHub，也不需要安装开发工具。
+请直接阅读：[第一次使用额度胶囊](docs/getting-started.zh-CN.md)。
+
 ## Codex-assisted 安装
 
 可以把下面的提示交给本机 Codex：
@@ -48,12 +51,12 @@ npm run mac:install
 | Build output | `dist/beta/Quota Capsule Beta.app` |
 | Zip | `dist/beta/Quota-Capsule-Beta-macOS.zip` |
 
-如果首次打开被 Gatekeeper 拦截，请在 Finder 中右键应用并选择“打开”。必要时：
+如果首次打开被 Gatekeeper 拦截，请先确认应用来自官方 Release。
+然后打开“系统设置 → 隐私与安全性”，找到额度胶囊并点击“仍要打开”。
+完整步骤见 [Apple 官方说明](https://support.apple.com/zh-cn/102445)。
 
-```bash
-xattr -dr com.apple.quarantine "/Applications/Quota Capsule Beta.app"
-open "/Applications/Quota Capsule Beta.app"
-```
+如果 macOS 明确提示应用已损坏或会损害电脑，请停止安装并反馈。
+不要用命令跳过这类安全警告。
 
 ## 使用方式
 

@@ -121,6 +121,24 @@ describe("repository policy", () => {
       rule: "missing-release-evidence",
     }));
   });
+
+  it("checks the newest release evidence instead of an older complete record", () => {
+    const requiredFiles = [
+      textFile("CHANGELOG.md", "# Changelog"),
+      textFile("docs/product/acceptance-criteria.md", "# Acceptance"),
+      textFile("docs/operations/release-checklist.md", "# Checklist"),
+    ];
+    const complete = "Automated verification\nInstalled app verification\nCode review\nPull request\nRelease status";
+    const findings = auditReleaseEvidence([
+      ...requiredFiles,
+      textFile("docs/operations/release-evidence/v0.3.4-beta.1.md", complete),
+      textFile("docs/operations/release-evidence/v0.3.5-beta.1.md", "Candidate verification only"),
+    ]);
+
+    expect(findings).toContainEqual(expect.objectContaining({
+      rule: "missing-release-evidence",
+    }));
+  });
 });
 
 function textFile(path: string, text: string): RepositoryFile {

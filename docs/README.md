@@ -14,6 +14,8 @@ This index maps maintained product knowledge. Code and current documents must ag
 - `product/analytics-collector.md` — consent and product-event boundary.
 - `operations/release-checklist.md` — authoritative branch-to-release procedure.
 - `operations/legacy-dev-retirement.md` — redacted migration record.
+- `getting-started.zh-CN.md` — Chinese non-developer download, installation, GitHub account, and feedback guide.
+- `getting-started.en.md` — English non-developer download, installation, GitHub account, and feedback guide.
 - `decisions/0006-single-public-repository-and-app.md` — current repository/app architecture.
 
 ## Research And Distribution

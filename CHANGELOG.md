@@ -2,7 +2,7 @@
 
 All notable user-visible and repository-governance changes are recorded here.
 
-## Unreleased
+## 0.3.5-beta.1 — 2026-08-07
 
 ### Changed
 
@@ -16,10 +16,20 @@ All notable user-visible and repository-governance changes are recorded here.
 - Preserve runout warnings when the allowance may be exhausted before the credit deadline.
 - Separate the formal burn-horizon source and timestamp from pace-confidence reasons in both Swift and TypeScript.
 
+### Fixed
+
+- Bring the floating capsule back inside an active display whenever it is shown, including after an external monitor is disconnected.
+
 ### Verification
 
 - Add Swift and TypeScript regressions reproducing a seven-hour burst followed by almost six forecast days, plus exact localized primary-horizon copy tests.
 - Add Swift and TypeScript regressions for an earlier credit expiry, natural-reset precedence, invalid credit exclusion, calibration, shortened progress, 24-hour budget clamping, and non-overspending presentation.
+- Add native placement regressions for disconnected-display recovery and preserving the capsule's current active display.
+
+### Documentation
+
+- Add Chinese and English first-time guides that explain GitHub, direct Release downloads, optional account registration, safe macOS first launch, and privacy-safe issue reporting.
+- Remove quarantine-clearing commands from the ordinary installation path and follow Apple's current Privacy & Security guidance instead.
 
 ## 0.3.4-beta.1 — 2026-07-18
 
