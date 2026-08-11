@@ -72,7 +72,7 @@ struct DockedCapsuleView: View {
                 .minimumScaleFactor(0.72)
                 Text(store.primaryHorizonText)
                     .font(.system(size: 9, weight: .bold))
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(.primary.opacity(0.72))
                     .lineLimit(1)
                     .minimumScaleFactor(0.72)
             }
@@ -128,7 +128,7 @@ struct CompactCapsuleView: View {
                     }
                 }
 
-                Label(store.primaryHorizonText, systemImage: "calendar.badge.clock")
+                Label(store.compactHorizonText, systemImage: "calendar.badge.clock")
                     .font(.system(size: 11, weight: .semibold))
                     .foregroundStyle(.primary)
                     .lineLimit(1)
@@ -2078,17 +2078,54 @@ private func bundledImage(named name: String, extension fileExtension: String) -
     return nil
 }
 
-func toneColor(_ level: CapsuleLevel) -> Color {
-    switch level {
-    case .safe:
-        Color(red: 0.28, green: 0.86, blue: 0.66)
-    case .watch:
-        Color(red: 0.95, green: 0.72, blue: 0.30)
-    case .danger:
-        Color(red: 1.0, green: 0.45, blue: 0.42)
-    case .unknown:
-        Color(red: 0.66, green: 0.70, blue: 0.68)
+struct CapsuleRGB: Equatable, Sendable {
+    let red: Double
+    let green: Double
+    let blue: Double
+}
+
+enum CapsuleColorScheme: Sendable {
+    case light
+    case dark
+}
+
+enum CapsuleTonePalette {
+    static func components(for level: CapsuleLevel, scheme: CapsuleColorScheme) -> CapsuleRGB {
+        switch (level, scheme) {
+        case (.safe, .light):
+            CapsuleRGB(red: 0.04, green: 0.48, blue: 0.33)
+        case (.safe, .dark):
+            CapsuleRGB(red: 0.44, green: 0.88, blue: 0.71)
+        case (.watch, .light):
+            CapsuleRGB(red: 0.57, green: 0.33, blue: 0.00)
+        case (.watch, .dark):
+            CapsuleRGB(red: 1.00, green: 0.79, blue: 0.35)
+        case (.danger, .light):
+            CapsuleRGB(red: 0.71, green: 0.14, blue: 0.09)
+        case (.danger, .dark):
+            CapsuleRGB(red: 1.00, green: 0.54, blue: 0.50)
+        case (.unknown, .light):
+            CapsuleRGB(red: 0.33, green: 0.38, blue: 0.36)
+        case (.unknown, .dark):
+            CapsuleRGB(red: 0.72, green: 0.76, blue: 0.75)
+        }
     }
+}
+
+func toneColor(_ level: CapsuleLevel) -> Color {
+    let dynamic = NSColor(name: nil) { appearance in
+        let scheme: CapsuleColorScheme = appearance.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua
+            ? .dark
+            : .light
+        let components = CapsuleTonePalette.components(for: level, scheme: scheme)
+        return NSColor(
+            srgbRed: components.red,
+            green: components.green,
+            blue: components.blue,
+            alpha: 1
+        )
+    }
+    return Color(nsColor: dynamic)
 }
 
 func onboardingHighlightColor() -> Color {

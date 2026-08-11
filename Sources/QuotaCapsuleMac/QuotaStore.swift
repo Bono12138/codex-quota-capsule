@@ -275,6 +275,16 @@ final class QuotaStore: ObservableObject {
         return copy.primaryHorizonLabel(at: horizon.at, source: horizon.source)
     }
 
+    var compactHorizonText: String {
+        guard let horizon = WeeklyRunwayPredictor.burnHorizon(
+            snapshot: snapshot,
+            now: currentTime
+        ) else {
+            return primaryHorizonText
+        }
+        return copy.compactHorizonLabel(at: horizon.at, source: horizon.source)
+    }
+
     var quotaResetDescription: String {
         guard let horizon = WeeklyRunwayPredictor.burnHorizon(
             snapshot: snapshot,
