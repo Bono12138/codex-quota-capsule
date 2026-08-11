@@ -395,6 +395,22 @@ public struct QuotaCopy: Equatable, Sendable {
         }
     }
 
+    public func compactHorizonLabel(
+        at: Date,
+        source: QuotaBurnHorizonSource,
+        timeZone: TimeZone = .current
+    ) -> String {
+        let timestamp = dateFormatter(dateOnly: false, timeZone: timeZone).string(from: at)
+        return switch (locale, source) {
+        case (.zhHans, .naturalReset): "重置 · \(timestamp)"
+        case (.zhHans, .resetCreditExpiry): "券到期 · \(timestamp)"
+        case (.zhHant, .naturalReset): "重設 · \(timestamp)"
+        case (.zhHant, .resetCreditExpiry): "券到期 · \(timestamp)"
+        case (.en, .naturalReset): "Reset · \(timestamp)"
+        case (.en, .resetCreditExpiry): "Credit expires · \(timestamp)"
+        }
+    }
+
     public func resetCreditDeadlineDescription(
         expiresAt: Date,
         now: Date,

@@ -335,6 +335,9 @@ struct WeeklyDisplayModelTests {
         #expect(copy.primaryHorizonLabel(at: at, source: .naturalReset, timeZone: timeZone) == "下次重置 · 7月20日 08:11")
         #expect(copy.primaryHorizonLabel(at: at, source: .resetCreditExpiry, timeZone: timeZone) == "重置券到期 · 7月20日 08:11")
         #expect(QuotaCopy(locale: .en).primaryHorizonLabel(at: at, source: .naturalReset, timeZone: timeZone) == "Next reset · Jul 20, 08:11")
+        #expect(copy.compactHorizonLabel(at: at, source: .naturalReset, timeZone: timeZone) == "重置 · 7月20日 08:11")
+        #expect(copy.compactHorizonLabel(at: at, source: .resetCreditExpiry, timeZone: timeZone) == "券到期 · 7月20日 08:11")
+        #expect(QuotaCopy(locale: .en).compactHorizonLabel(at: at, source: .resetCreditExpiry, timeZone: timeZone) == "Credit expires · Jul 20, 08:11")
     }
 
     @Test("reset-credit deadline copy names the action and exact refresh time")
