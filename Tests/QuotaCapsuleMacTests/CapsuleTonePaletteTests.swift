@@ -5,6 +5,15 @@ import Testing
 
 @Suite("Capsule tone contrast")
 struct CapsuleTonePaletteTests {
+    @Test("watch tone uses a visible outlined treatment")
+    func watchToneUsesOutlinedTreatment() {
+        let treatment = CapsuleTonePalette.treatment(for: .watch)
+
+        #expect(treatment.fillOpacity > 0)
+        #expect(treatment.strokeOpacity >= 0.65)
+        #expect(treatment.strokeWidth >= 1)
+    }
+
     @Test("status accents remain readable on both capsule surfaces")
     func statusAccentsMeetTextContrast() {
         for level in [CapsuleLevel.safe, .watch, .danger, .unknown] {

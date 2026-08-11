@@ -18,6 +18,42 @@ enum CapsuleViewMetrics {
     static let dockedHeight: CGFloat = dockedContentHeight + shadowPadding * 2
 }
 
+private struct CapsuleStatusLabel: View {
+    let text: String
+    let tone: CapsuleLevel
+    let fontSize: CGFloat
+    let horizontalPadding: CGFloat
+    let verticalPadding: CGFloat
+
+    var body: some View {
+        let treatment = CapsuleTonePalette.treatment(for: tone)
+
+        Text(text)
+            .font(.system(size: fontSize, weight: .bold))
+            .foregroundStyle(treatment.strokeWidth > 0 ? toneColor(tone) : Color.primary)
+            .lineLimit(1)
+            .minimumScaleFactor(0.8)
+            .fixedSize(horizontal: treatment.strokeWidth > 0, vertical: false)
+            .padding(.horizontal, treatment.strokeWidth > 0 ? horizontalPadding : 0)
+            .padding(.vertical, treatment.strokeWidth > 0 ? verticalPadding : 0)
+            .background {
+                if treatment.fillOpacity > 0 {
+                    Capsule(style: .continuous)
+                        .fill(toneColor(tone).opacity(treatment.fillOpacity))
+                }
+            }
+            .overlay {
+                if treatment.strokeWidth > 0 {
+                    Capsule(style: .continuous)
+                        .stroke(
+                            toneColor(tone).opacity(treatment.strokeOpacity),
+                            lineWidth: treatment.strokeWidth
+                        )
+                }
+            }
+    }
+}
+
 struct CapsuleRootView: View {
     @ObservedObject var store: QuotaStore
 
@@ -59,8 +95,13 @@ struct DockedCapsuleView: View {
                 .foregroundStyle(.primary.opacity(0.76))
             VStack(alignment: .leading, spacing: 2) {
                 HStack(spacing: 4) {
-                    Text(store.visibleStatusText)
-                        .font(.system(size: 12, weight: .bold))
+                    CapsuleStatusLabel(
+                        text: store.visibleStatusText,
+                        tone: store.displayModel.tone,
+                        fontSize: 12,
+                        horizontalPadding: 4,
+                        verticalPadding: 1.5
+                    )
                     if let used = store.compactUsedValueText {
                         Text(used)
                             .font(.system(size: 11, weight: .bold))
@@ -101,10 +142,13 @@ struct CompactCapsuleView: View {
                         .frame(width: 8, height: 8)
                         .shadow(color: toneColor(store.displayModel.tone).opacity(0.55), radius: 5)
 
-                    Text(store.visibleStatusText)
-                        .font(.system(size: 13, weight: .bold))
-                        .lineLimit(1)
-                        .minimumScaleFactor(0.8)
+                    CapsuleStatusLabel(
+                        text: store.visibleStatusText,
+                        tone: store.displayModel.tone,
+                        fontSize: 13,
+                        horizontalPadding: 7,
+                        verticalPadding: 2.5
+                    )
 
                     if let usedText = store.visibleCompactUsedBadgeText {
                         Text(usedText)
@@ -112,6 +156,7 @@ struct CompactCapsuleView: View {
                             .monospacedDigit()
                             .lineLimit(1)
                             .minimumScaleFactor(0.75)
+                            .fixedSize(horizontal: true, vertical: false)
                             .padding(.horizontal, 7)
                             .padding(.vertical, 3)
                             .background(toneColor(store.displayModel.tone).opacity(0.18), in: Capsule())
@@ -2084,12 +2129,27 @@ struct CapsuleRGB: Equatable, Sendable {
     let blue: Double
 }
 
+struct CapsuleToneTreatment: Equatable, Sendable {
+    let fillOpacity: Double
+    let strokeOpacity: Double
+    let strokeWidth: Double
+}
+
 enum CapsuleColorScheme: Sendable {
     case light
     case dark
 }
 
 enum CapsuleTonePalette {
+    static func treatment(for level: CapsuleLevel) -> CapsuleToneTreatment {
+        switch level {
+        case .watch:
+            CapsuleToneTreatment(fillOpacity: 0.10, strokeOpacity: 0.78, strokeWidth: 1.25)
+        case .safe, .danger, .unknown:
+            CapsuleToneTreatment(fillOpacity: 0, strokeOpacity: 0, strokeWidth: 0)
+        }
+    }
+
     static func components(for level: CapsuleLevel, scheme: CapsuleColorScheme) -> CapsuleRGB {
         switch (level, scheme) {
         case (.safe, .light):
@@ -2097,9 +2157,9 @@ enum CapsuleTonePalette {
         case (.safe, .dark):
             CapsuleRGB(red: 0.44, green: 0.88, blue: 0.71)
         case (.watch, .light):
-            CapsuleRGB(red: 0.57, green: 0.33, blue: 0.00)
+            CapsuleRGB(red: 0.72, green: 0.24, blue: 0.08)
         case (.watch, .dark):
-            CapsuleRGB(red: 1.00, green: 0.79, blue: 0.35)
+            CapsuleRGB(red: 1.00, green: 0.60, blue: 0.42)
         case (.danger, .light):
             CapsuleRGB(red: 0.71, green: 0.14, blue: 0.09)
         case (.danger, .dark):
