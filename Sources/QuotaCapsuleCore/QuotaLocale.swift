@@ -60,6 +60,14 @@ public struct QuotaCopy: Equatable, Sendable {
         }
     }
 
+    public var refreshWatchdogTimeout: String {
+        switch locale {
+        case .zhHans: "本次读取超过 30 秒，已自动结束；应用将在下次刷新时重试。"
+        case .zhHant: "本次讀取超過 30 秒，已自動結束；App 將在下次重新整理時重試。"
+        case .en: "This read exceeded 30 seconds and was stopped. The app will retry on the next refresh."
+        }
+    }
+
     public var unknownValue: String {
         switch locale {
         case .zhHans: "未知"

@@ -84,6 +84,9 @@ final class QuotaStore: ObservableObject {
     @Published private(set) var statusBarPresentation: StatusBarPresentation
 
     private var refreshTask: Task<Void, Never>?
+    private var activeRefreshTask: Task<Void, Never>?
+    private var refreshWatchdogTask: Task<Void, Never>?
+    private var refreshLifecycle = QuotaRefreshLifecycle()
     private var clockTask: Task<Void, Never>?
     private var heartbeatTask: Task<Void, Never>?
     private var expandedStartedAt: Date?
@@ -94,6 +97,8 @@ final class QuotaStore: ObservableObject {
     private let configuration: AppConfiguration
     private let userDefaults: UserDefaults
     private let historyStore: QuotaHistoryStore
+    private let quotaFetcher: @Sendable (QuotaLocale) async -> AgentQuotaSnapshot
+    private let refreshWatchdogSeconds: TimeInterval
     private var locale: QuotaLocale
     private let launchedAt = Date()
     private let onboardingKey: String
@@ -108,9 +113,23 @@ final class QuotaStore: ObservableObject {
     private let feedbackNudgeExpansionThreshold = 6
     private let automaticRefreshInterval: TimeInterval = 60
 
-    init(configuration: AppConfiguration = .current(), userDefaults: UserDefaults = .standard) {
+    init(
+        configuration: AppConfiguration = .current(),
+        userDefaults: UserDefaults = .standard,
+        refreshWatchdogSeconds: TimeInterval = QuotaRefreshPolicy.watchdogSeconds,
+        quotaFetcher: @escaping @Sendable (QuotaLocale) async -> AgentQuotaSnapshot = { locale in
+            await CodexAppServerClient.fetchCurrentWithRetry(
+                timeoutSeconds: QuotaRefreshPolicy.fetchTimeoutSeconds,
+                locale: locale,
+                maxAttempts: QuotaRefreshPolicy.maximumAttempts,
+                retryDelaySeconds: QuotaRefreshPolicy.retryDelaySeconds
+            )
+        }
+    ) {
         self.configuration = configuration
         self.userDefaults = userDefaults
+        self.quotaFetcher = quotaFetcher
+        self.refreshWatchdogSeconds = max(0.01, refreshWatchdogSeconds)
         historyStore = QuotaHistoryStore(configuration: configuration, userDefaults: userDefaults)
         onboardingKey = configuration.userDefaultsKey("hasCompletedOnboarding")
         localeKey = configuration.userDefaultsKey("selectedLocale")
@@ -192,6 +211,8 @@ final class QuotaStore: ObservableObject {
 
     deinit {
         refreshTask?.cancel()
+        activeRefreshTask?.cancel()
+        refreshWatchdogTask?.cancel()
         clockTask?.cancel()
         heartbeatTask?.cancel()
         analyticsUploadTask?.cancel()
@@ -202,19 +223,52 @@ final class QuotaStore: ObservableObject {
     }
 
     func refresh() {
-        guard !isRefreshing else {
-            return
-        }
+        guard let attempt = refreshLifecycle.begin() else { return }
 
         isRefreshing = true
         refreshStatusBarPresentation()
         recordEvent(name: "quota_refresh_started", surface: "menu_bar", requiresConsent: false)
         let locale = self.locale
-        Task.detached(priority: .utility) {
-            let snapshot = await CodexAppServerClient.fetchCurrentWithRetry(locale: locale)
+        let watchdogSeconds = refreshWatchdogSeconds
+
+        refreshWatchdogTask?.cancel()
+        refreshWatchdogTask = Task { [weak self] in
+            do {
+                try await Task.sleep(
+                    nanoseconds: UInt64(watchdogSeconds * 1_000_000_000)
+                )
+            } catch {
+                return
+            }
+
+            guard let self, self.refreshLifecycle.expire(attempt) else { return }
+            self.activeRefreshTask?.cancel()
+            self.activeRefreshTask = nil
+            self.refreshWatchdogTask = nil
+            let now = Date()
+            let timeoutSnapshot = AgentQuotaSnapshot(
+                provider: "codex",
+                sourceStatus: .error,
+                fetchedAt: now,
+                weeklyWindow: nil,
+                errorMessage: self.copy.refreshWatchdogTimeout
+            )
+            self.applyRefreshResult(timeoutSnapshot, now: now)
+            self.isRefreshing = false
+            self.nextAutomaticReadAt = now.addingTimeInterval(self.automaticRefreshInterval)
+            self.refreshStatusBarPresentation()
+        }
+
+        let quotaFetcher = self.quotaFetcher
+        activeRefreshTask = Task.detached(priority: .utility) {
+            let snapshot = await quotaFetcher(locale)
             let now = Date()
 
             await MainActor.run {
+                guard self.refreshLifecycle.finish(attempt) else { return }
+                self.refreshWatchdogTask?.cancel()
+                self.refreshWatchdogTask = nil
+                self.activeRefreshTask = nil
                 self.applyRefreshResult(snapshot, now: now)
                 self.isRefreshing = false
                 self.refreshStatusBarPresentation()
