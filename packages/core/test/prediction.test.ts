@@ -29,7 +29,7 @@ function readings(values: number[], resetsAt: Date): WeeklyQuotaReading[] {
   }));
 }
 
-describe("Weekly Only runway", () => {
+describe("Weekly quota runway", () => {
   it("uses an earlier reset-credit expiry as the current burn horizon", () => {
     const resetsAt = new Date(now.getTime() + 7 * 86_400_000);
     const creditExpiresAt = new Date(now.getTime() + 0.75 * 86_400_000);

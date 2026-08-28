@@ -701,7 +701,7 @@ final class QuotaStore: ObservableObject {
             if let resetCreditBank = attemptSnapshot.resetCreditBank {
                 historyStore.recordResetCreditBank(resetCreditBank)
             }
-            historyStore.recordWeeklySnapshot(attemptSnapshot)
+            historyStore.recordQuotaSnapshot(attemptSnapshot)
             let readings = historyStore.recentWeeklyReadings(now: now)
             let forecastReduction = QuotaRefreshReducer.reduceForecastResult(
                 currentForecast: runwayForecast,
@@ -724,6 +724,7 @@ final class QuotaStore: ObservableObject {
                         provider: previousSnapshot.provider,
                         sourceStatus: .ok,
                         fetchedAt: previousSnapshot.fetchedAt,
+                        fiveHourWindow: attemptSnapshot.fiveHourWindow ?? previousSnapshot.fiveHourWindow,
                         weeklyWindow: acceptedWindow,
                         resetCreditBank: previousSnapshot.resetCreditBank,
                         errorMessage: nil

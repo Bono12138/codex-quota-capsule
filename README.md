@@ -18,9 +18,13 @@ A quota percentage tells you how much has been used. It does not tell you whethe
 
 额度百分比只告诉你已经用了多少，却没有回答一个更直接的工作问题：**现在还能不能放心继续用？**
 
-Heavy AI-native users may run several tasks at once, repeatedly check the usage page, hold back even when paid quota is still available, or discover too late that a large balance will expire at reset. Quota Capsule closes that judgment gap by comparing quota usage with elapsed time, recent pace, current activity, and available history.
+Heavy AI-native users may run several tasks at once, repeatedly check the usage page, hold back even when paid quota is still available, or discover too late that a large balance will expire at reset. The 5-hour reading answers whether Codex is available right now. The weekly forecast answers whether the remaining quota can last.
 
-AI-native 重度用户经常同时运行多个任务，也会反复查看 usage 页面：有时明明还有大量已付费额度，却因为不知道够不够而刻意收着用；有时又在临近重置时才发现还有很多额度没有用完。额度胶囊把已用额度、时间进度、最近速度、当前活动和可用历史证据合并成一句能直接行动的判断。
+AI-native 重度用户经常同时运行多个任务，也会反复查看 usage 页面：有时明明还有大量已付费额度，却因为不知道够不够而刻意收着用；有时又在临近重置时才发现还有很多额度没有用完。5 小时读数回答眼前能否继续使用；周预测回答剩余额度能否撑到下一刷新点。
+
+The app shows 5-hour progress only when Codex returns a real 300-minute generic window. If that reading is absent, it says so instead of inventing a percentage or borrowing a model-specific quota.
+
+只有 Codex 返回真实的 300 分钟通用窗口时，应用才显示 5 小时进度。读数缺失时会如实说明，不伪造百分比，也不借用某个模型的独立额度。
 
 It reports six honest states—Early estimate, On track, Uncertain pace, May run out, Exhausted, and Data unavailable—plus a next-24-hour budget and a forecast range for the balance at refresh. The horizon is the earlier of the natural weekly reset or the earliest known available reset-credit expiry.
 
@@ -34,13 +38,13 @@ When a reset credit expires first and quota would otherwise remain unused, the a
 
 Quota Capsule is designed to stay quiet until the user needs more detail:
 
-- A small floating desktop capsule with the current judgment and weekly usage.
+- A small floating desktop capsule with weekly guidance and 5-hour progress when available.
 - A menu bar status item for glanceable, always-available context.
 - An expanded panel with refresh and usage progress, pace evidence, forecast confidence, a sustainable line, next-refresh timing, and local history.
 
 额度胶囊尽量安静地常驻，只在用户需要时展开更多信息：
 
-- 桌面悬浮胶囊显示当前判断与周已用比例。
+- 桌面悬浮胶囊显示周判断，以及可用时的 5 小时进度。
 - 菜单栏提供随时可见的一眼状态。
 - 展开面板显示刷新/用量进度、速度证据、预测置信度、可持续线、下一刷新点和本地历史。
 

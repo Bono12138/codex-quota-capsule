@@ -22,7 +22,7 @@ npm test
 npm run build
 npm run lint
 npm run audit:repository
-npm run audit:weekly-only
+npm run audit:quota-surfaces
 npm run audit:release-artifact -- "dist/beta/Quota Capsule Beta.app"
 swift test
 swift run QuotaCapsuleCoreSpec

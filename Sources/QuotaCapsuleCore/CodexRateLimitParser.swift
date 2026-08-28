@@ -9,7 +9,10 @@ public enum CodexRateLimitParser {
 
     public static func parse(result: Any, fetchedAt: Date, locale: QuotaLocale = .zhHans) -> AgentQuotaSnapshot {
         let root = result as? [String: Any] ?? [:]
-        let rateLimits = root["rateLimits"] as? [String: Any] ?? [:]
+        let buckets = root["rateLimitsByLimitId"] as? [String: Any]
+        let genericBucket = buckets?["codex"] as? [String: Any]
+        let nestedGenericLimits = genericBucket?["rateLimits"] as? [String: Any]
+        let rateLimits = nestedGenericLimits ?? genericBucket ?? (root["rateLimits"] as? [String: Any] ?? [:])
         let resetCreditBank = parseResetCreditBank(root["rateLimitResetCredits"], fetchedAt: fetchedAt)
         let windows = ["primary", "secondary"].compactMap { key in
             parseWindow(rateLimits[key])
@@ -21,12 +24,27 @@ public enum CodexRateLimitParser {
                 && window.resetsAt > fetchedAt
                 && window.resetsAt <= latestPlausibleReset
         }
+        let latestPlausibleFiveHourReset = fetchedAt.addingTimeInterval(6 * 60 * 60)
+        let fiveHourWindow = windows.first { window in
+            abs(window.windowMinutes - 300) <= 30
+                && window.resetsAt > fetchedAt
+                && window.resetsAt <= latestPlausibleFiveHourReset
+        }.map {
+            QuotaWindow(
+                label: "five_hour",
+                windowMinutes: $0.windowMinutes,
+                usedPercent: $0.usedPercent,
+                remainingPercent: $0.remainingPercent,
+                resetsAt: $0.resetsAt
+            )
+        }
 
-        guard let weeklyWindow else {
+        guard weeklyWindow != nil || fiveHourWindow != nil else {
             return AgentQuotaSnapshot(
                 provider: "codex",
                 sourceStatus: .error,
                 fetchedAt: fetchedAt,
+                fiveHourWindow: nil,
                 weeklyWindow: nil,
                 resetCreditBank: resetCreditBank,
                 errorMessage: missingUsableWindowsMessage(locale)
@@ -37,6 +55,7 @@ public enum CodexRateLimitParser {
             provider: "codex",
             sourceStatus: .ok,
             fetchedAt: fetchedAt,
+            fiveHourWindow: fiveHourWindow,
             weeklyWindow: weeklyWindow,
             resetCreditBank: resetCreditBank,
             errorMessage: nil

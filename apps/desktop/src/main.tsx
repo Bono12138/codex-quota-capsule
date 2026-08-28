@@ -15,7 +15,7 @@ import {
   predictWeeklyRunway,
   type WeeklyMockKind,
 } from "@quota-capsule/core";
-import { createCapsuleDisplayModel } from "./capsule-view";
+import { createCapsuleDisplayModel, createFiveHourDisplayModel } from "./capsule-view";
 import "./styles.css";
 
 const now = new Date("2026-07-13T08:00:00+08:00");
@@ -35,13 +35,20 @@ function App() {
   const quality = analyzeWeeklyQuality(scenario.readings, now);
   const forecast = predictWeeklyRunway(scenario.snapshot, quality, now);
   const model = createCapsuleDisplayModel(forecast);
+  const fiveHour = createFiveHourDisplayModel({
+    label: "five_hour",
+    windowMinutes: 300,
+    usedPercent: 23,
+    remainingPercent: 77,
+    resetsAt: new Date("2026-07-13T16:07:00+08:00"),
+  });
 
   return (
     <main className="surface">
-      <section className="capsule-stage" aria-label="Quota Capsule Weekly Only preview">
+      <section className="capsule-stage" aria-label="Quota Capsule preview">
         <header className="top-bar">
           <button className="icon-button" aria-label="菜单"><Menu aria-hidden="true" /></button>
-          <span className="brand">Quota Capsule · Weekly Only</span>
+          <span className="brand">Quota Capsule · Codex quota</span>
           <button className="icon-button" aria-label="设置"><Settings aria-hidden="true" /></button>
         </header>
 
@@ -61,6 +68,18 @@ function App() {
             <span className={`verdict-badge verdict-badge--${model.tone}`}>{model.statusLabel}</span>
           </div>
           <p className="verdict-copy">{model.defaultText}</p>
+          <section className="five-hour-panel" aria-label="5 小时额度">
+            <div className="five-hour-heading">
+              <p className="eyebrow">{fiveHour.title}</p>
+              <strong>{fiveHour.usageText}</strong>
+            </div>
+            {fiveHour.usedPercent === null ? null : (
+              <div className="five-hour-track">
+                <span style={{ width: String(fiveHour.usedPercent) + "%" }} />
+              </div>
+            )}
+            {fiveHour.resetText ? <p>{fiveHour.resetText}</p> : null}
+          </section>
           {model.primaryHorizonText ? <p className="primary-horizon">{model.primaryHorizonText}</p> : null}
 
           <section aria-label="本周节奏">

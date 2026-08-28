@@ -6,8 +6,8 @@ import Testing
 struct WeeklySourceTests {
     private let now = Date(timeIntervalSince1970: 1_789_000_000)
 
-    @Test("the source snapshot API is weekly only")
-    func sourceSnapshotAPIIsWeeklyOnly() {
+    @Test("the source snapshot supports a weekly reading")
+    func sourceSnapshotSupportsWeeklyReading() {
         let snapshot = AgentQuotaSnapshot(
             provider: "codex",
             sourceStatus: .ok,
@@ -44,7 +44,7 @@ struct WeeklySourceTests {
         #expect(CodexAppServerClient.shouldRetry(snapshot) == false)
     }
 
-    @Test("the weekly candidate is selected from mixed source data")
+    @Test("five-hour and weekly candidates are selected by duration")
     func parserSelectsWeeklyCandidate() {
         let snapshot = CodexRateLimitParser.parse(
             result: [
@@ -57,12 +57,14 @@ struct WeeklySourceTests {
         )
 
         #expect(snapshot.sourceStatus == .ok)
+        #expect(snapshot.fiveHourWindow?.usedPercent == 41)
+        #expect(snapshot.fiveHourWindow?.windowMinutes == 300)
         #expect(snapshot.weeklyWindow?.usedPercent == 18)
         #expect(snapshot.weeklyWindow?.windowMinutes == 10_080)
     }
 
-    @Test("a payload without a weekly window is unavailable")
-    func parserRejectsPayloadWithoutWeeklyWindow() {
+    @Test("a payload with only a valid five-hour window is usable")
+    func parserAcceptsPayloadWithOnlyFiveHourWindow() {
         let snapshot = CodexRateLimitParser.parse(
             result: [
                 "rateLimits": [
@@ -72,8 +74,41 @@ struct WeeklySourceTests {
             fetchedAt: now
         )
 
-        #expect(snapshot.sourceStatus == .error)
+        #expect(snapshot.sourceStatus == .ok)
+        #expect(snapshot.fiveHourWindow?.usedPercent == 10)
         #expect(snapshot.weeklyWindow == nil)
+    }
+
+    @Test("an arbitrary short window is not treated as five-hour")
+    func parserRejectsNonFiveHourShortWindow() {
+        let snapshot = CodexRateLimitParser.parse(
+            result: ["rateLimits": ["primary": window(used: 10, minutes: 15, resetOffset: 600)]],
+            fetchedAt: now
+        )
+
+        #expect(snapshot.sourceStatus == .error)
+        #expect(snapshot.fiveHourWindow == nil)
+    }
+
+    @Test("the generic Codex bucket wins and Spark limits stay separate")
+    func parserKeepsLimitBucketsSeparate() {
+        let snapshot = CodexRateLimitParser.parse(
+            result: [
+                "rateLimits": ["primary": window(used: 99, minutes: 300, resetOffset: 3_600)],
+                "rateLimitsByLimitId": [
+                    "codex": ["primary": window(used: 2, minutes: 10_080, resetOffset: 500_000)],
+                    "codex_bengalfox": [
+                        "primary": window(used: 77, minutes: 300, resetOffset: 3_600),
+                        "secondary": window(used: 44, minutes: 10_080, resetOffset: 500_000)
+                    ]
+                ]
+            ],
+            fetchedAt: now
+        )
+
+        #expect(snapshot.sourceStatus == .ok)
+        #expect(snapshot.weeklyWindow?.usedPercent == 2)
+        #expect(snapshot.fiveHourWindow == nil)
     }
 
     @Test("an arbitrary long window is not treated as weekly")
@@ -254,8 +289,55 @@ struct WeeklySourceTests {
         )
 
         #expect(reduced.snapshot.sourceStatus == .stale)
+        #expect(reduced.snapshot.fiveHourWindow == current.fiveHourWindow)
         #expect(reduced.snapshot.resetCreditBank == bank)
         #expect(reduced.latestAttemptSnapshot.resetCreditBank == nil)
+    }
+
+    @Test("a five-hour-only success is adopted without entering weekly confirmation")
+    func fiveHourOnlySuccessDoesNotLookLikeWeeklyConfirmation() {
+        let current = AgentQuotaSnapshot(
+            provider: "codex",
+            sourceStatus: .ok,
+            fetchedAt: now,
+            weeklyWindow: QuotaWindow(
+                label: "weekly",
+                windowMinutes: 10_080,
+                usedPercent: 18,
+                remainingPercent: 82,
+                resetsAt: now.addingTimeInterval(500_000)
+            ),
+            errorMessage: nil
+        )
+        let currentForecast = WeeklyRunwayPredictor.predict(
+            snapshot: current,
+            quality: WeeklyQualityEngine.analyze([], now: now),
+            now: now
+        )
+        let fiveHourOnly = AgentQuotaSnapshot(
+            provider: "codex",
+            sourceStatus: .ok,
+            fetchedAt: now.addingTimeInterval(60),
+            fiveHourWindow: QuotaWindow(
+                label: "five_hour",
+                windowMinutes: 300,
+                usedPercent: 23,
+                remainingPercent: 77,
+                resetsAt: now.addingTimeInterval(10_000)
+            ),
+            weeklyWindow: nil,
+            errorMessage: nil
+        )
+
+        let result = QuotaRefreshReducer.reduceForecastResult(
+            currentForecast: currentForecast,
+            newSnapshot: fiveHourOnly,
+            weeklyReadings: [],
+            now: fiveHourOnly.fetchedAt
+        )
+
+        #expect(result.shouldAdoptLiveSnapshot)
+        #expect(result.forecast.state == .unavailable)
     }
 
     private func window(used: Double, minutes: Int, resetOffset: TimeInterval) -> [String: Any] {

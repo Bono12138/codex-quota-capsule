@@ -207,6 +207,53 @@ public struct QuotaCopy: Equatable, Sendable {
         }
     }
 
+    public var fiveHourQuotaTitle: String {
+        switch locale {
+        case .zhHans: "5 小时额度"
+        case .zhHant: "5 小時額度"
+        case .en: "5-hour quota"
+        }
+    }
+
+    public var compactFiveHourLabel: String {
+        switch locale {
+        case .zhHans, .zhHant: "5小时"
+        case .en: "5h"
+        }
+    }
+
+    public var fiveHourReadingUnavailable: String {
+        switch locale {
+        case .zhHans: "Codex 暂未提供 5 小时额度读数。数据出现后会自动显示。"
+        case .zhHant: "Codex 暫未提供 5 小時額度讀數。資料出現後會自動顯示。"
+        case .en: "Codex has not provided a 5-hour quota reading yet. It will appear automatically when available."
+        }
+    }
+
+    public func fiveHourUsageSummary(usedPercent: Double, remainingPercent: Double) -> String {
+        let used = Int(usedPercent.rounded())
+        let remaining = Int(remainingPercent.rounded())
+        return switch locale {
+        case .zhHans: "已用 \(used)% · 剩余 \(remaining)%"
+        case .zhHant: "已用 \(used)% · 剩餘 \(remaining)%"
+        case .en: "\(used)% used · \(remaining)% remaining"
+        }
+    }
+
+    public func fiveHourResetDescription(
+        resetsAt: Date,
+        now: Date,
+        timeZone: TimeZone = .current
+    ) -> String {
+        let timestamp = dateFormatter(dateOnly: false, timeZone: timeZone).string(from: resetsAt)
+        let countdown = relativeCountdown(to: resetsAt, now: now)
+        return switch locale {
+        case .zhHans: "重置：\(timestamp)（\(countdown)）"
+        case .zhHant: "重設：\(timestamp)（\(countdown)）"
+        case .en: "Resets: \(timestamp) (\(countdown))"
+        }
+    }
+
     public var weeklyPaceTitle: String {
         switch locale {
         case .zhHans: "本周节奏"
@@ -1245,9 +1292,9 @@ public struct QuotaCopy: Equatable, Sendable {
 
     public var onboardingSubtitle: String {
         switch locale {
-        case .zhHans: "它会常驻桌面，帮你判断 Codex 周额度能否撑到重置，并给出未来 24 小时建议。"
-        case .zhHant: "它會常駐桌面，幫你判斷 Codex 週額度能否撐到重設，並給出未來 24 小時建議。"
-        case .en: "It stays on your desktop, shows whether weekly Codex quota can last until reset, and gives a budget for the next 24 hours."
+        case .zhHans: "它会常驻桌面。5 小时读数告诉你眼前能否继续使用；周额度预测告诉你额度能否撑到下一刷新点。"
+        case .zhHant: "它會常駐桌面。5 小時讀數告訴你眼前能否繼續使用；週額度預測告訴你額度能否撐到下一個更新點。"
+        case .en: "It stays on your desktop. The 5-hour reading shows immediate availability; the weekly forecast shows whether quota can last until the next refresh."
         }
     }
 
@@ -1589,9 +1636,9 @@ public struct QuotaCopy: Equatable, Sendable {
 
     public var onboardingCapsuleStepBody: String {
         switch locale {
-        case .zhHans: "收起态显示周速度判断、本周已用比例和周时间/用量对比。两侧把手可调整宽度，拖到边缘可进入迷你形态。"
-        case .zhHant: "收起態顯示週速度判斷、本週已用比例和週時間／用量對比。兩側把手可調整寬度，拖到邊緣可進入迷你形態。"
-        case .en: "Collapsed mode shows the weekly pace judgment, weekly usage, and week time-vs-use tracks. Side handles resize it; edge drag enters mini mode."
+        case .zhHans: "收起态显示周速度判断与本周已用。\n有真实读数时，还会显示 5 小时进度。\n两侧把手调整宽度；拖到边缘进入迷你形态。"
+        case .zhHant: "收起態顯示週速度判斷與本週已用。\n有真實讀數時，還會顯示 5 小時進度。\n兩側把手調整寬度；拖到邊緣進入迷你形態。"
+        case .en: "Collapsed mode shows weekly pace and weekly usage.\nA real 5-hour reading adds its progress track.\nUse the side handles to resize; drag to an edge for mini mode."
         }
     }
 
@@ -1605,9 +1652,9 @@ public struct QuotaCopy: Equatable, Sendable {
 
     public var onboardingDetailStepBody: String {
         switch locale {
-        case .zhHans: "详情面板解释本周时间、本周已用、未来 24 小时建议、最近 24 小时、重置余量、置信原因、重置时间和数据读取时间。"
-        case .zhHant: "詳細面板會解釋本週時間、本週已用、未來 24 小時建議、最近 24 小時、重設餘量、可信原因、重設時間和資料讀取時間。"
-        case .en: "Details show week elapsed, weekly usage, the next-24-hour budget, last-24-hour usage, reset balance, confidence, reset time, and data-read time."
+        case .zhHans: "详情先显示 5 小时进度与重置分钟。\n周额度区域解释本周节奏与未来 24 小时建议。\n最近 24 小时用量和预测依据也会列出。"
+        case .zhHant: "詳情先顯示 5 小時進度與重設分鐘。\n週額度區域解釋本週節奏與未來 24 小時建議。\n最近 24 小時用量和預測依據也會列出。"
+        case .en: "Details start with 5-hour progress and its reset time.\nThe weekly section explains pace and the next-24-hour budget.\nLast-24-hour usage and forecast evidence are also listed."
         }
     }
 

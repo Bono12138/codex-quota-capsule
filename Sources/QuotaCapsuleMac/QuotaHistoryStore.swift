@@ -136,15 +136,31 @@ final class QuotaHistoryStore {
         (try? FileManager.default.attributesOfItem(atPath: databaseURL.path)[.size] as? Int64) ?? 0
     }
 
-    func recordWeeklySnapshot(_ snapshot: AgentQuotaSnapshot) {
-        guard snapshot.sourceStatus == .ok, let weeklyWindow = snapshot.weeklyWindow else { return }
+    func recordQuotaSnapshot(_ snapshot: AgentQuotaSnapshot) {
+        guard snapshot.sourceStatus == .ok,
+              snapshot.weeklyWindow != nil || snapshot.fiveHourWindow != nil else { return }
 
         execute("BEGIN IMMEDIATE TRANSACTION")
         defer { execute("COMMIT") }
 
         let captureID = insertCapture(snapshot)
         guard captureID > 0 else { return }
-        insertRawWeeklyWindow(captureID: captureID, snapshot: snapshot, window: weeklyWindow)
+        if let fiveHourWindow = snapshot.fiveHourWindow {
+            insertRawQuotaWindow(
+                captureID: captureID,
+                snapshot: snapshot,
+                windowType: "five_hour",
+                window: fiveHourWindow
+            )
+        }
+        if let weeklyWindow = snapshot.weeklyWindow {
+            insertRawQuotaWindow(
+                captureID: captureID,
+                snapshot: snapshot,
+                windowType: "weekly",
+                window: weeklyWindow
+            )
+        }
     }
 
     func recordResetCreditBank(_ bank: ResetCreditBankSummary) {
@@ -771,9 +787,10 @@ final class QuotaHistoryStore {
         return sqlite3_last_insert_rowid(database)
     }
 
-    private func insertRawWeeklyWindow(
+    private func insertRawQuotaWindow(
         captureID: Int64,
         snapshot: AgentQuotaSnapshot,
+        windowType: String,
         window: QuotaWindow
     ) {
         let windowStart = window.resetsAt.addingTimeInterval(TimeInterval(-window.windowMinutes * 60))
@@ -785,17 +802,18 @@ final class QuotaHistoryStore {
           burn_rate_percent_per_min, burn_rate_vs_even_pace,
           projected_remaining_at_reset, estimated_empty_at, state,
           used_delta_percent, delta_minutes, delta_percent_per_min, reset_detected
-        ) VALUES (?, 'weekly', ?, ?, ?, ?, ?, NULL, ?, NULL, NULL, NULL, NULL, 'raw', NULL, NULL, NULL, 0)
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, NULL, ?, NULL, NULL, NULL, NULL, 'raw', NULL, NULL, NULL, 0)
         """
         guard let statement = prepare(sql) else { return }
         defer { sqlite3_finalize(statement) }
         bindInt64(statement, 1, captureID)
-        bindInt(statement, 2, window.windowMinutes)
-        bindDouble(statement, 3, window.usedPercent)
-        bindDouble(statement, 4, window.remainingPercent)
-        bindDouble(statement, 5, window.resetsAt.timeIntervalSince1970)
-        bindDouble(statement, 6, windowStart.timeIntervalSince1970)
-        bindDouble(statement, 7, minutesUntilReset)
+        bindText(statement, 2, windowType)
+        bindInt(statement, 3, window.windowMinutes)
+        bindDouble(statement, 4, window.usedPercent)
+        bindDouble(statement, 5, window.remainingPercent)
+        bindDouble(statement, 6, window.resetsAt.timeIntervalSince1970)
+        bindDouble(statement, 7, windowStart.timeIntervalSince1970)
+        bindDouble(statement, 8, minutesUntilReset)
         _ = sqlite3_step(statement)
     }
 

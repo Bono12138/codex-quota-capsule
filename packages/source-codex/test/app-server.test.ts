@@ -65,6 +65,7 @@ describe("readCodexRateLimitsFromTransport", () => {
     ]);
     expect(snapshot.sourceStatus).toBe("ok");
     expect(snapshot).not.toHaveProperty("shortWindow");
+    expect(snapshot.fiveHourWindow?.usedPercent).toBe(62);
     expect(snapshot.weeklyWindow?.usedPercent).toBe(24);
   });
 

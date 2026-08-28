@@ -16,11 +16,8 @@ const roots = [
   "docs/product",
   "docs/distribution",
 ];
-const explicitExclusions = new Set([
-  "Sources/QuotaCapsuleCore/WeeklyHistoryMigration.swift",
-]);
-const files = roots.flatMap(collectCurrentFiles).filter((file) => !explicitExclusions.has(file));
-const forbidden = /5\s*小时|5\s*小時|5-hour|\b5h\b|shortWindow|short_window|short window|短窗口|等待新的/i;
+const files = roots.flatMap(collectCurrentFiles);
+const forbidden = /shortWindow|short_window|short window|短窗口|等待新的/i;
 const failures: string[] = [];
 
 for (const file of files) {
@@ -36,6 +33,26 @@ for (const file of files) {
   });
 }
 
+for (const file of [
+  "Sources/QuotaCapsuleCore/WeeklyRunwayPredictor.swift",
+  "packages/core/src/prediction.ts",
+]) {
+  const text = readFileSync(resolve(process.cwd(), file), "utf8");
+  if (/fiveHourWindow|five_hour|5\s*小时|5\s*小時|5-hour/i.test(text)) {
+    failures.push(file + ": five-hour quota must not influence weekly forecasting");
+  }
+}
+
+for (const file of [
+  "Sources/QuotaCapsuleMac/CapsuleViews.swift",
+  "apps/desktop/src/main.tsx",
+]) {
+  const text = readFileSync(resolve(process.cwd(), file), "utf8");
+  if (!/fiveHour|five-hour|5\s*小时/i.test(text)) {
+    failures.push(file + ": current UI must support a real five-hour quota reading");
+  }
+}
+
 function collectCurrentFiles(entry: string): string[] {
   const absolute = resolve(process.cwd(), entry);
   if (!statSync(absolute).isDirectory()) return [entry];
@@ -49,8 +66,8 @@ function collectCurrentFiles(entry: string): string[] {
 }
 
 if (failures.length) {
-  console.error(`Weekly Only surface audit failed with ${failures.length} forbidden references:\n${failures.join("\n")}`);
+  console.error("Quota surface audit failed with " + failures.length + " issues:\n" + failures.join("\n"));
   process.exit(1);
 }
 
-console.log(`Weekly Only surface audit passed (${files.length} current-release files).`);
+console.log("Quota surface audit passed (" + files.length + " current-release files).");

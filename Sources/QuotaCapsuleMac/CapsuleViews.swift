@@ -189,6 +189,8 @@ struct CompactCapsuleView: View {
                     usageLabel: store.copy.compactUsageTrackLabel,
                     elapsedPercent: elapsed,
                     usedPercent: used,
+                    fiveHourLabel: store.copy.compactFiveHourLabel,
+                    fiveHourUsedPercent: store.snapshot.fiveHourWindow.map { Int($0.usedPercent.rounded()) },
                     tone: store.displayModel.tone
                 )
                 .frame(width: compactMeterWidth, alignment: .leading)
@@ -272,10 +274,12 @@ struct CompactPaceBars: View {
     let usageLabel: String
     let elapsedPercent: Int
     let usedPercent: Int
+    let fiveHourLabel: String
+    let fiveHourUsedPercent: Int?
     let tone: CapsuleLevel
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 6) {
+        VStack(alignment: .leading, spacing: fiveHourUsedPercent == nil ? 6 : 3) {
             CompactPaceTrack(label: elapsedLabel, percent: elapsedPercent, percentText: "\(elapsedPercent)%", color: .secondary)
             CompactPaceTrack(
                 label: usageLabel,
@@ -283,6 +287,14 @@ struct CompactPaceBars: View {
                 percentText: usedPercent == 0 ? "<1%" : "\(usedPercent)%",
                 color: toneColor(tone)
             )
+            if let fiveHourUsedPercent {
+                CompactPaceTrack(
+                    label: fiveHourLabel,
+                    percent: fiveHourUsedPercent,
+                    percentText: fiveHourUsedPercent == 0 ? "<1%" : "\(fiveHourUsedPercent)%",
+                    color: .blue
+                )
+            }
         }
     }
 }
@@ -412,6 +424,8 @@ struct DetailPopoverView: View {
                 .foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)
 
+            FiveHourQuotaView(store: store)
+
             if !store.displayModel.confidenceText.isEmpty {
                 Label(store.displayModel.confidenceText, systemImage: "scope")
                     .font(.system(size: 10.5, weight: .semibold))
@@ -500,6 +514,51 @@ struct DetailPopoverView: View {
 
             ResetCreditFooterView(store: store)
         }
+    }
+}
+
+private struct FiveHourQuotaView: View {
+    @ObservedObject var store: QuotaStore
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Label(store.copy.fiveHourQuotaTitle, systemImage: "timer")
+                .font(.system(size: 10.5, weight: .bold))
+                .foregroundStyle(.secondary)
+
+            if let window = store.snapshot.fiveHourWindow {
+                HStack {
+                    Text(store.copy.fiveHourUsageSummary(
+                        usedPercent: window.usedPercent,
+                        remainingPercent: window.remainingPercent
+                    ))
+                    Spacer(minLength: 8)
+                    Text(store.copy.fiveHourResetDescription(
+                        resetsAt: window.resetsAt,
+                        now: Date()
+                    ))
+                }
+                .font(.system(size: 10.5, weight: .semibold))
+                .monospacedDigit()
+                .foregroundStyle(.primary.opacity(0.8))
+
+                ProgressView(value: min(100, max(0, window.usedPercent)), total: 100)
+                    .progressViewStyle(.linear)
+                    .tint(.blue)
+            } else {
+                Text(store.copy.fiveHourReadingUnavailable)
+                    .font(.system(size: 10.5, weight: .medium))
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        }
+        .padding(10)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(.blue.opacity(0.08), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                .stroke(.blue.opacity(0.22), lineWidth: 1)
+        )
     }
 }
 
