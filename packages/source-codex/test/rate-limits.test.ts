@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { parseCodexRateLimits } from "../src";
 
 describe("parseCodexRateLimits", () => {
-  it("ignores short candidates and accepts only a true weekly duration", () => {
+  it("parses a true five-hour window alongside the weekly window", () => {
     const fetchedAt = new Date(1_788_270_000_000);
     const parsed = parseCodexRateLimits(
       {
@@ -15,7 +15,8 @@ describe("parseCodexRateLimits", () => {
     );
 
     expect(parsed.sourceStatus).toBe("ok");
-    expect(parsed).not.toHaveProperty("shortWindow");
+    expect(parsed.fiveHourWindow?.windowMinutes).toBe(300);
+    expect(parsed.fiveHourWindow?.usedPercent).toBe(18);
     expect(parsed.weeklyWindow?.windowMinutes).toBe(10_080);
 
     const dailyOnly = parseCodexRateLimits(
@@ -48,7 +49,8 @@ describe("parseCodexRateLimits", () => {
 
     expect(parsed.provider).toBe("codex");
     expect(parsed.sourceStatus).toBe("ok");
-    expect(parsed).not.toHaveProperty("shortWindow");
+    expect(parsed.fiveHourWindow?.label).toBe("five_hour");
+    expect(parsed.fiveHourWindow?.usedPercent).toBe(17);
     expect(parsed.weeklyWindow?.label).toBe("weekly");
     expect(parsed.weeklyWindow?.usedPercent).toBe(41);
   });
@@ -87,6 +89,50 @@ describe("parseCodexRateLimits", () => {
     expect(parsed.weeklyWindow?.label).toBe("weekly");
     expect(parsed.weeklyWindow?.usedPercent).toBe(41);
     expect(parsed.errorMessage).toBeUndefined();
+  });
+
+  it("treats a valid five-hour-only response as usable", () => {
+    const fetchedAt = new Date(1_788_270_000_000);
+    const parsed = parseCodexRateLimits(
+      { rateLimits: { primary: { usedPercent: 23, windowDurationMins: 300, resetsAt: 1_788_271_414 } } },
+      { fetchedAt },
+    );
+
+    expect(parsed.sourceStatus).toBe("ok");
+    expect(parsed.fiveHourWindow?.usedPercent).toBe(23);
+    expect(parsed.weeklyWindow).toBeUndefined();
+  });
+
+  it("rejects arbitrary short windows instead of relabelling them as five-hour", () => {
+    const fetchedAt = new Date(1_788_270_000_000);
+    const parsed = parseCodexRateLimits(
+      { rateLimits: { primary: { usedPercent: 23, windowDurationMins: 15, resetsAt: 1_788_270_600 } } },
+      { fetchedAt },
+    );
+
+    expect(parsed.sourceStatus).toBe("error");
+    expect(parsed.fiveHourWindow).toBeUndefined();
+  });
+
+  it("prefers the generic codex bucket and never borrows Spark limits", () => {
+    const fetchedAt = new Date(1_788_270_000_000);
+    const parsed = parseCodexRateLimits(
+      {
+        rateLimits: { primary: { usedPercent: 99, windowDurationMins: 300, resetsAt: 1_788_271_414 } },
+        rateLimitsByLimitId: {
+          codex: { primary: { usedPercent: 2, windowDurationMins: 10_080, resetsAt: 1_788_299_735 } },
+          codex_bengalfox: {
+            primary: { usedPercent: 77, windowDurationMins: 300, resetsAt: 1_788_271_414 },
+            secondary: { usedPercent: 44, windowDurationMins: 10_080, resetsAt: 1_788_299_735 },
+          },
+        },
+      },
+      { fetchedAt },
+    );
+
+    expect(parsed.sourceStatus).toBe("ok");
+    expect(parsed.weeklyWindow?.usedPercent).toBe(2);
+    expect(parsed.fiveHourWindow).toBeUndefined();
   });
 
   it.each([

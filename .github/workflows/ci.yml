@@ -10,8 +10,8 @@ jobs:
   node:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
         with:
           node-version: 20
           cache: npm
@@ -20,14 +20,14 @@ jobs:
       - run: npm run lint
       - run: npm test
       - run: npm run audit:repository
-      - run: npm run audit:weekly-only
+      - run: npm run audit:quota-surfaces
       - run: git diff --check
 
   macos-swift:
     runs-on: macos-15
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
         with:
           node-version: 20
           cache: npm

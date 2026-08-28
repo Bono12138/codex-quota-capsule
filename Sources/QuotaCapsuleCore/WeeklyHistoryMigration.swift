@@ -41,10 +41,9 @@ public struct StoredQuotaWindowRow: Equatable, Sendable {
 }
 
 public enum WeeklyHistoryMigration {
-    public static let schemaVersion = 3
+    public static let schemaVersion = 4
 
     public static let cleanupStatements = [
-        "DELETE FROM quota_windows WHERE window_type = '5h'",
         """
         UPDATE quota_windows
         SET time_elapsed_percent = NULL,
@@ -60,7 +59,7 @@ public enum WeeklyHistoryMigration {
         """,
         "DELETE FROM captures WHERE NOT EXISTS (SELECT 1 FROM quota_windows WHERE quota_windows.capture_id = captures.id)"
     ]
-    public static let versionStatement = "PRAGMA user_version = 3"
+    public static let versionStatement = "PRAGMA user_version = 4"
 
     public static func reading(from row: StoredQuotaWindowRow) -> WeeklyQuotaReading? {
         guard row.windowType == "weekly",

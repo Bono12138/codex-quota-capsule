@@ -218,7 +218,7 @@ struct WeeklyDisplayModelTests {
         #expect(!copy.forecastResetBandValue(PercentageBand(lower: -22, upper: 44)).contains("0–44"))
     }
 
-    @Test("all locales remain Weekly Only")
+    @Test("all locales keep five-hour data out of weekly prediction copy")
     func allLocalesAreWeeklyOnly() {
         let models = [QuotaLocale.zhHans, .zhHant, .en].map {
             CapsuleDisplayModel.make(forecast: forecast(), locale: $0)
@@ -297,6 +297,8 @@ struct WeeklyDisplayModelTests {
         #expect(copy.onboardingSubtitle.contains("周额度"))
         #expect(copy.onboardingDetailStepBody.contains("最近 24 小时"))
         #expect(copy.onboardingDetailStepBody.contains("未来 24 小时建议"))
+        #expect(copy.onboardingCapsuleStepBody.contains("5 小时进度"))
+        #expect(copy.onboardingDetailStepBody.contains("5 小时进度"))
         #expect(copy.onboardingWeeklyStepTitle == "周速度是主判断")
         #expect(copy.onboardingMenuStepBody.contains("本周已用"))
         #expect(copy.weeklyTrendTitle == "本周趋势")
@@ -324,6 +326,20 @@ struct WeeklyDisplayModelTests {
         #expect(copy.quotaResetDescription(resetsAt: resetsAt, now: now, timeZone: timeZone) == "周额度将在 7月20日 08:11 重置（6天18小时后）")
         #expect(copy.dataRefreshDescription(lastSuccess: lastSuccess, nextAttempt: nextAttempt, now: now, timeZone: timeZone) == "数据更新于 13:49:44，下次自动读取约 47 秒后")
         #expect(!copy.quotaResetDescription(resetsAt: resetsAt, now: now, timeZone: timeZone).contains("刷新时间"))
+    }
+
+    @Test("five-hour quota copy is clear and minute-precise in every language")
+    func fiveHourQuotaCopyIsLocalized() throws {
+        let now = try Date.ISO8601FormatStyle().parse("2026-07-13T05:50:13Z")
+        let resetsAt = try Date.ISO8601FormatStyle().parse("2026-07-13T08:07:00Z")
+        let timeZone = try #require(TimeZone(identifier: "Asia/Shanghai"))
+
+        #expect(QuotaCopy(locale: .zhHans).fiveHourQuotaTitle == "5 小时额度")
+        #expect(QuotaCopy(locale: .zhHant).fiveHourQuotaTitle == "5 小時額度")
+        #expect(QuotaCopy(locale: .en).fiveHourQuotaTitle == "5-hour quota")
+        #expect(QuotaCopy(locale: .zhHans).fiveHourResetDescription(resetsAt: resetsAt, now: now, timeZone: timeZone).contains("7月13日 16:07"))
+        #expect(QuotaCopy(locale: .en).fiveHourUsageSummary(usedPercent: 23, remainingPercent: 77) == "23% used · 77% remaining")
+        #expect(QuotaCopy(locale: .zhHans).fiveHourReadingUnavailable.contains("暂未提供"))
     }
 
     @Test("the primary horizon label is compact, exact, and event-specific")

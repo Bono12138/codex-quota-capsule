@@ -186,6 +186,7 @@ public struct AgentQuotaSnapshot: Equatable, Sendable {
     public let provider: String
     public let sourceStatus: SourceStatus
     public let fetchedAt: Date
+    public let fiveHourWindow: QuotaWindow?
     public let weeklyWindow: QuotaWindow?
     public let resetCreditBank: ResetCreditBankSummary?
     public let errorMessage: String?
@@ -194,6 +195,7 @@ public struct AgentQuotaSnapshot: Equatable, Sendable {
         provider: String,
         sourceStatus: SourceStatus,
         fetchedAt: Date,
+        fiveHourWindow: QuotaWindow? = nil,
         weeklyWindow: QuotaWindow?,
         resetCreditBank: ResetCreditBankSummary? = nil,
         errorMessage: String?
@@ -201,6 +203,7 @@ public struct AgentQuotaSnapshot: Equatable, Sendable {
         self.provider = provider
         self.sourceStatus = sourceStatus
         self.fetchedAt = fetchedAt
+        self.fiveHourWindow = fiveHourWindow
         self.weeklyWindow = weeklyWindow
         self.resetCreditBank = resetCreditBank
         self.errorMessage = errorMessage

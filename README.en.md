@@ -12,7 +12,9 @@ Languages: [简体中文](README.zh-CN.md) | [English](README.en.md) | [Bilingua
 
 A quota percentage tells you how much has been used. It does not tell you whether the remaining quota can support the way you are working now.
 
-Heavy AI-native users may run several tasks at once, repeatedly check the usage page, hold back even when paid quota is still available, or discover too late that a large balance will expire at reset. Quota Capsule closes that judgment gap by comparing quota usage with elapsed time, recent pace, current activity, and available history.
+Heavy AI-native users may run several tasks at once, repeatedly check the usage page, hold back even when paid quota is still available, or discover too late that a large balance will expire at reset. Quota Capsule answers two separate questions. The 5-hour reading shows whether Codex is available right now. The weekly forecast compares usage with elapsed time, recent pace, current activity, and available history to show whether the remaining weekly quota can last.
+
+The 5-hour progress and minute-precise reset time appear only when Codex returns a real 300-minute window for the generic Codex limit. When that reading is absent, the app says so instead of inventing zero usage or borrowing a model-specific quota bucket.
 
 It reports six honest states—Early estimate, On track, Uncertain pace, May run out, Exhausted, and Data unavailable—plus a next-24-hour budget and a forecast range for the balance at refresh. The current refresh horizon is the earlier of the natural weekly reset or the earliest known available reset-credit expiry.
 
@@ -24,7 +26,7 @@ Codex is the first supported provider, and the architecture remains agent-extens
 
 Quota Capsule is designed to stay quiet until the user needs more detail:
 
-- A small floating desktop capsule with the current judgment and weekly usage.
+- A small floating desktop capsule with the weekly judgment, weekly usage, and the 5-hour progress when available.
 - A menu bar status item for glanceable, always-available context.
 - An expanded panel with refresh and usage progress, pace evidence, forecast confidence, a sustainable line, the next refresh timing, and local history.
 
@@ -38,6 +40,7 @@ The current public prerelease is [v0.3.6-beta.1](https://github.com/Bono12138/co
 
 - Native floating desktop capsule and menu bar item.
 - Read-only Codex app-server rate-limit source.
+- Duration-based 5-hour parsing within the generic Codex quota bucket, without mixing model-specific limits.
 - Immediate first-reading estimates with adaptive cycle, recent, activity, and historical evidence.
 - Next-24-hour budget, actual last-24-hour usage, reset-balance range, and a plain-language confidence reason.
 - Separate weekly-reset, last-successful-read, and next-automatic-read timing.

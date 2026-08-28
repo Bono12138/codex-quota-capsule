@@ -33,6 +33,7 @@ export type AgentQuotaSnapshot = {
   provider: string;
   sourceStatus: SourceStatus;
   fetchedAt: Date;
+  fiveHourWindow?: QuotaWindow;
   weeklyWindow?: QuotaWindow;
   resetCreditBank?: ResetCreditBankSummary;
   errorMessage?: string;
