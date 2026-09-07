@@ -61,6 +61,10 @@ Codex 是第一个适配对象。项目保持 agent-extensible：其他 Agent �
 
 ## 安装
 
+开发版更新：[PR #36](https://github.com/Bono12138/codex-quota-capsule/pull/36) 包含 5 小时额度显示和 Finder 启动读取修复。应用优先使用 ChatGPT 或 Codex 桌面端自带的 Codex 程序，并使用新版支持的启动参数。下方可下载的 Beta 安装包暂未包含这些改动。
+
+如果打开后显示读取失败，请检查 ChatGPT 或 Codex 桌面端是否已安装并登录，并查看胶囊的上次成功读取时间。建议保留“应用程序”中的安装副本；额外的打包副本可能导致搜索结果重复。
+
 ### 下载当前 Beta
 
 不懂 GitHub 也可以安装，而且下载公开版本不需要注册账号。

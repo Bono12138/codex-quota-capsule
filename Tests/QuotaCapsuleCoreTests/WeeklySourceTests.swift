@@ -4,6 +4,17 @@ import Testing
 
 @Suite("Weekly source parsing")
 struct WeeklySourceTests {
+    @Test("Finder launch prefers the bundled executable over a Node wrapper")
+    func finderExecutableSelection() throws {
+        let bundled = "/Applications/ChatGPT.app/Contents/Resources/codex"
+        let selected = try CodexExecutableResolver.resolveCandidate(
+            environmentPath: "/usr/bin:/bin",
+            homeDirectory: "/example",
+            isExecutable: { $0 == bundled || $0 == "/example/.local/bin/codex" }
+        )
+        #expect(selected == bundled)
+    }
+
     private let now = Date(timeIntervalSince1970: 1_789_000_000)
 
     @Test("the source snapshot supports a weekly reading")

@@ -52,6 +52,10 @@ See [Forecast Methodology](docs/product/forecast-methodology.md) for equations, 
 
 ## Install
 
+Development update: [PR #36](https://github.com/Bono12138/codex-quota-capsule/pull/36) adds optional 5-hour quota display and fixes quota reading when launched from Finder. The app prefers the Codex executable bundled with ChatGPT or Codex desktop and uses a startup option supported by newer Codex versions. The downloadable beta below does not include these changes yet.
+
+If reading fails, check that ChatGPT or Codex desktop is installed and signed in, then check the capsule's last successful read time. Keep the installed copy in Applications; extra build copies can appear as duplicate search results.
+
 ### Download the current beta
 
 You do not need a GitHub account to download the public app.

@@ -71,6 +71,14 @@ See [Forecast Methodology / 预测方法](docs/product/forecast-methodology.md) 
 
 ## Install / 安装
 
+Development update: [PR #36](https://github.com/Bono12138/codex-quota-capsule/pull/36) includes optional 5-hour quota display and a Finder-launch fix. It prefers the Codex executable bundled with ChatGPT or Codex desktop and uses a startup option supported by newer Codex versions. These changes are not included in the downloadable beta linked below yet.
+
+开发版更新：[PR #36](https://github.com/Bono12138/codex-quota-capsule/pull/36) 包含 5 小时额度显示和 Finder 启动读取修复。应用优先使用 ChatGPT 或 Codex 桌面端自带的 Codex 程序，并使用新版支持的启动参数。下方可下载的 Beta 安装包暂未包含这些改动。
+
+If quota reading fails after launch, check that ChatGPT or Codex desktop is installed and signed in. A running capsule alone does not confirm a successful read; check its last successful read time. Keep the installed copy in Applications; extra build copies can appear as duplicate search results.
+
+如果打开后显示读取失败，请检查 ChatGPT 或 Codex 桌面端是否已安装并登录，并查看胶囊的上次成功读取时间。建议保留“应用程序”中的安装副本；额外的打包副本可能导致搜索结果重复。
+
 ### Download the current beta / 下载当前 Beta
 
 No GitHub account is required to download the public app.
