@@ -70,6 +70,7 @@ struct UsageBudgetStateTests {
         #expect(allowance > 0)
         #expect(store.budgetTone == .danger)
         #expect(store.visibleStatusText.contains("5"))
+        #expect(store.friendlyPaceText == store.visibleStatusText)
     }
 
     @Test func restartStaleAndConfirmation() throws {
