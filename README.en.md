@@ -12,6 +12,8 @@ The source development version is **0.5.0**. Check each [Release](https://github
 
 The capsule and expanded panel lead with two equal-width tracks. The time track combines wall-clock and scheduled usable-time progress, with distinct endpoint markers; the second track shows weekly quota used. Both clocks share the weekly window start and the earlier planning deadline. Outside scheduled hours, usable time pauses. The clocks can cross; scheduled time is not measured online activity.
 
+The floating capsule defaults to 180×44 points; docked mode is 110×32 points. Hover for percentages and the exact deadline, or click to open details.
+
 Short status messages vary by state and stay stable within each day. Five-hour limits remain a separate constraint, while budget details and history are expandable.
 
 Budgeting starts automatically with a daily 09:00–23:00 schedule and zero reserve. Custom hours, weekdays and workload are optional. If the deadline falls before the next default session, the default uses the remaining time. Overnight and full-day schedules are supported.

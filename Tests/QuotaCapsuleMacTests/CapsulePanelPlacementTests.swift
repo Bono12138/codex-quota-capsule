@@ -4,6 +4,15 @@ import Testing
 
 @Suite("Capsule panel placement")
 struct CapsulePanelPlacementTests {
+    @Test("expanded details remain inside the right screen edge")
+    func expandedDetailsStayVisible() {
+        let visible = NSRect(x: 0, y: 0, width: 1440, height: 900)
+        let expanded = NSRect(x: 1204, y: 240, width: 372, height: 560)
+        let origin = CapsulePanelPlacement.clampedOrigin(for: expanded, visible: visible, margin: 12)
+        #expect(origin == NSPoint(x: 1056, y: 240))
+        #expect(visible.contains(NSRect(origin: origin, size: expanded.size)))
+    }
+
     @Test("showing a capsule from a disconnected screen returns it to the current screen")
     func disconnectedScreenFrameIsRecovered() {
         let currentScreen = NSRect(x: 0, y: 0, width: 1_440, height: 900)

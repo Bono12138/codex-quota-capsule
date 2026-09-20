@@ -8,12 +8,12 @@ private let authorXURL = FeedbackDestinations.authorXURL.absoluteString
 
 enum CapsuleViewMetrics {
     static let shadowPadding: CGFloat = 16
-    static let collapsedContentHeight: CGFloat = 60
+    static let collapsedContentHeight: CGFloat = 44
     static let collapsedHeight: CGFloat = collapsedContentHeight + shadowPadding * 2
     static let expandedHeight: CGFloat = 560
     static let expandedDetailContentHeight: CGFloat = expandedHeight - shadowPadding * 2 - collapsedContentHeight - 8
-    static let dockedContentWidth: CGFloat = 178
-    static let dockedContentHeight: CGFloat = 46
+    static let dockedContentWidth: CGFloat = 110
+    static let dockedContentHeight: CGFloat = 32
     static let dockedWidth: CGFloat = dockedContentWidth + shadowPadding * 2
     static let dockedHeight: CGFloat = dockedContentHeight + shadowPadding * 2
 }
@@ -66,18 +66,15 @@ struct CapsuleRootView: View {
                     CompactCapsuleView(store: store)
                 }
 
-                if !store.isCapsuleDocked {
-                    CapsuleResizeHandles(helpText: store.copy.resizeCapsuleHelp)
-                }
             }
 
             if store.isPanelExpanded && !store.isCapsuleDocked {
                 DetailPopoverView(store: store)
             }
         }
-        .frame(width: store.isCapsuleDocked ? CapsuleViewMetrics.dockedContentWidth : store.capsuleWidth)
+        .frame(width: store.capsuleContentWidth)
         .padding(CapsuleViewMetrics.shadowPadding)
-        .frame(width: store.isCapsuleDocked ? CapsuleViewMetrics.dockedWidth : store.capsuleWidth + CapsuleViewMetrics.shadowPadding * 2)
+        .frame(width: store.capsuleContentWidth + CapsuleViewMetrics.shadowPadding * 2)
         .frame(maxHeight: .infinity, alignment: .top)
     }
 }
@@ -86,34 +83,8 @@ struct DockedCapsuleView: View {
     @ObservedObject var store: QuotaStore
 
     var body: some View {
-        HStack(spacing: 6) {
-            Circle()
-                .fill(toneColor(store.budgetTone))
-                .frame(width: 8, height: 8)
-            Image(systemName: "gauge.with.dots.needle.33percent")
-                .font(.system(size: 12, weight: .bold))
-                .foregroundStyle(.primary.opacity(0.76))
-            VStack(alignment: .leading, spacing: 2) {
-                HStack(spacing: 4) {
-                    CapsuleStatusLabel(
-                        text: store.friendlyPaceText,
-                        tone: store.budgetTone,
-                        fontSize: 12,
-                        horizontalPadding: 4,
-                        verticalPadding: 1.5
-                    )
-                }
-                .lineLimit(1)
-                .minimumScaleFactor(0.72)
-                Text(store.compactHorizonText)
-                    .font(.system(size: 9, weight: .bold))
-                    .foregroundStyle(.primary.opacity(0.72))
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.72)
-            }
-            .layoutPriority(1)
-        }
-        .padding(.horizontal, 10)
+        TinyCapsuleTracks(store: store)
+        .padding(.horizontal, 12)
         .frame(width: CapsuleViewMetrics.dockedContentWidth, height: CapsuleViewMetrics.dockedContentHeight)
         .background {
             Capsule(style: .continuous)
@@ -128,20 +99,8 @@ struct CompactCapsuleView: View {
     @ObservedObject var store: QuotaStore
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 5) {
-            HStack(spacing: 5) {
-                Circle().fill(toneColor(store.budgetTone)).frame(width: 6, height: 6)
-                Text(store.compactStatusText).fontWeight(.semibold).fixedSize()
-                Spacer(minLength: 2)
-                Text(store.compactHorizonText).lineLimit(1).minimumScaleFactor(0.85)
-            }.font(.system(size: 10))
-                .help(store.friendlyPaceText)
-            ProgressComparisonView(natural: store.comparisonProgress?.natural,
-                available: store.comparisonProgress?.available, used: store.comparisonUsed,
-                copy: store.budgetCopy, compact: true, inline: true)
-        }
-        .padding(.leading, 38)
-        .padding(.trailing, 36)
+        TinyCapsuleTracks(store: store)
+        .padding(.horizontal, 16)
         .padding(.vertical, 7)
         .frame(width: store.capsuleWidth, height: CapsuleViewMetrics.collapsedContentHeight)
         .background {
@@ -167,6 +126,18 @@ struct CompactCapsuleView: View {
         )
     }
 
+}
+
+struct TinyCapsuleTracks: View {
+    @ObservedObject var store: QuotaStore
+    var body: some View {
+        ProgressComparisonView(natural: store.comparisonProgress?.natural,
+            available: store.comparisonProgress?.available, used: store.comparisonUsed,
+            copy: store.budgetCopy, compact: true, iconOnly: true)
+            .help(store.capsuleHoverText)
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel(store.capsuleHoverText)
+    }
 }
 
 struct CapsuleResizeHandles: View {

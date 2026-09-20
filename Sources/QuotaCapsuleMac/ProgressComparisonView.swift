@@ -9,6 +9,7 @@ struct ProgressComparisonView: View {
     let copy: BudgetCopy
     var compact = false
     var inline = false
+    var iconOnly = false
     @Environment(\.colorScheme) private var scheme
 
     private var clockColor: Color { scheme == .dark
@@ -21,7 +22,18 @@ struct ProgressComparisonView: View {
     }
 
     var body: some View {
-        if inline {
+        if iconOnly {
+            VStack(spacing: 5) {
+                HStack(spacing: 6) {
+                    Image(systemName: "clock").frame(width: 11)
+                    track(time: true)
+                }
+                HStack(spacing: 6) {
+                    Image(systemName: used == nil ? "questionmark.circle" : "gauge.with.dots.needle.33percent").frame(width: 11)
+                    track(time: false)
+                }
+            }.font(.system(size: 9)).foregroundStyle(.secondary)
+        } else if inline {
             VStack(spacing: 4) {
                 HStack(spacing: 6) {
                     Text(copy.text("时间", "時間", "Time")).frame(width: 28, alignment: .leading)
