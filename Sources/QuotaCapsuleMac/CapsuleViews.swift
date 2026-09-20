@@ -246,7 +246,7 @@ struct CompactQuotaBars: View {
             Text(copy.text("额度已用", "額度已用", "Quota used"))
                 .font(.system(size: 9)).foregroundStyle(.secondary)
             if let weekly {
-                CompactPaceTrack(label: copy.text("周", "週", "Week"), percent: Int(weekly),
+                CompactPaceTrack(label: copy.text("周", "週", "Wk"), percent: Int(weekly),
                     percentText: "\(Int(weekly))%", color: .teal)
             } else {
                 Text(copy.text("周读数暂缺", "週讀數暫缺", "Week: —")).font(.system(size: 10))
@@ -301,6 +301,8 @@ struct CompactPaceTrack: View {
             Text(label)
                 .font(.system(size: 10, weight: .bold))
                 .foregroundStyle(.primary.opacity(0.68))
+                .lineLimit(1)
+                .fixedSize(horizontal: true, vertical: false)
                 .frame(width: 28, alignment: .leading)
             GeometryReader { geometry in
                 ZStack(alignment: .leading) {
