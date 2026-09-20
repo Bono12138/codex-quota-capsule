@@ -4,6 +4,8 @@ All notable user-visible and repository-governance changes are recorded here.
 
 ## 0.5.0 — Unreleased
 
+- Preserve the original 60-point capsule and 178×46-point docked footprint; docked mode shows pace and deadline instead of session allocation.
+
 - Enable a daily 09:00–23:00 default budget immediately; keep custom schedules optional and preserve existing choices.
 - Lead with equal-width time and quota tracks; combine wall-clock and planned usable-time endpoints in one time track.
 - Keep five-hour limits as a separate compact summary, and move optional budgets and history below the primary comparison.

@@ -7,6 +7,59 @@ import QuotaCapsuleCore
 @Suite("Dual progress presentation")
 @MainActor
 struct ProgressComparisonTests {
+    @Test func compactDimensionsPreserveOriginalFootprint() {
+        #expect(CapsuleViewMetrics.collapsedContentHeight == 60)
+        #expect(CapsuleViewMetrics.dockedContentHeight == 46)
+        #expect(CapsuleViewMetrics.dockedContentWidth == 178)
+    }
+
+    @Test func renderCompactAndDockedFootprints() async throws {
+        guard let directory = ProcessInfo.processInfo.environment["QUOTA_RENDER_DIRECTORY"] else { return }
+        _ = NSApplication.shared
+        let name = "compact-render-" + UUID().uuidString
+        let defaults = try #require(UserDefaults(suiteName: name))
+        let configuration = AppConfiguration(channel: .beta, displayName: name,
+            bundleIdentifier: "com.bono.quota-capsule.render-tests", githubIssuesURL: nil,
+            analyticsEndpointURL: nil, applicationSupportDirectoryName: name, userDefaultsKeyPrefix: name)
+        defer {
+            defaults.removePersistentDomain(forName: name)
+            if let root = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first {
+                try? FileManager.default.removeItem(at: root.appendingPathComponent(name))
+            }
+        }
+        let store = QuotaStore(configuration: configuration, userDefaults: defaults, quotaFetcher: { _ in
+            let now = Date()
+            return AgentQuotaSnapshot(provider: "codex", sourceStatus: .ok, fetchedAt: now,
+                weeklyWindow: QuotaWindow(label: "weekly", windowMinutes: 10080, usedPercent: 8,
+                    remainingPercent: 92, resetsAt: now.addingTimeInterval(3 * 86400)), errorMessage: nil)
+        })
+        for _ in 0..<40 {
+            if !store.isRefreshing { break }
+            try await Task.sleep(nanoseconds: 25_000_000)
+        }
+        store.saveUsagePlan(UsagePlan(startHour: 0, endHour: 0))
+        #expect(!store.friendlyPaceText.contains("92"))
+        #expect(!store.visibleStatusText.contains("默认预算"))
+        try FileManager.default.createDirectory(atPath: directory, withIntermediateDirectories: true)
+        for locale in [QuotaLocale.zhHans, .zhHant, .en] {
+            store.selectLocale(locale)
+            for width in [340.0, 420.0, 560.0] {
+                store.setCapsuleWidth(width, commit: false)
+                let view = VStack(spacing: 20) {
+                    CompactCapsuleView(store: store)
+                    DockedCapsuleView(store: store)
+                }.padding(20).background(Color.white).environment(\.colorScheme, .light)
+                let renderer = ImageRenderer(content: view)
+                renderer.scale = 2
+                let image = try #require(renderer.nsImage)
+                #expect(image.size.height == 166)
+                let tiff = try #require(image.tiffRepresentation)
+                let bitmap = try #require(NSBitmapImageRep(data: tiff))
+                let png = try #require(bitmap.representation(using: .png, properties: [:]))
+                try png.write(to: URL(fileURLWithPath: directory).appendingPathComponent("compact-\(locale.rawValue)-\(Int(width)).png"))
+            }
+        }
+    }
     @Test func limitingWindowAndMissingDataOverrideHumor() {
         #expect(PaceMessage.classify(used: 20, available: 70, active: true, fiveHourRemaining: 5) == .fiveHour)
         #expect(PaceMessage.classify(used: 95, available: 70, active: true, fiveHourRemaining: 80) == .low)
