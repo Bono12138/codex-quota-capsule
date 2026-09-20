@@ -8,7 +8,7 @@ private let authorXURL = FeedbackDestinations.authorXURL.absoluteString
 
 enum CapsuleViewMetrics {
     static let shadowPadding: CGFloat = 16
-    static let collapsedContentHeight: CGFloat = 128
+    static let collapsedContentHeight: CGFloat = 60
     static let collapsedHeight: CGFloat = collapsedContentHeight + shadowPadding * 2
     static let expandedHeight: CGFloat = 560
     static let expandedDetailContentHeight: CGFloat = expandedHeight - shadowPadding * 2 - collapsedContentHeight - 8
@@ -96,22 +96,16 @@ struct DockedCapsuleView: View {
             VStack(alignment: .leading, spacing: 2) {
                 HStack(spacing: 4) {
                     CapsuleStatusLabel(
-                        text: store.visibleStatusText,
+                        text: store.friendlyPaceText,
                         tone: store.budgetTone,
                         fontSize: 12,
                         horizontalPadding: 4,
                         verticalPadding: 1.5
                     )
-                    if let used = store.usageBudgetState.result.allowance.map(store.budgetCopy.percent) ?? store.visibleCompactUsedBadgeText {
-                        Text(used)
-                            .font(.system(size: 11, weight: .bold))
-                            .monospacedDigit()
-                            .foregroundStyle(toneColor(store.budgetTone))
-                    }
                 }
                 .lineLimit(1)
                 .minimumScaleFactor(0.72)
-                Text(store.primaryHorizonText)
+                Text(store.compactHorizonText)
                     .font(.system(size: 9, weight: .bold))
                     .foregroundStyle(.primary.opacity(0.72))
                     .lineLimit(1)
@@ -134,49 +128,21 @@ struct CompactCapsuleView: View {
     @ObservedObject var store: QuotaStore
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 9) {
-            VStack(alignment: .leading, spacing: 4) {
-                HStack(spacing: 6) {
-                    Circle()
-                        .fill(toneColor(store.budgetTone))
-                        .frame(width: 8, height: 8)
-                        .shadow(color: toneColor(store.budgetTone).opacity(0.55), radius: 5)
-
-                    CapsuleStatusLabel(
-                        text: store.friendlyPaceText,
-                        tone: store.budgetTone,
-                        fontSize: 13,
-                        horizontalPadding: 7,
-                        verticalPadding: 2.5
-                    )
-
-                    if store.isRefreshing {
-                        ProgressView()
-                            .controlSize(.mini)
-                            .frame(width: 12, height: 12)
-                    } else if store.snapshot.sourceStatus != .ok {
-                        Image(systemName: "exclamationmark.triangle.fill")
-                            .font(.system(size: 11, weight: .semibold))
-                            .foregroundStyle(.secondary)
-                    }
-                }
-
-                Label(store.compactHorizonText, systemImage: "calendar.badge.clock")
-                    .font(.system(size: 11, weight: .semibold))
-                    .foregroundStyle(.primary)
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.72)
-            }
-            .layoutPriority(1)
-                .frame(maxWidth: .infinity, alignment: .leading)
-
+        VStack(alignment: .leading, spacing: 5) {
+            HStack(spacing: 5) {
+                Circle().fill(toneColor(store.budgetTone)).frame(width: 6, height: 6)
+                Text(store.compactStatusText).fontWeight(.semibold).fixedSize()
+                Spacer(minLength: 2)
+                Text(store.compactHorizonText).lineLimit(1).minimumScaleFactor(0.85)
+            }.font(.system(size: 10))
+                .help(store.friendlyPaceText)
             ProgressComparisonView(natural: store.comparisonProgress?.natural,
                 available: store.comparisonProgress?.available, used: store.comparisonUsed,
-                copy: store.budgetCopy, compact: true)
+                copy: store.budgetCopy, compact: true, inline: true)
         }
         .padding(.leading, 38)
         .padding(.trailing, 36)
-        .padding(.vertical, 9)
+        .padding(.vertical, 7)
         .frame(width: store.capsuleWidth, height: CapsuleViewMetrics.collapsedContentHeight)
         .background {
             Capsule(style: .continuous)

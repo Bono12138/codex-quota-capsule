@@ -8,6 +8,7 @@ struct ProgressComparisonView: View {
     let used: Double?
     let copy: BudgetCopy
     var compact = false
+    var inline = false
     @Environment(\.colorScheme) private var scheme
 
     private var clockColor: Color { scheme == .dark
@@ -20,6 +21,27 @@ struct ProgressComparisonView: View {
     }
 
     var body: some View {
+        if inline {
+            VStack(spacing: 4) {
+                HStack(spacing: 6) {
+                    Text(copy.text("时间", "時間", "Time")).frame(width: 28, alignment: .leading)
+                    track(time: true)
+                    Text(percent(available)).frame(width: 32, alignment: .trailing)
+                }
+                HStack(spacing: 6) {
+                    Text(copy.text("已用", "已用", "Used")).frame(width: 28, alignment: .leading)
+                    track(time: false)
+                    Text(percent(used)).frame(width: 32, alignment: .trailing)
+                }
+            }
+            .font(.system(size: 10, weight: .medium)).monospacedDigit()
+            .help(copy.text("自然时间 ", "自然時間 ", "Clock ") + percent(natural)
+                + " · " + copy.text("可用时间 ", "可用時間 ", "Usable ") + percent(available))
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel(copy.text("自然时间 ", "自然時間 ", "Clock ") + percent(natural)
+                + " · " + copy.text("可用时间 ", "可用時間 ", "Usable ") + percent(available)
+                + " · " + copy.text("额度已用 ", "額度已用 ", "Quota used ") + percent(used))
+        } else {
         VStack(spacing: compact ? 7 : 16) {
             VStack(spacing: 5) {
                 HStack {
@@ -43,6 +65,7 @@ struct ProgressComparisonView: View {
         .monospacedDigit()
         .fixedSize(horizontal: false, vertical: true)
         .accessibilityElement(children: .combine)
+        }
     }
 
     private func track(time: Bool) -> some View {

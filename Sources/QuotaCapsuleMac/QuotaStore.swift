@@ -469,9 +469,6 @@ final class QuotaStore: ObservableObject {
             return budgetCopy.text("5 小时额度已用尽", "5 小時額度已用盡", "5h quota exhausted")
         }
         if let window = snapshot.weeklyWindow, window.remainingPercent <= 0 { return budgetCopy.text("已用尽", "已用盡", "Exhausted") }
-        if usageBudgetState.usesDefaultPlan, usageBudgetState.result.state == .active {
-            return budgetCopy.text("默认预算", "預設預算", "Default budget")
-        }
         return budgetCopy.status(usageBudgetState.result, configured: usageBudgetState.plan != nil)
     }
 
@@ -507,6 +504,22 @@ final class QuotaStore: ObservableObject {
               snapshot.weeklyWindow?.remainingPercent != 0,
               let message = paceMessage else { return visibleStatusText }
         return message.text(copy: budgetCopy, seed: Int(currentTime.timeIntervalSince1970 / 86400))
+    }
+
+    var compactStatusText: String {
+        guard let message = paceMessage else { return visibleStatusText }
+        if snapshot.fiveHourWindow?.remainingPercent == 0 || snapshot.weeklyWindow?.remainingPercent == 0 {
+            return visibleStatusText
+        }
+        switch message {
+        case .abundant: return budgetCopy.text("富余", "富餘", "Room")
+        case .balanced: return budgetCopy.text("平稳", "平穩", "Steady")
+        case .fast: return budgetCopy.text("偏快", "偏快", "Fast")
+        case .low: return budgetCopy.text("偏低", "偏低", "Low")
+        case .resting: return budgetCopy.text("休息时段", "休息時段", "Rest")
+        case .expiring: return budgetCopy.text("券将到期", "券將到期", "Expiring")
+        case .fiveHour: return budgetCopy.text("5h 偏低", "5h 偏低", "5h low")
+        }
     }
 
     var budgetTone: CapsuleLevel {
