@@ -1,5 +1,7 @@
 # Public Launch Materials
 
+Status: Historical launch draft. Current product wording is maintained in the root README and colleague-project-brief.md.
+
 日期：2026-07-02
 
 ## 发布定位

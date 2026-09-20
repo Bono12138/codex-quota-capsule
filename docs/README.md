@@ -28,7 +28,7 @@ This index maps maintained product knowledge. Code and current documents must ag
 - `research/reset-credit-timing-optimization.md` — reset-credit facts, optimization model, and the boundary between shipped display/history and deferred advice.
 - `distribution/codex-assisted-distribution-strategy.md` — public installation and trust model.
 - `distribution/colleague-project-brief.md` — shareable Chinese explanation of the project, its advantages, and honest limitations.
-- `distribution/public-launch-materials.md` — maintained public launch assets.
+- `distribution/public-launch-materials.md` — historical launch copy; use the current README and colleague brief for session-budget messaging.
 - `distribution/quota-anxiety-psychology-notes.md` — user problem research.
 
 ## Historical Or Superseded
