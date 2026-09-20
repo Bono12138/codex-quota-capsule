@@ -7,14 +7,13 @@ import QuotaCapsuleCore
 @Suite("Dual progress presentation")
 @MainActor
 struct ProgressComparisonTests {
-    @Test func compactDimensionsPreserveOriginalFootprint() {
-        #expect(CapsuleViewMetrics.collapsedContentHeight == 60)
-        #expect(CapsuleViewMetrics.dockedContentHeight == 46)
-        #expect(CapsuleViewMetrics.dockedContentWidth == 178)
+    @Test func tinyCapsulesHaveBoundedFootprints() {
+        #expect(CapsuleViewMetrics.collapsedContentHeight == 44)
+        #expect(CapsuleViewMetrics.dockedContentHeight == 32)
+        #expect(CapsuleViewMetrics.dockedContentWidth == 110)
     }
 
     @Test func renderCompactAndDockedFootprints() async throws {
-        guard let directory = ProcessInfo.processInfo.environment["QUOTA_RENDER_DIRECTORY"] else { return }
         _ = NSApplication.shared
         let name = "compact-render-" + UUID().uuidString
         let defaults = try #require(UserDefaults(suiteName: name))
@@ -38,12 +37,24 @@ struct ProgressComparisonTests {
             try await Task.sleep(nanoseconds: 25_000_000)
         }
         store.saveUsagePlan(UsagePlan(startHour: 0, endHour: 0))
+        #expect(store.capsuleWidth == 180)
+        #expect(store.capsuleContentWidth == 180)
+        store.setPanelExpanded(true)
+        #expect(store.capsuleContentWidth == 340)
+        store.setPanelExpanded(false)
+        #expect(store.capsuleContentWidth == 180)
+        store.setCapsuleDocked(true)
+        #expect(store.capsuleContentWidth == 110)
+        store.setCapsuleDocked(false)
+        #expect(store.capsuleHoverText.contains(store.primaryHorizonText))
+        #expect(store.capsuleHoverText.contains("8%"))
         #expect(!store.friendlyPaceText.contains("92"))
         #expect(!store.visibleStatusText.contains("默认预算"))
+        guard let directory = ProcessInfo.processInfo.environment["QUOTA_RENDER_DIRECTORY"] else { return }
         try FileManager.default.createDirectory(atPath: directory, withIntermediateDirectories: true)
         for locale in [QuotaLocale.zhHans, .zhHant, .en] {
             store.selectLocale(locale)
-            for width in [340.0, 420.0, 560.0] {
+            for width in [180.0, 200.0, 220.0] {
                 store.setCapsuleWidth(width, commit: false)
                 let view = VStack(spacing: 20) {
                     CompactCapsuleView(store: store)
@@ -52,7 +63,7 @@ struct ProgressComparisonTests {
                 let renderer = ImageRenderer(content: view)
                 renderer.scale = 2
                 let image = try #require(renderer.nsImage)
-                #expect(image.size.height == 166)
+                #expect(image.size.height == 136)
                 let tiff = try #require(image.tiffRepresentation)
                 let bitmap = try #require(NSBitmapImageRep(data: tiff))
                 let png = try #require(bitmap.representation(using: .png, properties: [:]))

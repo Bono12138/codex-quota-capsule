@@ -181,10 +181,11 @@ final class CapsulePanelController {
             width: currentPanelWidth,
             height: currentPanelHeight
         )
+        clampPanelToVisibleArea()
     }
 
     private var currentPanelWidth: CGFloat {
-        hiddenEdge == nil && !store.isCapsuleDocked ? store.capsuleWidth + CapsuleViewMetrics.shadowPadding * 2 : dockedWidth
+        hiddenEdge == nil && !store.isCapsuleDocked ? store.capsuleContentWidth + CapsuleViewMetrics.shadowPadding * 2 : dockedWidth
     }
 
     private var currentPanelHeight: CGFloat {

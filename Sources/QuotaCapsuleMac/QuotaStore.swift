@@ -109,8 +109,8 @@ final class QuotaStore: ObservableObject {
     private let lastSessionDurationKey: String
     private let expandedCountKey: String
     private let feedbackNudgeShownKey: String
-    private let minCapsuleWidth: CGFloat = 340
-    private let maxCapsuleWidth: CGFloat = 560
+    private let minCapsuleWidth: CGFloat = 180
+    private let maxCapsuleWidth: CGFloat = 220
     private let feedbackNudgeExpansionThreshold = 6
     private let automaticRefreshInterval: TimeInterval = 60
 
@@ -136,7 +136,7 @@ final class QuotaStore: ObservableObject {
         onboardingKey = configuration.userDefaultsKey("hasCompletedOnboarding")
         localeKey = configuration.userDefaultsKey("selectedLocale")
         analyticsConsentKey = configuration.userDefaultsKey("analyticsConsent")
-        capsuleWidthKey = configuration.userDefaultsKey("capsuleWidth")
+        capsuleWidthKey = configuration.userDefaultsKey("tinyCapsuleWidth.v1")
         lastSessionDurationKey = configuration.userDefaultsKey("lastSessionDuration.seconds")
         expandedCountKey = configuration.userDefaultsKey("panelExpanded.count")
         feedbackNudgeShownKey = configuration.userDefaultsKey("feedbackNudge.shown")
@@ -151,7 +151,7 @@ final class QuotaStore: ObservableObject {
         analyticsConsent = userDefaults.string(forKey: analyticsConsentKey)
             .flatMap(AnalyticsConsent.init(rawValue:)) ?? .undecided
         let storedWidth = userDefaults.double(forKey: capsuleWidthKey)
-        capsuleWidth = storedWidth > 0 ? min(max(CGFloat(storedWidth), minCapsuleWidth), maxCapsuleWidth) : 420
+        capsuleWidth = storedWidth > 0 ? min(max(CGFloat(storedWidth), minCapsuleWidth), maxCapsuleWidth) : 180
         let now = Date()
         currentTime = now
         let initial = AgentQuotaSnapshot(
@@ -473,6 +473,19 @@ final class QuotaStore: ObservableObject {
     }
 
     var budgetCopy: BudgetCopy { BudgetCopy(locale: copy.locale) }
+
+    var capsuleContentWidth: CGFloat {
+        isCapsuleDocked ? CapsuleViewMetrics.dockedContentWidth : isPanelExpanded ? max(340, capsuleWidth) : capsuleWidth
+    }
+
+    var capsuleHoverText: String {
+        let p = comparisonProgress
+        func percent(_ value: Double?) -> String { value.map { String(format: "%.0f%%", $0) } ?? "—" }
+        return friendlyPaceText + "\n" + primaryHorizonText + "\n"
+            + budgetCopy.text("自然时间 ", "自然時間 ", "Clock ") + percent(p?.natural) + " · "
+            + budgetCopy.text("可用时间 ", "可用時間 ", "Usable ") + percent(p?.available) + "\n"
+            + budgetCopy.text("额度已用 ", "額度已用 ", "Quota used ") + percent(comparisonUsed)
+    }
 
     var comparisonProgress: TimeProgress? {
         guard snapshot.sourceStatus == .ok, !isConfirmingQuotaChange,
