@@ -8,7 +8,7 @@ private let authorXURL = FeedbackDestinations.authorXURL.absoluteString
 
 enum CapsuleViewMetrics {
     static let shadowPadding: CGFloat = 16
-    static let collapsedContentHeight: CGFloat = 60
+    static let collapsedContentHeight: CGFloat = 128
     static let collapsedHeight: CGFloat = collapsedContentHeight + shadowPadding * 2
     static let expandedHeight: CGFloat = 560
     static let expandedDetailContentHeight: CGFloat = expandedHeight - shadowPadding * 2 - collapsedContentHeight - 8
@@ -134,7 +134,7 @@ struct CompactCapsuleView: View {
     @ObservedObject var store: QuotaStore
 
     var body: some View {
-        HStack(spacing: 12) {
+        VStack(alignment: .leading, spacing: 9) {
             VStack(alignment: .leading, spacing: 4) {
                 HStack(spacing: 6) {
                     Circle()
@@ -143,7 +143,7 @@ struct CompactCapsuleView: View {
                         .shadow(color: toneColor(store.budgetTone).opacity(0.55), radius: 5)
 
                     CapsuleStatusLabel(
-                        text: store.visibleStatusText,
+                        text: store.friendlyPaceText,
                         tone: store.budgetTone,
                         fontSize: 13,
                         horizontalPadding: 7,
@@ -170,9 +170,9 @@ struct CompactCapsuleView: View {
             .layoutPriority(1)
                 .frame(maxWidth: .infinity, alignment: .leading)
 
-            CompactQuotaBars(weekly: store.snapshot.weeklyWindow?.usedPercent,
-                fiveHour: store.snapshot.fiveHourWindow?.usedPercent, copy: store.budgetCopy)
-                .frame(width: 126)
+            ProgressComparisonView(natural: store.comparisonProgress?.natural,
+                available: store.comparisonProgress?.available, used: store.comparisonUsed,
+                copy: store.budgetCopy, compact: true)
         }
         .padding(.leading, 38)
         .padding(.trailing, 36)
@@ -394,20 +394,26 @@ struct DetailPopoverView: View {
         VStack(alignment: .leading, spacing: 14) {
             HStack(alignment: .top) {
                 VStack(alignment: .leading, spacing: 5) {
-                    Text(store.copy.weeklyOnlyTitle)
-                        .font(.system(size: 11, weight: .bold))
-                        .foregroundStyle(.secondary)
+                    Text(store.budgetCopy.text("额度胶囊", "額度膠囊", "Quota Capsule"))
+                        .font(.system(size: 17, weight: .bold))
                 }
                 .layoutPriority(1)
                 Spacer()
-                Text(store.visibleStatusText)
-                    .font(.system(size: 12, weight: .bold))
-                    .lineLimit(1)
-                    .padding(.horizontal, 10)
-                    .padding(.vertical, 6)
-                    .background(toneColor(store.budgetTone), in: Capsule())
-                    .foregroundStyle(.black.opacity(0.82))
+                Menu {
+                    Button("简体中文") { store.selectLocale(.zhHans) }
+                    Button("繁體中文") { store.selectLocale(.zhHant) }
+                    Button("English") { store.selectLocale(.en) }
+                } label: { Label("Language", systemImage: "globe") }
+                .fixedSize().menuStyle(.borderlessButton).frame(maxWidth: 104)
             }
+
+            ProgressComparisonView(natural: store.comparisonProgress?.natural,
+                available: store.comparisonProgress?.available, used: store.comparisonUsed, copy: store.budgetCopy)
+
+            Text(store.friendlyPaceText)
+                .font(.system(size: 14, weight: .semibold))
+                .padding(10).frame(maxWidth: .infinity, alignment: .leading)
+                .background(.blue.opacity(0.07), in: RoundedRectangle(cornerRadius: 10))
 
             Label(store.primaryHorizonText, systemImage: "calendar.badge.clock")
                 .font(.system(size: 11, weight: .bold))
@@ -421,12 +427,20 @@ struct DetailPopoverView: View {
                     in: RoundedRectangle(cornerRadius: 11, style: .continuous)
                 )
 
-            FiveHourQuotaView(store: store)
+            if let window = store.snapshot.fiveHourWindow {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(store.budgetCopy.text("5 小时剩余 ", "5 小時剩餘 ", "5h remaining ") + store.budgetCopy.percent(window.remainingPercent))
+                    Text(store.budgetCopy.text("刷新 ", "更新 ", "Resets ") + store.budgetCopy.date(window.resetsAt))
+                        .foregroundStyle(.secondary)
+                }.font(.system(size: 12)).monospacedDigit()
+            } else {
+                Text(store.budgetCopy.text("5 小时额度：暂无读数", "5 小時額度：暫無讀數", "5h quota: no reading"))
+                    .font(.system(size: 12)).foregroundStyle(.secondary)
+            }
 
-            Text(store.budgetCopy.text("周额度剩余：", "週額度剩餘：", "Weekly remaining: ") + store.weeklyText)
-                .font(.callout).monospacedDigit()
-
-            UsageBudgetCard(store: store)
+            DisclosureGroup(store.budgetCopy.text("时段与预算（可选）", "時段與預算（可選）", "Hours & budget (optional)")) {
+                UsageBudgetCard(store: store)
+            }.font(.system(size: 12))
 
             DisclosureGroup(store.budgetCopy.text("历史用法参考", "歷史用法參考", "Observed usage reference")) {
             VStack(alignment: .leading, spacing: 9) {
@@ -434,12 +448,6 @@ struct DetailPopoverView: View {
                     .font(.caption).fixedSize(horizontal: false, vertical: true)
                 Text(store.displayModel.defaultText)
                     .font(.callout).fixedSize(horizontal: false, vertical: true)
-                Text(store.copy.weeklyPaceTitle)
-                    .font(.system(size: 10, weight: .bold))
-                    .foregroundStyle(.secondary)
-                ForEach(progressMetrics, id: \.label) { metric in
-                    MetricRow(metric: metric, tone: store.displayModel.tone)
-                }
             }
 
 
@@ -2229,7 +2237,7 @@ func capsuleSurfaceColor() -> Color {
     if NSApp.effectiveAppearance.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua {
         return Color(red: 0.10, green: 0.12, blue: 0.13).opacity(0.86)
     }
-    return Color(red: 0.92, green: 0.96, blue: 0.95).opacity(0.92)
+    return Color(red: 0.98, green: 0.985, blue: 1).opacity(0.97)
 }
 
 @MainActor
@@ -2237,5 +2245,5 @@ func panelSurfaceColor() -> Color {
     if NSApp.effectiveAppearance.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua {
         return Color(red: 0.09, green: 0.10, blue: 0.11).opacity(0.88)
     }
-    return Color(red: 0.90, green: 0.94, blue: 0.93).opacity(0.93)
+    return Color(red: 0.98, green: 0.985, blue: 1).opacity(0.98)
 }

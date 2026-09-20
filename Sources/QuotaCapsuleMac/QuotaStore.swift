@@ -477,11 +477,44 @@ final class QuotaStore: ObservableObject {
 
     var budgetCopy: BudgetCopy { BudgetCopy(locale: copy.locale) }
 
+    var comparisonProgress: TimeProgress? {
+        guard snapshot.sourceStatus == .ok, !isConfirmingQuotaChange,
+              (-60...180).contains(currentTime.timeIntervalSince(snapshot.fetchedAt)),
+              let window = snapshot.weeklyWindow,
+              let horizon = WeeklyRunwayPredictor.burnHorizon(snapshot: snapshot, now: currentTime) else { return nil }
+        return TimeProgress.make(start: window.resetsAt.addingTimeInterval(-Double(window.windowMinutes) * 60),
+            end: horizon.at, now: currentTime, plan: usageBudgetState.plan ?? UsagePlan())
+    }
+
+    var comparisonUsed: Double? {
+        comparisonProgress == nil ? nil : snapshot.weeklyWindow?.usedPercent
+    }
+
+    var paceMessage: PaceMessage? {
+        guard let available = comparisonProgress?.available, let window = snapshot.weeklyWindow else { return nil }
+        let slots = UsageBudgetPlanner.sessions(plan: usageBudgetState.plan ?? UsagePlan(),
+            from: currentTime, to: currentTime.addingTimeInterval(86400), calendar: .current)
+        let horizon = WeeklyRunwayPredictor.burnHorizon(snapshot: snapshot, now: currentTime)
+        let expiring = horizon.map { $0.at < window.resetsAt && $0.at.timeIntervalSince(currentTime) <= 6 * 3600 } ?? false
+        return PaceMessage.classify(used: window.usedPercent, available: available,
+            active: slots.first?.start == currentTime, fiveHourRemaining: snapshot.fiveHourWindow?.remainingPercent,
+            expiring: expiring)
+    }
+
+    var friendlyPaceText: String {
+        // One variant per day; fetching a new reading never randomly changes the sentence.
+        guard snapshot.fiveHourWindow?.remainingPercent != 0,
+              snapshot.weeklyWindow?.remainingPercent != 0,
+              let message = paceMessage else { return visibleStatusText }
+        return message.text(copy: budgetCopy, seed: Int(currentTime.timeIntervalSince1970 / 86400))
+    }
+
     var budgetTone: CapsuleLevel {
         guard snapshot.sourceStatus == .ok, !isConfirmingQuotaChange,
               currentTime.timeIntervalSince(snapshot.fetchedAt) <= 180 else { return .unknown }
         if snapshot.fiveHourWindow?.remainingPercent == 0 { return .danger }
         if snapshot.weeklyWindow?.remainingPercent == 0 { return .danger }
+        if paceMessage == .fast || paceMessage == .low || paceMessage == .fiveHour { return .watch }
         switch usageBudgetState.result.state {
         case .active: return .safe
         case .allocatedSpent, .reserved: return .watch
