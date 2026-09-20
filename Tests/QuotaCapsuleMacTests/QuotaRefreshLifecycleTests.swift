@@ -52,7 +52,12 @@ struct QuotaRefreshLifecycleTests {
         )
 
         #expect(store.isRefreshing)
-        try await Task.sleep(nanoseconds: 120_000_000)
+        // The main actor can be busy with other suites on CI. Observe completion
+        // within a bound shorter than the simulated fetch instead of assuming a wake-up order.
+        for _ in 0..<40 {
+            if !store.isRefreshing { break }
+            try await Task.sleep(nanoseconds: 25_000_000)
+        }
         #expect(!store.isRefreshing)
         #expect(store.lastErrorText == store.copy.refreshWatchdogTimeout)
         #expect(store.visibleStatusText != store.copy.loadingStatus)
