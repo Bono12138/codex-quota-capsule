@@ -5,7 +5,9 @@ All notable user-visible and repository-governance changes are recorded here.
 ## 0.5.0 — Unreleased
 
 - Enable a daily 09:00–23:00 default budget immediately; keep custom schedules optional and preserve existing choices.
-- Restore the always-visible weekly-used progress track and optional five-hour track.
+- Lead with equal-width time and quota tracks; combine wall-clock and planned usable-time endpoints in one time track.
+- Keep five-hour limits as a separate compact summary, and move optional budgets and history below the primary comparison.
+- Add stable, localized status variations and a first-level Language menu; improve dark-mode label contrast.
 - Add a default-mode allowance for imminent deadlines outside daytime hours, plus a restore-default action.
 
 - Add user-confirmed work sessions, weekday/overnight/full-day schedules, reserve and today's workload weight.

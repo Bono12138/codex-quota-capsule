@@ -462,9 +462,17 @@ struct DetailPopoverView: View {
             WeeklyTrendChartView(store: store)
             }
 
-            Label(store.dataRefreshDescription, systemImage: "arrow.triangle.2.circlepath")
-            .font(.system(size: 10, weight: .semibold))
-            .foregroundStyle(.secondary)
+            VStack(alignment: .leading, spacing: 3) {
+                if store.isConfirmingQuotaChange {
+                    Text(store.copy.sourceStatusConfirming)
+                }
+                Text(store.budgetCopy.text("上次读取 ", "上次讀取 ", "Last read ") + store.lastRefreshText)
+                if let next = store.nextAutomaticReadAt {
+                    Text(store.budgetCopy.text("下次读取 ", "下次讀取 ", "Next read ") + store.budgetCopy.date(next))
+                }
+            }
+            .font(.system(size: 11)).foregroundStyle(.secondary)
+            .help(store.dataRefreshDescription)
 
             PanelQuickActionsView(store: store, assistedFeedbackMessage: $assistedFeedbackMessage)
 
