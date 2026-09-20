@@ -8,7 +8,7 @@ private let authorXURL = FeedbackDestinations.authorXURL.absoluteString
 
 enum CapsuleViewMetrics {
     static let shadowPadding: CGFloat = 16
-    static let collapsedContentHeight: CGFloat = 44
+    static let collapsedContentHeight: CGFloat = 60
     static let collapsedHeight: CGFloat = collapsedContentHeight + shadowPadding * 2
     static let expandedHeight: CGFloat = 560
     static let expandedDetailContentHeight: CGFloat = expandedHeight - shadowPadding * 2 - collapsedContentHeight - 8
@@ -83,7 +83,7 @@ struct DockedCapsuleView: View {
     @ObservedObject var store: QuotaStore
 
     var body: some View {
-        TinyCapsuleTracks(store: store)
+        TinyCapsuleTracks(store: store, style: .docked)
         .padding(.horizontal, 12)
         .frame(width: CapsuleViewMetrics.dockedContentWidth, height: CapsuleViewMetrics.dockedContentHeight)
         .background {
@@ -99,16 +99,16 @@ struct CompactCapsuleView: View {
     @ObservedObject var store: QuotaStore
 
     var body: some View {
-        TinyCapsuleTracks(store: store)
+        TinyCapsuleTracks(store: store, style: .floating)
         .padding(.horizontal, 16)
-        .padding(.vertical, 7)
+        .padding(.vertical, 5)
         .frame(width: store.capsuleWidth, height: CapsuleViewMetrics.collapsedContentHeight)
         .background {
-            Capsule(style: .continuous)
+            RoundedRectangle(cornerRadius: 18, style: .continuous)
                 .fill(capsuleSurfaceColor())
                 .shadow(color: .black.opacity(0.09), radius: 10, y: 4)
                 .overlay(
-                    Capsule(style: .continuous)
+                    RoundedRectangle(cornerRadius: 18, style: .continuous)
                         .fill(
                             LinearGradient(
                                 colors: [.white.opacity(0.18), .clear],
@@ -118,9 +118,9 @@ struct CompactCapsuleView: View {
                         )
                 )
         }
-        .overlay(Capsule().stroke(.white.opacity(0.24), lineWidth: 1))
+        .overlay(RoundedRectangle(cornerRadius: 18, style: .continuous).stroke(.white.opacity(0.24), lineWidth: 1))
         .overlay(
-            Capsule()
+            RoundedRectangle(cornerRadius: 18, style: .continuous)
                 .stroke(onboardingHighlightColor().opacity(store.onboardingFocus == .capsule ? 0.98 : 0), lineWidth: 3)
                 .shadow(color: onboardingHighlightColor().opacity(store.onboardingFocus == .capsule ? 0.55 : 0), radius: 8)
         )
@@ -130,10 +130,11 @@ struct CompactCapsuleView: View {
 
 struct TinyCapsuleTracks: View {
     @ObservedObject var store: QuotaStore
+    let style: CapsuleProgressStyle
     var body: some View {
         ProgressComparisonView(natural: store.comparisonProgress?.natural,
             available: store.comparisonProgress?.available, used: store.comparisonUsed,
-            copy: store.budgetCopy, compact: true, iconOnly: true)
+            copy: store.budgetCopy, compact: true, capsuleStyle: style)
             .help(store.capsuleHoverText)
             .accessibilityElement(children: .ignore)
             .accessibilityLabel(store.capsuleHoverText)
