@@ -13,7 +13,9 @@ Observed consumption is influenced by task availability, model choice, quota con
 
 Let R be the current remaining weekly percentage, S the user's reserve, and H the earlier of the confirmed natural reset and earliest known available credit expiry. A credit deadline is a planning target for manual redemption, not a replenishment event.
 
-Intersect user-confirmed local-time sessions with [now,H). For each session i, let h_i be its remaining elapsed hours and w_i its user-selected weight. Then:
+With no saved custom plan, use the local-time default 09:00–23:00 daily and zero reserve. It is a product default, not a learned habit. If no default session precedes H, use the remaining time until H. Custom schedules are preserved and do not receive that fallback.
+
+Intersect default or customized local-time sessions with [now,H). For each session i, let h_i be its remaining elapsed hours and w_i its user-selected weight. Then:
 
 ```text
 B = max(0, R - S)

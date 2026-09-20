@@ -150,18 +150,6 @@ struct CompactCapsuleView: View {
                         verticalPadding: 2.5
                     )
 
-                    if let usedText = store.visibleCompactUsedBadgeText {
-                        Text(usedText)
-                            .font(.system(size: 10, weight: .bold))
-                            .monospacedDigit()
-                            .lineLimit(1)
-                            .minimumScaleFactor(0.75)
-                            .fixedSize(horizontal: true, vertical: false)
-                            .padding(.horizontal, 7)
-                            .padding(.vertical, 3)
-                            .background(toneColor(store.budgetTone).opacity(0.18), in: Capsule())
-                    }
-
                     if store.isRefreshing {
                         ProgressView()
                             .controlSize(.mini)
@@ -182,24 +170,9 @@ struct CompactCapsuleView: View {
             .layoutPriority(1)
                 .frame(maxWidth: .infinity, alignment: .leading)
 
-            VStack(alignment: .trailing, spacing: 3) {
-                if let allowance = store.usageBudgetState.result.allowance {
-                    Text(store.budgetCopy.percent(allowance)).font(.system(size: 16, weight: .bold)).monospacedDigit()
-                    Text(store.budgetCopy.text("时段可用", "時段可用", "Session quota"))
-                        .font(.system(size: 9))
-                } else {
-                    Text(store.budgetCopy.text("周剩余", "週剩餘", "Week left"))
-                        .font(.system(size: 9))
-                    Text(store.weeklyText).font(.system(size: 14, weight: .bold))
-                }
-                if let window = store.snapshot.fiveHourWindow {
-                    Text("5h · \(Int(window.usedPercent))%")
-                        .font(.system(size: 9)).monospacedDigit()
-                    ProgressView(value: window.usedPercent, total: 100).tint(.blue)
-                        .accessibilityLabel(store.copy.fiveHourQuotaTitle)
-                }
-            }
-            .frame(width: 80, alignment: .trailing)
+            CompactQuotaBars(weekly: store.snapshot.weeklyWindow?.usedPercent,
+                fiveHour: store.snapshot.fiveHourWindow?.usedPercent, copy: store.budgetCopy)
+                .frame(width: 126)
         }
         .padding(.leading, 38)
         .padding(.trailing, 36)
@@ -260,6 +233,30 @@ struct CapsuleResizeHandle: View {
         .contentShape(Rectangle())
         .opacity(0.82)
         .help(helpText)
+    }
+}
+
+struct CompactQuotaBars: View {
+    let weekly: Double?
+    let fiveHour: Double?
+    let copy: BudgetCopy
+
+    var body: some View {
+        VStack(spacing: 6) {
+            Text(copy.text("额度已用", "額度已用", "Quota used"))
+                .font(.system(size: 9)).foregroundStyle(.secondary)
+            if let weekly {
+                CompactPaceTrack(label: copy.text("周", "週", "Week"), percent: Int(weekly),
+                    percentText: "\(Int(weekly))%", color: .teal)
+            } else {
+                Text(copy.text("周读数暂缺", "週讀數暫缺", "Week: —")).font(.system(size: 10))
+            }
+            if let fiveHour {
+                CompactPaceTrack(label: "5h", percent: Int(fiveHour),
+                    percentText: "\(Int(fiveHour))%", color: .blue)
+            }
+        }
+        .accessibilityElement(children: .combine)
     }
 }
 

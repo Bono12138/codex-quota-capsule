@@ -6,7 +6,7 @@ Updated: 2026-09-20. Native development version: 0.5.0.
 
 - Read-only Codex account weekly and optional real 300-minute generic windows.
 - Floating capsule, menu bar and expandable detail with prominent reset time.
-- Confirmed recurring session hours/weekdays, overnight and full-day support.
+- Ready-to-use daily 09:00–23:00 default; optional custom hours/weekdays, overnight and full-day support.
 - Reserve and today's workload weight.
 - Frozen current-session allocation, net account consumption deduction and next-session redistribution.
 - Local plan/anchor persistence alongside existing quota and credit history.

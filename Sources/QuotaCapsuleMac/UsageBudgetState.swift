@@ -8,6 +8,8 @@ final class UsageBudgetState {
     private let planKey: String
     private let anchorKey: String
     private(set) var plan: UsagePlan?
+    private(set) var usesDefaultPlan: Bool
+    private(set) var usesDeadlineFallback = false
     private(set) var anchor: UsageBudgetAnchor?
     private(set) var result: UsageBudget = .unavailable
 
@@ -15,25 +17,42 @@ final class UsageBudgetState {
         self.defaults = defaults
         planKey = prefix + ".usagePlan.v1"
         anchorKey = prefix + ".usageBudgetAnchor.v1"
-        plan = defaults.data(forKey: planKey).flatMap { try? JSONDecoder().decode(UsagePlan.self, from: $0) }
+        let saved = defaults.data(forKey: planKey).flatMap { try? JSONDecoder().decode(UsagePlan.self, from: $0) }
+        usesDefaultPlan = saved == nil
+        plan = saved ?? UsagePlan()
         anchor = defaults.data(forKey: anchorKey).flatMap { try? JSONDecoder().decode(UsageBudgetAnchor.self, from: $0) }
     }
 
     func save(_ plan: UsagePlan) {
         self.plan = plan
+        usesDefaultPlan = false
         anchor = nil
         defaults.set(try? JSONEncoder().encode(plan), forKey: planKey)
         defaults.removeObject(forKey: anchorKey)
     }
 
+    func restoreDefault() {
+        plan = UsagePlan()
+        usesDefaultPlan = true
+        anchor = nil
+        defaults.removeObject(forKey: planKey)
+        defaults.removeObject(forKey: anchorKey)
+    }
+
     func update(snapshot: AgentQuotaSnapshot, confirming: Bool, now: Date, calendar: Calendar = .current) {
-        guard let plan, snapshot.sourceStatus == .ok, !confirming,
+        usesDeadlineFallback = false
+        guard var plan, snapshot.sourceStatus == .ok, !confirming,
               now.timeIntervalSince(snapshot.fetchedAt) >= -60,
               now.timeIntervalSince(snapshot.fetchedAt) <= 180,
               let window = snapshot.weeklyWindow,
               let horizon = WeeklyRunwayPredictor.burnHorizon(snapshot: snapshot, now: now) else {
             result = .unavailable
             return
+        }
+        if usesDefaultPlan, UsageBudgetPlanner.sessions(plan: plan, from: now, to: horizon.at, calendar: calendar).isEmpty {
+            // An imminent deadline still has a useful default allowance outside daytime hours.
+            plan = UsagePlan(startHour: 0, endHour: 0)
+            usesDeadlineFallback = true
         }
         // A reading from before a session/deadline transition cannot fund a new allocation.
         if let anchor, anchor.horizon <= now, snapshot.fetchedAt < anchor.horizon {
@@ -60,7 +79,7 @@ struct BudgetCopy {
         switch locale { case .zhHans: zh; case .zhHant: hant; case .en: en }
     }
     var title: String { text("使用计划", "使用計畫", "Usage plan") }
-    var edit: String { text("调整时段与预算", "調整時段與預算", "Edit schedule & budget") }
+    var edit: String { text("自定义时段（可选）", "自訂時段（可選）", "Customize hours (optional)") }
     var setup: String { text("设置使用时段", "設定使用時段", "Set usage hours") }
     var explanation: String {
         text("按你计划的时段分配周额度。", "按你計畫的時段分配週額度。", "Allocate quota to planned hours.")

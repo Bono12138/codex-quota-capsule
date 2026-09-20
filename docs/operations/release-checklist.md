@@ -40,7 +40,7 @@ git diff --check
 - [ ] Spotlight finds one supported Quota Capsule app and one `QuotaCapsuleBeta` process runs from `/Applications`.
 - [ ] A live read and read-only history query agree with visible percentages and timestamps.
 - [ ] Real use or a meaningful idle interval changes the forecast as expected before completion is claimed.
-- [ ] A confirmed schedule and first valid weekly reading produce a session allocation immediately; setup, deadline and data-read timing remain distinct.
+- [ ] The default schedule and first valid weekly reading produce a session allocation immediately; setup, deadline and data-read timing remain distinct.
 - [ ] Restart preserves the session allocation; stale or pre-boundary readings cannot fund a new session.
 
 ## Publication

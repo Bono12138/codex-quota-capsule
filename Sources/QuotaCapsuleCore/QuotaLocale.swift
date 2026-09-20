@@ -1340,9 +1340,9 @@ public struct QuotaCopy: Equatable, Sendable {
 
     public var onboardingStatus: String {
         switch locale {
-        case .zhHans: "先确认使用时段，胶囊再显示本时段还可用的周额度。"
-        case .zhHant: "先確認使用時段，膠囊再顯示本時段還可用的週額度。"
-        case .en: "Confirm your hours to see your remaining session allowance."
+        case .zhHans: "默认每天 09:00–23:00，打开即可查看预算。"
+        case .zhHant: "預設每天 09:00–23:00，開啟即可查看預算。"
+        case .en: "Daily 09:00–23:00 by default. Your budget is ready on launch."
         }
     }
 
@@ -1636,9 +1636,9 @@ public struct QuotaCopy: Equatable, Sendable {
 
     public var onboardingCapsuleStepBody: String {
         switch locale {
-        case .zhHans: "收起态显示时段预算和下一刷新点。\n有真实读数时，还会显示 5 小时已用比例。\n拖两侧调整宽度；拖到边缘进入迷你形态。"
-        case .zhHant: "收起態顯示時段預算和下一更新點。\n有真實讀數時，還會顯示 5 小時已用比例。\n拖兩側調整寬度；拖到邊緣進入迷你形態。"
-        case .en: "See your session budget and next deadline.\nThe 5-hour track shows actual quota used.\nDrag the sides to resize, or dock at an edge."
+        case .zhHans: "收起态显示周额度进度和下一刷新点。\n有真实读数时，还会显示 5 小时已用比例。\n拖两侧调整宽度；拖到边缘进入迷你形态。"
+        case .zhHant: "收起態顯示週額度進度和下一更新點。\n有真實讀數時，還會顯示 5 小時已用比例。\n拖兩側調整寬度；拖到邊緣進入迷你形態。"
+        case .en: "See weekly quota progress and the next deadline.\nThe 5-hour track shows actual quota used.\nDrag the sides to resize, or dock at an edge."
         }
     }
 
@@ -1668,9 +1668,9 @@ public struct QuotaCopy: Equatable, Sendable {
 
     public var onboardingWeeklyStepBody: String {
         switch locale {
-        case .zhHans: "确认工作时间、星期和预留额度。\n本段分配固定，实际用量从中扣除。\n任务改变时，可以编辑计划重新分配。"
-        case .zhHant: "確認工作時間、星期和預留額度。\n本段分配固定，實際用量從中扣除。\n任務改變時，可以編輯計畫重新分配。"
-        case .en: "Confirm hours, weekdays and reserve.\nActual use reduces a fixed session allocation.\nEdit the plan when your work changes."
+        case .zhHans: "默认时段直接可用，自定义为可选项。\n本段分配固定，实际用量从中扣除。\n任务改变时，可以编辑计划重新分配。"
+        case .zhHant: "預設時段直接可用，自訂為可選項。\n本段分配固定，實際用量從中扣除。\n任務改變時，可以編輯計畫重新分配。"
+        case .en: "Default hours work immediately. Customization is optional.\nActual use reduces a fixed session allocation.\nEdit the plan when your work changes."
         }
     }
 

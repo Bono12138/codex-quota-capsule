@@ -9,7 +9,7 @@ Help users allocate their remaining weekly quota to the times they intend to use
 
 ## Contract
 
-- The primary surface shows a confirmed usage schedule and its current session allowance. An editable example schedule requires confirmation before producing advice.
+- Revised 2026-09-20: default daily 09:00–23:00 with zero reserve is active immediately. Customization is optional. Weekly-used progress stays visible in the capsule. If a deadline precedes the next default session, allocate over the remaining time. This fallback does not override custom plans.
 - The endpoint is the earlier of the natural weekly reset and an available reset credit's expiry. A credit remains a manual action; expiry alone does not replenish quota.
 - Allocate spendable quota (live remaining minus an explicit user reserve) in proportion to scheduled hours and session weights before the endpoint.
 - Freeze the current session allocation at the first fresh observation in that session. Deduct subsequent account consumption, including other devices. Do not increase the allowance simply because the user slows down after a warning.
