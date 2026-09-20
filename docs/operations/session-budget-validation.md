@@ -3,6 +3,8 @@
 Date: 2026-09-20
 Source version: 0.5.0 development
 
+Follow-up: the default budget now starts automatically (daily 09:00–23:00, zero reserve), weekly progress is restored, and custom schedules remain optional. The updated installed app was checked with no saved custom plan. Default activation, overnight deadline fallback, restart, custom-plan preservation and quota-track rendering are covered by 142 Swift tests. The earlier confirmation-only onboarding below describes the initial implementation and is superseded.
+
 ## Automated checks
 
 - 140 Swift tests, including allocation conservation, idle freeze, restarts, reserves, DST, overnight schedules, deadline freshness and five-hour priority.

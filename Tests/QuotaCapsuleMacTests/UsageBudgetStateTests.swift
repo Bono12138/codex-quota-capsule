@@ -6,6 +6,39 @@ import QuotaCapsuleCore
 @Suite("Local budget persistence")
 @MainActor
 struct UsageBudgetStateTests {
+    @Test func defaultNeedsNoSetupAndHandlesAnOvernightDeadline() throws {
+        let name = "budget-default-tests-" + UUID().uuidString
+        let defaults = try #require(UserDefaults(suiteName: name))
+        defer { defaults.removePersistentDomain(forName: name) }
+        let state = UsageBudgetState(defaults: defaults, prefix: "test")
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = TimeZone(secondsFromGMT: 0)!
+        func update(_ timestamp: String) {
+            let now = ISO8601DateFormatter().date(from: timestamp)!
+            state.update(snapshot: AgentQuotaSnapshot(provider: "codex", sourceStatus: .ok, fetchedAt: now,
+                weeklyWindow: QuotaWindow(label: "weekly", windowMinutes: 10080, usedPercent: 40,
+                    remainingPercent: 60, resetsAt: now.addingTimeInterval(3600)), errorMessage: nil),
+                confirming: false, now: now, calendar: calendar)
+        }
+        update("2026-09-20T12:00:00Z")
+        #expect(state.result.allowance == 60)
+        #expect(!state.usesDeadlineFallback)
+        let reopened = UsageBudgetState(defaults: defaults, prefix: "test")
+        #expect(reopened.usesDefaultPlan)
+        #expect(reopened.anchor == state.anchor)
+        state.restoreDefault()
+        update("2026-09-20T01:00:00Z")
+        #expect(state.result.allowance == 60)
+        #expect(state.usesDeadlineFallback)
+        state.save(UsagePlan(startHour: 18, endHour: 22))
+        update("2026-09-20T01:00:00Z")
+        #expect(state.result.state == .noSession)
+        state.restoreDefault()
+        let restored = UsageBudgetState(defaults: defaults, prefix: "test")
+        #expect(restored.usesDefaultPlan)
+        #expect(restored.plan == UsagePlan())
+    }
+
     @Test func fiveHourExhaustionOverridesWeeklyAllowance() async throws {
         let name = "budget-priority-tests-" + UUID().uuidString
         let defaults = try #require(UserDefaults(suiteName: name))
@@ -44,7 +77,8 @@ struct UsageBudgetStateTests {
         let defaults = try #require(UserDefaults(suiteName: name))
         defer { defaults.removePersistentDomain(forName: name) }
         let state = UsageBudgetState(defaults: defaults, prefix: "test")
-        #expect(state.plan == nil)
+        #expect(state.plan == UsagePlan())
+        #expect(state.usesDefaultPlan)
         let now = Date()
         let reset = now.addingTimeInterval(86400 * 3)
         func snapshot(_ remaining: Double, _ time: Date) -> AgentQuotaSnapshot {
@@ -53,10 +87,12 @@ struct UsageBudgetStateTests {
                     usedPercent: 100 - remaining, remainingPercent: remaining, resetsAt: reset), errorMessage: nil)
         }
         state.save(UsagePlan(startHour: 0, endHour: 0))
+        #expect(!state.usesDefaultPlan)
         state.update(snapshot: snapshot(60, now), confirming: false, now: now)
         let anchor = try #require(state.anchor)
         let restored = UsageBudgetState(defaults: defaults, prefix: "test")
         #expect(restored.anchor == anchor)
+        #expect(!restored.usesDefaultPlan)
         restored.update(snapshot: snapshot(55, now), confirming: true, now: now)
         #expect(restored.result.state == .unavailable)
         #expect(restored.anchor == anchor)

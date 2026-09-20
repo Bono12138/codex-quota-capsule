@@ -10,7 +10,7 @@ The source development version is **0.5.0**. Check each [Release](https://github
 
 ## Planned session budgets
 
-Confirm your working hours, weekdays, reserve, and today's workload before budgeting starts. Sleep and other unscheduled hours receive no allocation. Overnight and full-day schedules are supported.
+Budgeting starts automatically with a daily 09:00–23:00 schedule and zero reserve. Custom hours, weekdays and workload are optional. If the deadline falls before the next default session, the default uses the remaining time. Overnight and full-day schedules are supported.
 
 With 60% remaining and three equal four-hour sessions before the deadline, each session initially gets 20%. Spending 5% leaves 15% for the current session. Slowing down does not increase its allocation. The next session redistributes the actual remaining balance.
 
@@ -24,7 +24,7 @@ Requires macOS 14+ and a signed-in ChatGPT/Codex desktop installation or compati
 
 A GitHub account is not required to download. This beta is ad-hoc signed and not notarized. Read [INSTALL.md](INSTALL.md) and the [first-time guide](docs/getting-started.en.md).
 
-Check the last successful reading after launch. In a version supporting session budgets, open “Set usage hours” and confirm your plan. Language is available at the top menu level.
+Check the last successful reading after launch. Versions supporting session budgets work immediately. Use “Customize hours (optional)” only when you want a different schedule. Language is available at the top menu level.
 
 ## Development
 

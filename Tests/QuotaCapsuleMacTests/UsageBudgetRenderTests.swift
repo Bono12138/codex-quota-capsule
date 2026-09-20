@@ -7,6 +7,24 @@ import QuotaCapsuleCore
 @Suite("Budget rendering")
 @MainActor
 struct UsageBudgetRenderTests {
+    @Test func renderQuotaTracksWithOptionalFiveHourWindow() throws {
+        guard let directory = ProcessInfo.processInfo.environment["QUOTA_RENDER_DIRECTORY"] else { return }
+        let url = URL(fileURLWithPath: directory)
+        try FileManager.default.createDirectory(at: url, withIntermediateDirectories: true)
+        let view = VStack(spacing: 20) {
+            CompactQuotaBars(weekly: 5, fiveHour: nil, copy: BudgetCopy(locale: .zhHans)).frame(width: 126)
+            CompactQuotaBars(weekly: 45, fiveHour: 75, copy: BudgetCopy(locale: .en)).frame(width: 126)
+            CompactQuotaBars(weekly: nil, fiveHour: 100, copy: BudgetCopy(locale: .en)).frame(width: 126)
+        }.padding(16).background(Color.white).environment(\.colorScheme, .light)
+        let renderer = ImageRenderer(content: view)
+        renderer.scale = 2
+        let image = try #require(renderer.nsImage)
+        let data = try #require(image.tiffRepresentation)
+        let bitmap = try #require(NSBitmapImageRep(data: data))
+        let png = try #require(bitmap.representation(using: .png, properties: [:]))
+        try png.write(to: url.appendingPathComponent("quota-tracks.png"))
+    }
+
     @Test func renderSyntheticBudgetCards() throws {
         guard let directory = ProcessInfo.processInfo.environment["QUOTA_RENDER_DIRECTORY"] else { return }
         let url = URL(fileURLWithPath: directory)

@@ -469,6 +469,9 @@ final class QuotaStore: ObservableObject {
             return budgetCopy.text("5 小时额度已用尽", "5 小時額度已用盡", "5h quota exhausted")
         }
         if let window = snapshot.weeklyWindow, window.remainingPercent <= 0 { return budgetCopy.text("已用尽", "已用盡", "Exhausted") }
+        if usageBudgetState.usesDefaultPlan, usageBudgetState.result.state == .active {
+            return budgetCopy.text("默认预算", "預設預算", "Default budget")
+        }
         return budgetCopy.status(usageBudgetState.result, configured: usageBudgetState.plan != nil)
     }
 
@@ -489,6 +492,13 @@ final class QuotaStore: ObservableObject {
     func saveUsagePlan(_ plan: UsagePlan) {
         objectWillChange.send()
         usageBudgetState.save(plan)
+        usageBudgetState.update(snapshot: snapshot, confirming: isConfirmingQuotaChange, now: currentTime)
+        refreshStatusBarPresentation()
+    }
+
+    func restoreDefaultUsagePlan() {
+        objectWillChange.send()
+        usageBudgetState.restoreDefault()
         usageBudgetState.update(snapshot: snapshot, confirming: isConfirmingQuotaChange, now: currentTime)
         refreshStatusBarPresentation()
     }

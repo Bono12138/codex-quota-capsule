@@ -10,9 +10,9 @@ A local-first macOS quota companion for Codex. See weekly and five-hour limits, 
 
 当前源码开发版本为 **0.5.0**。已公开下载的安装包仍以 [Releases](https://github.com/Bono12138/codex-quota-capsule/releases) 的版本和说明为准；旧版 v0.3.6-beta.1 不包含新的时段预算。源码功能与安装包不能混为一谈。
 
-- 首次使用先确认工作时段、星期、预留额度和今天的任务量。
-- 胶囊显示本时段还可用多少周额度；展开后先显示下一刷新点和 5 小时额度。
-- 睡觉、休息等未安排的时段不分配预算。跨夜和全天后台任务均可设置。
+- 打开即用：默认每天 09:00–23:00、预留为 0；时段、星期和任务量均可选改。
+- 胶囊常驻显示周额度已用进度，有真实读数时同时显示 5 小时进度；展开后查看可用预算。
+- 默认日间时段外通常不分配预算；若刷新前已无日间时段，则按截止前剩余时间提供临近到期预算。跨夜和全天后台任务均可设置。
 - 当前时段的分配固定，后续实际用量从中扣除。用户放慢使用，不会让本段分配自动变大。
 - 历史速度放在“历史用法参考”中，不用它推断用户没有顾虑时会消耗多少。
 - 数据过期、读取失败或重置待确认时暂停预算提示。5 小时额度耗尽会优先提示。
@@ -37,7 +37,7 @@ A local-first macOS quota companion for Codex. See weekly and five-hour limits, 
 
 1. 从 [Releases](https://github.com/Bono12138/codex-quota-capsule/releases) 下载 ZIP。
 2. 解压后将 Quota Capsule Beta.app 放进“应用程序”，只保留这一份安装副本。
-3. 打开胶囊，确认“上次成功读取”在更新；在支持时段预算的版本中，点击“设置使用时段”。
+3. 打开胶囊，确认“上次成功读取”在更新；支持时段预算的版本会直接启用默认预算，无需设置。
 4. 通过一级菜单的 Language 切换简体中文、繁體中文或 English。
 
 Beta 采用 ad-hoc 签名，尚未公证。请先阅读 [安装说明](INSTALL.md) 和 [中文新手教程](docs/getting-started.zh-CN.md)。

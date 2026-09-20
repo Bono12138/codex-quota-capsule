@@ -4,7 +4,9 @@ Updated: 2026-09-20
 
 ## Budget behavior
 
-- No budget is activated until the user saves a schedule.
+- A fresh install produces a budget on its first valid reading, using the daily 09:00–23:00 default with zero reserve.
+- Preserve saved custom schedules. Restoring defaults is explicit and persists across restarts.
+- Default mode uses remaining time when no daytime session precedes the deadline.
 - Only planned time before the earliest known eligible deadline receives allocation.
 - Allocations sum to the spendable balance; reserve never creates negative allowances.
 - Idling or slowing consumption during a session does not enlarge its fixed allocation.
@@ -19,7 +21,8 @@ Updated: 2026-09-20
 
 - Compact and expanded surfaces show the exact next deadline.
 - Expanded reading order starts with deadline and immediate quota limits.
-- Setup/edit is discoverable; example hours are not silently treated as user preferences.
+- Customization is optional and secondary; the default schedule is labelled as a product default.
+- The weekly-used progress bar remains visible without opening settings; real five-hour progress stays separate.
 - Allocation, actual weekly remaining and five-hour use are clearly distinguished.
 - Chinese and English text is readable at supported widths, with meaningful line breaks.
 - Keyboard focus, editing, cancel/save, expansion and language switching are checked in the native app.

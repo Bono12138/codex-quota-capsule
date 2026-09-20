@@ -7,12 +7,25 @@ struct UsageBudgetCard: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
+            if store.usageBudgetState.usesDefaultPlan {
+                Text(store.budgetCopy.text("默认：每天 09:00–23:00", "預設：每天 09:00–23:00", "Default: daily 09:00–23:00"))
+                    .font(.caption).foregroundStyle(.secondary)
+                if store.usageBudgetState.usesDeadlineFallback {
+                    Text(store.budgetCopy.text("即将刷新，按剩余时间分配。", "即將更新，按剩餘時間分配。", "Near deadline: using the remaining time."))
+                        .font(.caption)
+                }
+            }
             UsageBudgetSummary(budget: store.usageBudgetState.result,
                 plan: store.usageBudgetState.plan, copy: store.budgetCopy)
             Button(store.usageBudgetState.plan == nil ? store.budgetCopy.setup : store.budgetCopy.edit) {
                 editing = true
             }
-            .buttonStyle(.borderedProminent)
+            .buttonStyle(.bordered)
+            if !store.usageBudgetState.usesDefaultPlan {
+                Button(store.budgetCopy.text("恢复默认", "恢復預設", "Use default")) {
+                    store.restoreDefaultUsagePlan()
+                }.buttonStyle(.borderless)
+            }
         }
         .padding(12)
         .frame(maxWidth: .infinity, alignment: .leading)

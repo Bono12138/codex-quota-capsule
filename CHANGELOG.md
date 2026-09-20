@@ -4,6 +4,10 @@ All notable user-visible and repository-governance changes are recorded here.
 
 ## 0.5.0 — Unreleased
 
+- Enable a daily 09:00–23:00 default budget immediately; keep custom schedules optional and preserve existing choices.
+- Restore the always-visible weekly-used progress track and optional five-hour track.
+- Add a default-mode allowance for imminent deadlines outside daytime hours, plus a restore-default action.
+
 - Add user-confirmed work sessions, weekday/overnight/full-day schedules, reserve and today's workload weight.
 - Allocate weekly quota by scheduled hours; freeze each active session's allocation and subtract actual account consumption.
 - Persist plans and allocations locally across restarts, with fresh-data checks at session and credit boundaries.
