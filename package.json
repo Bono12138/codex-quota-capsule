@@ -1,8 +1,8 @@
 {
   "name": "codex-quota-capsule",
   "private": true,
-  "version": "0.4.0",
-  "description": "A local-first macOS quota assistant for Codex with five-hour status and weekly runway guidance.",
+  "version": "0.5.0",
+  "description": "A local-first macOS quota assistant for Codex with five-hour status and planned-session budgets.",
   "license": "MIT",
   "type": "module",
   "workspaces": [

@@ -1,120 +1,48 @@
 # Quota Capsule / 额度胶囊
 
-Languages: [简体中文](README.zh-CN.md) | [English](README.en.md)
+[简体中文](README.zh-CN.md) · [English](README.en.md) · [下载 Releases](https://github.com/Bono12138/codex-quota-capsule/releases)
 
-**A local-first macOS quota runway assistant for Codex.**
+面向 Codex 的 macOS 额度工具：查看周额度与 5 小时限制，把剩余周额度分给你实际打算工作的时段。
 
-**一个本地优先、面向 Codex 重度用户的 macOS 额度判断胶囊。**
+A local-first macOS quota companion for Codex. See weekly and five-hour limits, then allocate your remaining weekly quota to planned work sessions.
 
-> Before the next real refresh, will my quota run out—or be wasted?
->
-> 在下一次实际刷新前，我的额度会不够，还是会被白白浪费？
+## 这次更新
 
-![Quota Capsule collapsed and expanded](docs/assets/product/quota-capsule-expanded.png)
+当前源码开发版本为 **0.5.0**。已公开下载的安装包仍以 [Releases](https://github.com/Bono12138/codex-quota-capsule/releases) 的版本和说明为准；旧版 v0.3.6-beta.1 不包含新的时段预算。源码功能与安装包不能混为一谈。
 
-## Why This Exists / 为什么做
+- 首次使用先确认工作时段、星期、预留额度和今天的任务量。
+- 胶囊显示本时段还可用多少周额度；展开后先显示下一刷新点和 5 小时额度。
+- 睡觉、休息等未安排的时段不分配预算。跨夜和全天后台任务均可设置。
+- 当前时段的分配固定，后续实际用量从中扣除。用户放慢使用，不会让本段分配自动变大。
+- 历史速度放在“历史用法参考”中，不用它推断用户没有顾虑时会消耗多少。
+- 数据过期、读取失败或重置待确认时暂停预算提示。5 小时额度耗尽会优先提示。
+- 重置券到期时间显示到分钟；兑换仍由用户操作，应用不会自动用券。
 
-A quota percentage tells you how much has been used. It does not tell you whether the remaining quota can support the way you are working now.
+## 算法示例
 
-额度百分比只告诉你已经用了多少，却没有回答一个更直接的工作问题：**现在还能不能放心继续用？**
+剩余 60% 周额度，截止前还有三个各 4 小时的使用时段，预留为 0：
+每段分配 20%。本段用了 5%，本段还可用 15%。
+如果暂时不使用，本段分配仍是 20%，不会因为时间过去而升高。
+到下一时段，再按当时实际余额分配；未用完的额度会留给后续时段。
 
-Heavy AI-native users may run several tasks at once, repeatedly check the usage page, hold back even when paid quota is still available, or discover too late that a large balance will expire at reset. The 5-hour reading answers whether Codex is available right now. The weekly forecast answers whether the remaining quota can last.
+预算终点取“自然周重置”与“最早已知可用重置券到期”中较早的时间。
+这是按到期前手动用券的计划安排，券到期本身不会补满额度。
+换模型、并发任务和 5 小时限制仍会影响实际可用性。
 
-AI-native 重度用户经常同时运行多个任务，也会反复查看 usage 页面：有时明明还有大量已付费额度，却因为不知道够不够而刻意收着用；有时又在临近重置时才发现还有很多额度没有用完。5 小时读数回答眼前能否继续使用；周预测回答剩余额度能否撑到下一刷新点。
+[完整算法与边界](docs/product/session-budget-methodology.md) · [设计决定](docs/decisions/0007-session-budget-planning.md)
 
-The app shows 5-hour progress only when Codex returns a real 300-minute generic window. If that reading is absent, it says so instead of inventing a percentage or borrowing a model-specific quota.
+## 安装和使用
 
-只有 Codex 返回真实的 300 分钟通用窗口时，应用才显示 5 小时进度。读数缺失时会如实说明，不伪造百分比，也不借用某个模型的独立额度。
+下载公开安装包不需要注册 GitHub。需要 macOS 14 或更新版本，以及已安装并登录的 ChatGPT/Codex 桌面端或兼容 Codex CLI。
 
-It reports six honest states—Early estimate, On track, Uncertain pace, May run out, Exhausted, and Data unavailable—plus a next-24-hour budget and a forecast range for the balance at refresh. The horizon is the earlier of the natural weekly reset or the earliest known available reset-credit expiry.
+1. 从 [Releases](https://github.com/Bono12138/codex-quota-capsule/releases) 下载 ZIP。
+2. 解压后将 Quota Capsule Beta.app 放进“应用程序”，只保留这一份安装副本。
+3. 打开胶囊，确认“上次成功读取”在更新；在支持时段预算的版本中，点击“设置使用时段”。
+4. 通过一级菜单的 Language 切换简体中文、繁體中文或 English。
 
-它会给出“初步判断、够用、波动较大、可能不够、已用尽、数据暂不可用”六种诚实状态，并显示未来 24 小时建议和刷新时的预计余量区间。当前刷新终点取自然周重置与最早已知可用重置券到期时间中更早者。
+Beta 采用 ad-hoc 签名，尚未公证。请先阅读 [安装说明](INSTALL.md) 和 [中文新手教程](docs/getting-started.zh-CN.md)。
 
-When a reset credit expires first and quota would otherwise remain unused, the app shows `Use before reset`, recalculates progress and budget to that deadline, and displays the exact expiry. After redemption or a natural reset, it reads the new state before calculating again.
-
-如果重置券先到期且额度可能被浪费，应用会显示“抓紧使用”，按券到期时间重算进度和预算，并展示精确截止时间。使用重置券或自然重置后，再读取新状态重新计算。
-
-## Product Surfaces / 产品形态
-
-Quota Capsule is designed to stay quiet until the user needs more detail:
-
-- A small floating desktop capsule with weekly guidance and 5-hour progress when available.
-- A menu bar status item for glanceable, always-available context.
-- An expanded panel with refresh and usage progress, pace evidence, forecast confidence, a sustainable line, next-refresh timing, and local history.
-
-额度胶囊尽量安静地常驻，只在用户需要时展开更多信息：
-
-- 桌面悬浮胶囊显示周判断，以及可用时的 5 小时进度。
-- 菜单栏提供随时可见的一眼状态。
-- 展开面板显示刷新/用量进度、速度证据、预测置信度、可持续线、下一刷新点和本地历史。
-
-![Quota Capsule collapsed](docs/assets/product/quota-capsule-collapsed.png)
-
-![Quota Capsule in the macOS menu bar](docs/assets/product/quota-capsule-menu-bar.png)
-
-## Current Beta / 当前 Beta
-
-The current public prerelease is [v0.3.6-beta.1](https://github.com/Bono12138/codex-quota-capsule/releases/tag/v0.3.6-beta.1). It includes:
-
-当前公开预发布版本是 [v0.3.6-beta.1](https://github.com/Bono12138/codex-quota-capsule/releases/tag/v0.3.6-beta.1)，已经包括：
-
-- Native floating desktop capsule and menu bar item / 原生桌面悬浮胶囊和菜单栏入口。
-- Read-only Codex app-server rate-limit source / 只读 Codex app-server rate-limit 数据源。
-- Immediate first-reading estimate plus adaptive cycle, recent, activity, and historical pace evidence / 第一次有效读数即给初步估算，并逐步融合周期、近期、活动节奏和历史证据。
-- Next-24-hour budget, last-24-hour usage, reset-balance range, and plain-language confidence / 未来 24 小时建议、最近 24 小时实际用量、重置余量区间和置信原因。
-- Separate weekly-reset, last-successful-read, and next-automatic-read timing / 分开显示周额度重置、上次成功读取和下次自动读取。
-- Current-cycle trend with a sustainable line, forecast band, and reset marker / 带可持续线、预测区间和重置标记的当前周期趋势。
-- Local history snapshots and privacy-safe reset-credit lifecycle history / 本地历史快照与隐私安全的重置券生命周期历史。
-- Multilingual UI and public feedback links / 多语言界面和公开反馈入口。
-
-See [Forecast Methodology / 预测方法](docs/product/forecast-methodology.md) for equations, uncertainty, confidence, stale behavior, limits, and change control.
-
-## Install / 安装
-
-Development update: [PR #36](https://github.com/Bono12138/codex-quota-capsule/pull/36) includes optional 5-hour quota display and a Finder-launch fix. It prefers the Codex executable bundled with ChatGPT or Codex desktop and uses a startup option supported by newer Codex versions. These changes are not included in the downloadable beta linked below yet.
-
-开发版更新：[PR #36](https://github.com/Bono12138/codex-quota-capsule/pull/36) 包含 5 小时额度显示和 Finder 启动读取修复。应用优先使用 ChatGPT 或 Codex 桌面端自带的 Codex 程序，并使用新版支持的启动参数。下方可下载的 Beta 安装包暂未包含这些改动。
-
-If quota reading fails after launch, check that ChatGPT or Codex desktop is installed and signed in. A running capsule alone does not confirm a successful read; check its last successful read time. Keep the installed copy in Applications; extra build copies can appear as duplicate search results.
-
-如果打开后显示读取失败，请检查 ChatGPT 或 Codex 桌面端是否已安装并登录，并查看胶囊的上次成功读取时间。建议保留“应用程序”中的安装副本；额外的打包副本可能导致搜索结果重复。
-
-### Download the current beta / 下载当前 Beta
-
-No GitHub account is required to download the public app.
-You can follow the [English first-time guide](docs/getting-started.en.md) or the [中文新手教程](docs/getting-started.zh-CN.md).
-
-Download `Quota-Capsule-Beta-macOS.zip` from the [v0.3.6-beta.1 release](https://github.com/Bono12138/codex-quota-capsule/releases/tag/v0.3.6-beta.1).
-
-下载公开安装包不需要 GitHub 账号。
-请阅读 [中文新手教程](docs/getting-started.zh-CN.md) 或 [English first-time guide](docs/getting-started.en.md)。
-
-从 [v0.3.6-beta.1 Release](https://github.com/Bono12138/codex-quota-capsule/releases/tag/v0.3.6-beta.1) 下载 `Quota-Capsule-Beta-macOS.zip`。
-
-The current beta uses ad-hoc signing and is not yet notarized. macOS may require opening the app from Finder with **Right-click → Open**. See [INSTALL.md](INSTALL.md) for system requirements and Gatekeeper guidance.
-
-当前 Beta 使用 ad-hoc 签名，尚未公证。macOS 可能要求在 Finder 中对应用执行**右键 → 打开**。系统要求和 Gatekeeper 处理方式见 [INSTALL.md](INSTALL.md)。
-
-<details>
-<summary>Codex-assisted installation / 使用 Codex 辅助安装</summary>
-
-```text
-Please install and run Quota Capsule on this Mac:
-1. Open https://github.com/Bono12138/codex-quota-capsule
-2. Read README.md, INSTALL.md, AGENTS.md, and package.json first.
-3. Do not modify my Codex login state, log me out, reinstall Codex, or replace Codex binaries.
-4. Only do local clone, dependency install, build, test, and launch.
-5. Do not read, copy, print, or upload auth tokens, cookies, API keys, prompt text, session text, code content, or private file paths.
-6. If Node, npm, Swift, Xcode Command Line Tools, or Codex CLI is missing, tell me before changing the system.
-7. Run npm ci, npm test, npm run build, npm run audit:repository, swift test, and swift run QuotaCapsuleCoreSpec.
-8. Run npm run mac:install and verify exactly one running process comes from /Applications.
-9. After it launches, tell me how to open it again.
-```
-
-</details>
-
-<details>
-<summary>Build from source / 从源码构建</summary>
+## 源码开发
 
 ```bash
 git clone https://github.com/Bono12138/codex-quota-capsule.git
@@ -122,54 +50,45 @@ cd codex-quota-capsule
 npm ci
 npm test
 npm run build
+npm run lint
 npm run audit:repository
+npm run audit:quota-surfaces
 swift test
 swift run QuotaCapsuleCoreSpec
 npm run mac:install
 ```
 
-</details>
+| 目录 | 用途 |
+| --- | --- |
+| Sources/QuotaCapsuleCore | Swift 额度模型、时段预算、历史预测、数据源和历史存储 |
+| Sources/QuotaCapsuleMac | 正式 macOS 应用：胶囊、菜单、设置、本地状态 |
+| Tests | Swift 算法、读数、持久化与渲染测试 |
+| packages/core、packages/source-codex | TypeScript 历史预测和只读数据源 |
+| apps/desktop | 浏览器预测实验室；暂未实现原生版时段预算 |
+| packages/analytics-collector | 可选的、需配置和授权的产品事件收集服务 |
+| docs | 当前产品规范、算法、验收和历史决策 |
 
-## Privacy Boundary / 隐私边界
+新预算拆为 UsageBudgetPlanner（纯计算）、UsageBudgetState（本地设置和分配记录）、UsageBudgetViews（原生界面）。不需要重写读数和历史数据库。
 
-- Quota data is read and computed locally by default / 额度数据默认在本机读取和计算。
-- Product events are not uploaded unless an analytics endpoint is explicitly configured and the relevant consent is enabled / 未显式配置 analytics endpoint 并启用相应授权时，不上传产品事件。
-- Prompt text, session text, code content, private file paths, account credentials, auth tokens, and cookies stay on this Mac / prompt、session、代码、私有路径、账号凭据、auth token 和 cookie 留在本机。
-- Reset-credit raw IDs, descriptions, and referral payloads are not stored; only a SHA-256 identity fingerprint and safe timestamps/status facts remain in local history until the user clears it / 重置券原始 ID、描述和 referral 内容不落盘，仅保存 SHA-256 指纹以及安全的时间和状态事实。
-- Missing or stale quota data is shown as `Data unavailable`; stale percentages never produce a new safety judgment / 缺失或过期数据显示为“数据暂不可用”，不会用旧百分比生成新的安全判断。
+## 隐私与限制
 
-## Reuse and Integration / 复用与集成
+额度读取、使用计划和预算分配记录默认在本地处理。账号快照包含跨设备累计消耗，但两次采样之间发生在何时、哪台设备上，无法据此准确还原。
 
-Quota Capsule is MIT-licensed. Another macOS product can adopt the whole project or reuse selected layers:
+计划和分配记录不上传。已有产品事件只有在显式配置收集地址并获得相应授权后才上传。不会将认证凭据、prompt、代码或私有文件路径提交到仓库。券历史仅保留指纹及安全的时间、状态字段。
 
-额度胶囊采用 MIT License。其他 macOS 产品可以整体采用，也可以只复用其中一层：
+目前每个选定工作日支持一个连续时段，精度为整点。支持跨夜、全天、今天任务量权重和预留。多段日程、自动习惯学习、跨设备计划同步，以及提示对使用行为的因果评估尚未实现。预算是分配建议，不保证用户会用完，也不是准确的未来需求预测。
 
-- `Sources/QuotaCapsuleCore/`: provider-neutral Swift quota model, forecasting, history, and the read-only Codex source / Swift 通用额度模型、预测、历史和只读 Codex 数据源。
-- `Sources/QuotaCapsuleMac/`: native floating capsule, expanded panel, menu bar surface, settings, and local persistence / 原生悬浮胶囊、展开面板、菜单栏、设置和本地持久化。
-- `packages/core/` and `packages/source-codex/`: TypeScript model and source packages for Web, Chrome, or adapter exploration / 面向 Web、Chrome 或 adapter 探索的 TypeScript 模型和数据源包。
-- `docs/product/`: product contract, forecast methodology, acceptance criteria, and edge-case decisions / 产品契约、预测方法、验收标准和边界决策。
+## 文档与贡献
 
-You are welcome to integrate, modify, merge, or redistribute the code under the terms of [LICENSE](LICENSE). Contributions for other agent-provider adapters are also welcome.
+[文档导航](docs/README.md) · [验收标准](docs/product/acceptance-criteria.md) · [版本记录](CHANGELOG.md) · [发布流程](docs/operations/release-checklist.md)
 
-欢迎按照 [LICENSE](LICENSE) 的条款集成、修改、合并或再发布代码，也欢迎为其他 Agent 产品贡献 source adapter。
+欢迎通过 Issue 提交使用问题，或通过 PR 贡献测试、翻译和其他 Agent 数据源。请使用脱敏截图和合成测试数据。
 
-## Roadmap / 路线图
+- [GitHub Issues](https://github.com/Bono12138/codex-quota-capsule/issues)
+- Email: mmz1218bono@gmail.com
+- [X](https://x.com/starlightsz0)
+- 抖音：火腿肠（huotuichang439）
 
-- Better onboarding and in-product guidance / 更完整的新手引导和产品内提示。
-- Longer-term history and usage-rhythm review / 更长期的历史趋势和使用节奏复盘。
-- Chrome version / Chrome 独立版本。
-- More agent-provider adapters / 更多 Agent provider adapter。
-- Signed, notarized, packaged macOS distribution after the beta stabilizes / 内测稳定后补签名、公证和正式 macOS 分发。
+<img src="docs/assets/douyin-qr-scan.png" alt="抖音二维码" width="180" />
 
-## Feedback / 反馈
-
-- GitHub Issues: <https://github.com/Bono12138/codex-quota-capsule/issues>
-- Email: `mmz1218bono@gmail.com`
-- X: <https://x.com/starlightsz0>
-- Douyin / 抖音：火腿肠（`huotuichang439`）
-
-<img src="docs/assets/douyin-qr-scan.png" alt="Douyin QR code" width="180" />
-
-## License / 许可证
-
-MIT. See [LICENSE](LICENSE).
+MIT License，见 [LICENSE](LICENSE)。

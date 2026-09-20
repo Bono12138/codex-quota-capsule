@@ -45,6 +45,7 @@ function App() {
 
   return (
     <main className="surface">
+      <p role="note">历史预测实验室 · 合成数据。原生 macOS 版的时段预算尚未移植到此预览。</p>
       <section className="capsule-stage" aria-label="Quota Capsule preview">
         <header className="top-bar">
           <button className="icon-button" aria-label="菜单"><Menu aria-hidden="true" /></button>

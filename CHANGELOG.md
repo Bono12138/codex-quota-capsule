@@ -2,6 +2,17 @@
 
 All notable user-visible and repository-governance changes are recorded here.
 
+## 0.5.0 — Unreleased
+
+- Add user-confirmed work sessions, weekday/overnight/full-day schedules, reserve and today's workload weight.
+- Allocate weekly quota by scheduled hours; freeze each active session's allocation and subtract actual account consumption.
+- Persist plans and allocations locally across restarts, with fresh-data checks at session and credit boundaries.
+- Prioritize five-hour exhaustion and keep exact refresh timing above budgeting details.
+- Move observed pace forecasts into a secondary disclosure.
+- Preserve the capsule-corner repair from the preceding local patch and include optional five-hour/source-launch fixes from the preceding development branch.
+- Reorganize current product documentation, document native/browser feature boundaries and archive the earlier detailed roadmap.
+- Add pure planner, local persistence and synthetic render tests. Behavioral improvement remains unmeasured.
+
 ## 0.3.6-beta.1 — 2026-08-07
 
 ### Privacy

@@ -33,7 +33,7 @@ private struct CapsuleStatusLabel: View {
             .foregroundStyle(treatment.strokeWidth > 0 ? toneColor(tone) : Color.primary)
             .lineLimit(1)
             .minimumScaleFactor(0.8)
-            .fixedSize(horizontal: treatment.strokeWidth > 0, vertical: false)
+            .fixedSize(horizontal: false, vertical: true)
             .padding(.horizontal, treatment.strokeWidth > 0 ? horizontalPadding : 0)
             .padding(.vertical, treatment.strokeWidth > 0 ? verticalPadding : 0)
             .background {
@@ -88,7 +88,7 @@ struct DockedCapsuleView: View {
     var body: some View {
         HStack(spacing: 6) {
             Circle()
-                .fill(toneColor(store.displayModel.tone))
+                .fill(toneColor(store.budgetTone))
                 .frame(width: 8, height: 8)
             Image(systemName: "gauge.with.dots.needle.33percent")
                 .font(.system(size: 12, weight: .bold))
@@ -97,16 +97,16 @@ struct DockedCapsuleView: View {
                 HStack(spacing: 4) {
                     CapsuleStatusLabel(
                         text: store.visibleStatusText,
-                        tone: store.displayModel.tone,
+                        tone: store.budgetTone,
                         fontSize: 12,
                         horizontalPadding: 4,
                         verticalPadding: 1.5
                     )
-                    if let used = store.compactUsedValueText {
+                    if let used = store.usageBudgetState.result.allowance.map(store.budgetCopy.percent) ?? store.visibleCompactUsedBadgeText {
                         Text(used)
                             .font(.system(size: 11, weight: .bold))
                             .monospacedDigit()
-                            .foregroundStyle(toneColor(store.displayModel.tone))
+                            .foregroundStyle(toneColor(store.budgetTone))
                     }
                 }
                 .lineLimit(1)
@@ -138,13 +138,13 @@ struct CompactCapsuleView: View {
             VStack(alignment: .leading, spacing: 4) {
                 HStack(spacing: 6) {
                     Circle()
-                        .fill(toneColor(store.displayModel.tone))
+                        .fill(toneColor(store.budgetTone))
                         .frame(width: 8, height: 8)
-                        .shadow(color: toneColor(store.displayModel.tone).opacity(0.55), radius: 5)
+                        .shadow(color: toneColor(store.budgetTone).opacity(0.55), radius: 5)
 
                     CapsuleStatusLabel(
                         text: store.visibleStatusText,
-                        tone: store.displayModel.tone,
+                        tone: store.budgetTone,
                         fontSize: 13,
                         horizontalPadding: 7,
                         verticalPadding: 2.5
@@ -159,7 +159,7 @@ struct CompactCapsuleView: View {
                             .fixedSize(horizontal: true, vertical: false)
                             .padding(.horizontal, 7)
                             .padding(.vertical, 3)
-                            .background(toneColor(store.displayModel.tone).opacity(0.18), in: Capsule())
+                            .background(toneColor(store.budgetTone).opacity(0.18), in: Capsule())
                     }
 
                     if store.isRefreshing {
@@ -182,32 +182,29 @@ struct CompactCapsuleView: View {
             .layoutPriority(1)
                 .frame(maxWidth: .infinity, alignment: .leading)
 
-            if let elapsed = store.compactElapsedPercent,
-               let used = store.compactUsedPercent {
-                CompactPaceBars(
-                    elapsedLabel: store.copy.compactTimeLabel,
-                    usageLabel: store.copy.compactUsageTrackLabel,
-                    elapsedPercent: elapsed,
-                    usedPercent: used,
-                    fiveHourLabel: store.copy.compactFiveHourLabel,
-                    fiveHourUsedPercent: store.snapshot.fiveHourWindow.map { Int($0.usedPercent.rounded()) },
-                    tone: store.displayModel.tone
-                )
-                .frame(width: compactMeterWidth, alignment: .leading)
-                .layoutPriority(2)
-            } else {
-                CompactStatusNote(
-                    text: store.sourceStatusText,
-                    isSuccess: store.snapshot.sourceStatus == .ok
-                )
-                    .frame(width: compactMeterWidth, alignment: .leading)
-                    .layoutPriority(2)
+            VStack(alignment: .trailing, spacing: 3) {
+                if let allowance = store.usageBudgetState.result.allowance {
+                    Text(store.budgetCopy.percent(allowance)).font(.system(size: 16, weight: .bold)).monospacedDigit()
+                    Text(store.budgetCopy.text("时段可用", "時段可用", "Session quota"))
+                        .font(.system(size: 9))
+                } else {
+                    Text(store.budgetCopy.text("周剩余", "週剩餘", "Week left"))
+                        .font(.system(size: 9))
+                    Text(store.weeklyText).font(.system(size: 14, weight: .bold))
+                }
+                if let window = store.snapshot.fiveHourWindow {
+                    Text("5h · \(Int(window.usedPercent))%")
+                        .font(.system(size: 9)).monospacedDigit()
+                    ProgressView(value: window.usedPercent, total: 100).tint(.blue)
+                        .accessibilityLabel(store.copy.fiveHourQuotaTitle)
+                }
             }
+            .frame(width: 80, alignment: .trailing)
         }
         .padding(.leading, 38)
         .padding(.trailing, 36)
         .padding(.vertical, 9)
-        .frame(height: CapsuleViewMetrics.collapsedContentHeight)
+        .frame(width: store.capsuleWidth, height: CapsuleViewMetrics.collapsedContentHeight)
         .background {
             Capsule(style: .continuous)
                 .fill(capsuleSurfaceColor())
@@ -231,9 +228,6 @@ struct CompactCapsuleView: View {
         )
     }
 
-    private var compactMeterWidth: CGFloat {
-        min(150, max(126, store.capsuleWidth * 0.34))
-    }
 }
 
 struct CapsuleResizeHandles: View {
@@ -362,9 +356,6 @@ struct DetailPopoverView: View {
         Array(store.displayModel.metrics.prefix(2))
     }
 
-    private var guidanceMetrics: [CapsuleMetric] {
-        Array(store.displayModel.metrics.dropFirst(2).prefix(2))
-    }
 
     var body: some View {
         ScrollView(.vertical) {
@@ -415,26 +406,11 @@ struct DetailPopoverView: View {
                     .lineLimit(1)
                     .padding(.horizontal, 10)
                     .padding(.vertical, 6)
-                    .background(toneColor(store.displayModel.tone), in: Capsule())
+                    .background(toneColor(store.budgetTone), in: Capsule())
                     .foregroundStyle(.black.opacity(0.82))
             }
 
-            Text(store.displayModel.defaultText)
-                .font(.system(size: 13, weight: .medium))
-                .foregroundStyle(.secondary)
-                .fixedSize(horizontal: false, vertical: true)
-
-            FiveHourQuotaView(store: store)
-
-            if !store.displayModel.confidenceText.isEmpty {
-                Label(store.displayModel.confidenceText, systemImage: "scope")
-                    .font(.system(size: 10.5, weight: .semibold))
-                    .foregroundStyle(.secondary)
-                    .fixedSize(horizontal: false, vertical: true)
-            }
-
-
-            Label(store.quotaResetDescription, systemImage: "calendar.badge.clock")
+            Label(store.primaryHorizonText, systemImage: "calendar.badge.clock")
                 .font(.system(size: 11, weight: .bold))
                 .foregroundStyle(.primary.opacity(0.82))
                 .fixedSize(horizontal: false, vertical: true)
@@ -442,11 +418,23 @@ struct DetailPopoverView: View {
                 .padding(.vertical, 9)
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .background(
-                    toneColor(store.displayModel.tone).opacity(0.13),
+                    toneColor(store.budgetTone).opacity(0.13),
                     in: RoundedRectangle(cornerRadius: 11, style: .continuous)
                 )
 
+            FiveHourQuotaView(store: store)
+
+            Text(store.budgetCopy.text("周额度剩余：", "週額度剩餘：", "Weekly remaining: ") + store.weeklyText)
+                .font(.callout).monospacedDigit()
+
+            UsageBudgetCard(store: store)
+
+            DisclosureGroup(store.budgetCopy.text("历史用法参考", "歷史用法參考", "Observed usage reference")) {
             VStack(alignment: .leading, spacing: 9) {
+                Text(store.budgetCopy.text("过去的用量可能受额度提示影响。此估计不决定时段预算。", "過去的用量可能受額度提示影響。此估計不決定時段預算。", "Past usage may reflect quota warnings. This estimate does not set your session budget."))
+                    .font(.caption).fixedSize(horizontal: false, vertical: true)
+                Text(store.displayModel.defaultText)
+                    .font(.callout).fixedSize(horizontal: false, vertical: true)
                 Text(store.copy.weeklyPaceTitle)
                     .font(.system(size: 10, weight: .bold))
                     .foregroundStyle(.secondary)
@@ -455,21 +443,6 @@ struct DetailPopoverView: View {
                 }
             }
 
-            VStack(alignment: .leading, spacing: 8) {
-                Text(store.copy.weeklyGuidanceTitle)
-                    .font(.system(size: 10, weight: .bold))
-                    .foregroundStyle(.secondary)
-                HStack(spacing: 10) {
-                    ForEach(Array(guidanceMetrics.enumerated()), id: \.element.label) { index, metric in
-                        OverviewStatTile(
-                            title: metric.label,
-                            value: metric.value,
-                            tone: store.displayModel.tone,
-                            systemImage: index == 0 ? "calendar.badge.clock" : "speedometer"
-                        )
-                    }
-                }
-            }
 
             if !store.observedUsageText.isEmpty {
                 Label(store.observedUsageText, systemImage: "clock.arrow.circlepath")
@@ -480,6 +453,7 @@ struct DetailPopoverView: View {
             }
 
             WeeklyTrendChartView(store: store)
+            }
 
             Label(store.dataRefreshDescription, systemImage: "arrow.triangle.2.circlepath")
             .font(.system(size: 10, weight: .semibold))

@@ -1,8 +1,9 @@
 # Adaptive Weekly Forecast Methodology
 
-Status: current product contract
-Updated: 2026-08-02
-Applies to: current source candidate and later releases until superseded
+Status: secondary observed-usage reference in native 0.5.0; primary model in the browser forecast lab
+Updated: 2026-09-20
+
+The native primary allowance follows [planned-session budgeting](session-budget-methodology.md). This document describes the retained historical forecast. Its pace, 24-hour budget and safety labels do not determine the native session allocation. Observed consumption can already reflect responses to quota warnings; it is not unconstrained demand.
 
 ## Product question
 

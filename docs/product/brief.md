@@ -1,67 +1,18 @@
-# 产品简报
+# Product brief
 
-## 命名
+Updated: 2026-09-20
 
-中文名：额度胶囊
+Quota Capsule helps Codex users decide how much weekly quota to allocate to their next real work session, while keeping immediate five-hour limits and exact reset times visible.
 
-英文名：Quota Capsule
+Users may reduce consumption after a warning. A model trained only on that reduced consumption cannot recover what they would have wanted to do. The primary allowance therefore follows a user-confirmed schedule, remaining quota, reserve and deadline. Historical pace is secondary.
 
-公开表达：
+## Main flow
 
-> Quota Capsule / 额度胶囊
+1. See actual quota and the next deadline.
+2. Confirm available hours and weekdays; account for rest and background tasks explicitly.
+3. Use a stable session allocation that falls as account usage rises.
+4. Edit the plan when work changes, and manually redeem credits before expiry if applicable.
 
-命名理由：
+The product supports native macOS first. The browser app is a forecast lab, not a production counterpart with identical features. Other provider adapters are welcome.
 
-- “额度”直接命中用户痛点。
-- “胶囊”对应桌面小胶囊形态，容易记住。
-- 英文名和仓库名一致，方便 GitHub 搜索和英文传播。
-
-## 一句话
-
-Quota Capsule 是一个 Codex-first 的桌面额度小胶囊，把周额度翻译成一句人话：在下一次实际会发生的刷新前，额度会不会不够或被浪费，未来 24 小时建议使用多少。
-
-## 定位
-
-第一版服务 Codex 重度用户，尤其是同时跑多个开发任务、经常担心本周额度是否够用的人。
-
-对外传播时不要把它局限成“只给 Codex 的私人工具”。更好的说法是：
-
-- Codex 是首个适配对象。
-- 核心模型适用于有额度窗口的 Agent 产品。
-- 其他 Agent 社区可以贡献自己的 source adapter。
-
-## 核心价值
-
-核心价值是替用户完成判断，百分比只是判断依据。
-
-用户真正关心的是：
-
-- 现在还能不能继续用？
-- 下一次刷新由自然周重置还是更早到期的重置券决定？
-- 按当前速度能不能撑到这次刷新？
-- 如果可能撑不到，预测区间有多大？
-- 如果能撑到，重置时大概还有多少余量？
-- 按剩余额度和到下一刷新点的时间均分，未来 24 小时建议使用多少？
-
-## 当前产品契约
-
-- 第一个有效周额度读数就给出宽区间“初步估算”，不设置固定等待时长。
-- 整数百分比按 ±0.5 个百分点的不确定区间计算，不假装上游读数是连续精确值。
-- 周期、最近、活动节奏和可用的历史周期分别形成证据，再按可靠度融合。
-- 下一刷新点取自然周重置与最早可用重置券到期时间中更早者；每次真实刷新后重新读取并计算。
-- 未来 24 小时预算使用全部可见剩余额度按到下一刷新点的时间均分，显示时向下取整。
-- 周额度重置时间与本地数据读取时间是两类信息，界面分别展示。
-- 实时数据过期或读取失败时，不继续给出新的安全判断。
-- 重置券的数量、到期分钟和安全历史仍在详情底部；但更早到期的可用完整重置券会成为当前预算和预测的刷新终点。
-
-完整公式、置信规则和限制见 [forecast-methodology.md](forecast-methodology.md)。
-
-## 第一版非目标
-
-- 不自动操作上游服务。
-- 不做多账号管理。
-- 不做手机端。
-- 不做复杂历史曲线。
-- 不默认上传任何用量数据。
-- 不把读取失败伪装成安全状态。
-- 不自动兑换重置券；默认只执行“最早到期券会在到期前使用”的确定性策略，不声称解决任意未来工作负载下的全局最优兑换问题。
+Success means better-informed useful work and fewer unintended leftovers or interruptions. It does not mean maximizing quota consumption regardless of task value.

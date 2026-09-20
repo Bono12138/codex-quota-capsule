@@ -290,16 +290,16 @@ struct WeeklyDisplayModelTests {
         )
     }
 
-    @Test("onboarding teaches the weekly decision hierarchy")
+    @Test("onboarding teaches session budgeting and immediate limits")
     func onboardingTeachesWeeklyHierarchy() {
         let copy = QuotaCopy(locale: .zhHans)
 
         #expect(copy.onboardingSubtitle.contains("周额度"))
-        #expect(copy.onboardingDetailStepBody.contains("最近 24 小时"))
-        #expect(copy.onboardingDetailStepBody.contains("未来 24 小时建议"))
-        #expect(copy.onboardingCapsuleStepBody.contains("5 小时进度"))
-        #expect(copy.onboardingDetailStepBody.contains("5 小时进度"))
-        #expect(copy.onboardingWeeklyStepTitle == "周速度是主判断")
+        #expect(copy.onboardingDetailStepBody.contains("历史速度"))
+        #expect(copy.onboardingDetailStepBody.contains("本段分配"))
+        #expect(copy.onboardingCapsuleStepBody.contains("5 小时已用比例"))
+        #expect(copy.onboardingDetailStepBody.contains("5 小时额度"))
+        #expect(copy.onboardingWeeklyStepTitle == "按使用时段分配")
         #expect(copy.onboardingMenuStepBody.contains("本周已用"))
         #expect(copy.weeklyTrendTitle == "本周趋势")
         #expect(!copy.sustainableLineTitle.contains("5%"))
@@ -339,7 +339,7 @@ struct WeeklyDisplayModelTests {
         #expect(QuotaCopy(locale: .en).fiveHourQuotaTitle == "5-hour quota")
         #expect(QuotaCopy(locale: .zhHans).fiveHourResetDescription(resetsAt: resetsAt, now: now, timeZone: timeZone).contains("7月13日 16:07"))
         #expect(QuotaCopy(locale: .en).fiveHourUsageSummary(usedPercent: 23, remainingPercent: 77) == "23% used · 77% remaining")
-        #expect(QuotaCopy(locale: .zhHans).fiveHourReadingUnavailable.contains("暂未提供"))
+        #expect(QuotaCopy(locale: .zhHans).fiveHourReadingUnavailable.contains("暂未收到"))
     }
 
     @Test("the primary horizon label is compact, exact, and event-specific")

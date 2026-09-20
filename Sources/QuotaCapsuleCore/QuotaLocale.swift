@@ -224,9 +224,9 @@ public struct QuotaCopy: Equatable, Sendable {
 
     public var fiveHourReadingUnavailable: String {
         switch locale {
-        case .zhHans: "Codex 暂未提供 5 小时额度读数。数据出现后会自动显示。"
-        case .zhHant: "Codex 暫未提供 5 小時額度讀數。資料出現後會自動顯示。"
-        case .en: "Codex has not provided a 5-hour quota reading yet. It will appear automatically when available."
+        case .zhHans: "暂未收到 5 小时读数。\n收到后会自动显示。"
+        case .zhHant: "暫未收到 5 小時讀數。\n收到後會自動顯示。"
+        case .en: "No 5-hour reading received yet.\nUpdates appear automatically."
         }
     }
 
@@ -1292,9 +1292,9 @@ public struct QuotaCopy: Equatable, Sendable {
 
     public var onboardingSubtitle: String {
         switch locale {
-        case .zhHans: "它会常驻桌面。5 小时读数告诉你眼前能否继续使用；周额度预测告诉你额度能否撑到下一刷新点。"
-        case .zhHant: "它會常駐桌面。5 小時讀數告訴你眼前能否繼續使用；週額度預測告訴你額度能否撐到下一個更新點。"
-        case .en: "It stays on your desktop. The 5-hour reading shows immediate availability; the weekly forecast shows whether quota can last until the next refresh."
+        case .zhHans: "查看额度与刷新时间，再把周额度分给你计划使用的时段。"
+        case .zhHant: "查看額度與更新時間，再把週額度分給你計畫使用的時段。"
+        case .en: "Check quota and reset times. Allocate weekly quota to your planned sessions."
         }
     }
 
@@ -1340,9 +1340,9 @@ public struct QuotaCopy: Equatable, Sendable {
 
     public var onboardingStatus: String {
         switch locale {
-        case .zhHans: "颜色表示周速度风险，百分比表示本周额度已用。"
-        case .zhHant: "顏色表示週速度風險，百分比表示本週額度已用。"
-        case .en: "Color shows weekly pace risk; the percentage is weekly quota used."
+        case .zhHans: "先确认使用时段，胶囊再显示本时段还可用的周额度。"
+        case .zhHant: "先確認使用時段，膠囊再顯示本時段還可用的週額度。"
+        case .en: "Confirm your hours to see your remaining session allowance."
         }
     }
 
@@ -1636,9 +1636,9 @@ public struct QuotaCopy: Equatable, Sendable {
 
     public var onboardingCapsuleStepBody: String {
         switch locale {
-        case .zhHans: "收起态显示周速度判断与本周已用。\n有真实读数时，还会显示 5 小时进度。\n两侧把手调整宽度；拖到边缘进入迷你形态。"
-        case .zhHant: "收起態顯示週速度判斷與本週已用。\n有真實讀數時，還會顯示 5 小時進度。\n兩側把手調整寬度；拖到邊緣進入迷你形態。"
-        case .en: "Collapsed mode shows weekly pace and weekly usage.\nA real 5-hour reading adds its progress track.\nUse the side handles to resize; drag to an edge for mini mode."
+        case .zhHans: "收起态显示时段预算和下一刷新点。\n有真实读数时，还会显示 5 小时已用比例。\n拖两侧调整宽度；拖到边缘进入迷你形态。"
+        case .zhHant: "收起態顯示時段預算和下一更新點。\n有真實讀數時，還會顯示 5 小時已用比例。\n拖兩側調整寬度；拖到邊緣進入迷你形態。"
+        case .en: "See your session budget and next deadline.\nThe 5-hour track shows actual quota used.\nDrag the sides to resize, or dock at an edge."
         }
     }
 
@@ -1652,25 +1652,25 @@ public struct QuotaCopy: Equatable, Sendable {
 
     public var onboardingDetailStepBody: String {
         switch locale {
-        case .zhHans: "详情先显示 5 小时进度与重置分钟。\n周额度区域解释本周节奏与未来 24 小时建议。\n最近 24 小时用量和预测依据也会列出。"
-        case .zhHant: "詳情先顯示 5 小時進度與重設分鐘。\n週額度區域解釋本週節奏與未來 24 小時建議。\n最近 24 小時用量和預測依據也會列出。"
-        case .en: "Details start with 5-hour progress and its reset time.\nThe weekly section explains pace and the next-24-hour budget.\nLast-24-hour usage and forecast evidence are also listed."
+        case .zhHans: "先看刷新时间和 5 小时额度。\n使用计划显示本段分配与已用额度。\n历史速度在参考区域展开查看。"
+        case .zhHant: "先看更新時間和 5 小時額度。\n使用計畫顯示本段分配與已用額度。\n歷史速度在參考區域展開查看。"
+        case .en: "Check the deadline and 5-hour quota first.\nYour plan shows allocated and used quota.\nExpand the history for observed pace."
         }
     }
 
     public var onboardingWeeklyStepTitle: String {
         switch locale {
-        case .zhHans: "周速度是主判断"
-        case .zhHant: "週速度是主判斷"
-        case .en: "Weekly pace is the main judgment"
+        case .zhHans: "按使用时段分配"
+        case .zhHant: "按使用時段分配"
+        case .en: "Plan your sessions"
         }
     }
 
     public var onboardingWeeklyStepBody: String {
         switch locale {
-        case .zhHans: "周速度是主判断：先看未来 24 小时建议，再看最近 24 小时、重置余量和置信原因。"
-        case .zhHant: "週速度是主判斷：看最近 24 小時實際用量、重設餘量和未來 24 小時建議。"
-        case .en: "Weekly pace is the main judgment: start with the next-24-hour budget, then recent usage, projected reset balance, and confidence."
+        case .zhHans: "确认工作时间、星期和预留额度。\n本段分配固定，实际用量从中扣除。\n任务改变时，可以编辑计划重新分配。"
+        case .zhHant: "確認工作時間、星期和預留額度。\n本段分配固定，實際用量從中扣除。\n任務改變時，可以編輯計畫重新分配。"
+        case .en: "Confirm hours, weekdays and reserve.\nActual use reduces a fixed session allocation.\nEdit the plan when your work changes."
         }
     }
 
