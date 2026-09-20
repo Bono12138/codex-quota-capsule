@@ -8,7 +8,7 @@ import QuotaCapsuleCore
 @MainActor
 struct ProgressComparisonTests {
     @Test func tinyCapsulesHaveBoundedFootprints() {
-        #expect(CapsuleViewMetrics.collapsedContentHeight == 44)
+        #expect(CapsuleViewMetrics.collapsedContentHeight == 60)
         #expect(CapsuleViewMetrics.dockedContentHeight == 32)
         #expect(CapsuleViewMetrics.dockedContentWidth == 110)
     }
@@ -63,7 +63,7 @@ struct ProgressComparisonTests {
                 let renderer = ImageRenderer(content: view)
                 renderer.scale = 2
                 let image = try #require(renderer.nsImage)
-                #expect(image.size.height == 136)
+                #expect(image.size.height == 152)
                 let tiff = try #require(image.tiffRepresentation)
                 let bitmap = try #require(NSBitmapImageRep(data: tiff))
                 let png = try #require(bitmap.representation(using: .png, properties: [:]))
@@ -80,6 +80,40 @@ struct ProgressComparisonTests {
         #expect(PaceMessage.classify(used: 25, available: 30, active: true, fiveHourRemaining: nil) == .balanced)
         #expect(PaceMessage.classify(used: .nan, available: 30, active: true, fiveHourRemaining: nil) == nil)
         #expect(PaceMessage.classify(used: 25, available: nil, active: true, fiveHourRemaining: nil) == nil)
+    }
+
+    @Test func renderCapsuleValuesAtTheirSmallestWidths() throws {
+        guard let directory = ProcessInfo.processInfo.environment["QUOTA_RENDER_DIRECTORY"] else { return }
+        _ = NSApplication.shared
+        try FileManager.default.createDirectory(atPath: directory, withIntermediateDirectories: true)
+        for locale in [QuotaLocale.zhHans, .zhHant, .en] {
+            for scheme in [ColorScheme.light, .dark] {
+                let view = VStack(spacing: 20) {
+                    ForEach(0..<4) { state in
+                        let n: Double? = [0, 100, nil, 65][state]
+                        let a: Double? = [0, 100, nil, 40][state]
+                        let q: Double? = [0, 100, nil, 90][state]
+                        HStack(spacing: 30) {
+                            ProgressComparisonView(natural: n, available: a, used: q,
+                                copy: BudgetCopy(locale: locale), compact: true, capsuleStyle: .floating)
+                                .frame(width: 148, height: 50)
+                            ProgressComparisonView(natural: n, available: a, used: q,
+                                copy: BudgetCopy(locale: locale), compact: true, capsuleStyle: .docked)
+                                .frame(width: 86, height: 32)
+                        }
+                    }
+                }.padding(20).background(scheme == .light ? Color.white : Color.black)
+                    .environment(\.colorScheme, scheme)
+                let renderer = ImageRenderer(content: view)
+                renderer.scale = 2
+                let rendered = try #require(renderer.nsImage)
+                let tiff = try #require(rendered.tiffRepresentation)
+                let bitmap = try #require(NSBitmapImageRep(data: tiff))
+                let png = try #require(bitmap.representation(using: .png, properties: [:]))
+                try png.write(to: URL(fileURLWithPath: directory)
+                    .appendingPathComponent("values-\(locale.rawValue)-\(scheme).png"))
+            }
+        }
     }
     @Test func messagesAreStableLocalizedAndVaried() {
         for locale in [QuotaLocale.zhHans, .zhHant, .en] {

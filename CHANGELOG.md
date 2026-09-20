@@ -4,7 +4,7 @@ All notable user-visible and repository-governance changes are recorded here.
 
 ## 0.5.0 — Unreleased
 
-- Use a 180×44-point floating capsule and a 110×32-point docked capsule, each showing two aligned progress tracks. Hover reveals status, percentages and the exact deadline; click opens a 340-point-wide detail panel that stays within the screen.
+- Use a 180×60-point floating capsule with labeled natural-time, usable-time and quota-used percentages. The 110×32-point docked capsule shows two aligned progress tracks and percentages, identified by an hourglass and a bolt. Hover reveals status and the exact deadline; click opens a 340-point-wide detail panel that stays within the screen.
 
 - Enable a daily 09:00–23:00 default budget immediately; keep custom schedules optional and preserve existing choices.
 - Lead with equal-width time and quota tracks; combine wall-clock and planned usable-time endpoints in one time track.

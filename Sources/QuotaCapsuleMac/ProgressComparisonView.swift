@@ -1,6 +1,10 @@
 import SwiftUI
 import QuotaCapsuleCore
 
+enum CapsuleProgressStyle {
+    case floating, docked
+}
+
 /// Identical track bounds preserve the comparison even when labels have different lengths.
 struct ProgressComparisonView: View {
     let natural: Double?
@@ -9,7 +13,7 @@ struct ProgressComparisonView: View {
     let copy: BudgetCopy
     var compact = false
     var inline = false
-    var iconOnly = false
+    var capsuleStyle: CapsuleProgressStyle? = nil
     @Environment(\.colorScheme) private var scheme
 
     private var clockColor: Color { scheme == .dark
@@ -22,17 +26,44 @@ struct ProgressComparisonView: View {
     }
 
     var body: some View {
-        if iconOnly {
-            VStack(spacing: 5) {
-                HStack(spacing: 6) {
-                    Image(systemName: "clock").frame(width: 11)
+        if capsuleStyle == .floating {
+            VStack(spacing: 6) {
+                VStack(spacing: 3) {
+                    HStack(spacing: 4) {
+                        Text(copy.text("自然 ", "自然 ", "Clock ") + percent(natural))
+                            .foregroundStyle(clockColor)
+                        Spacer(minLength: 0)
+                        Text(copy.text("可用 ", "可用 ", "Usable ") + percent(available))
+                            .foregroundStyle(availableColor)
+                    }
                     track(time: true)
                 }
-                HStack(spacing: 6) {
-                    Image(systemName: used == nil ? "questionmark.circle" : "gauge.with.dots.needle.33percent").frame(width: 11)
+                VStack(spacing: 3) {
+                    HStack {
+                        Text(copy.text("额度已用", "額度已用", "Quota used"))
+                        Spacer(minLength: 0)
+                        Text(percent(used)).foregroundStyle(quotaColor)
+                    }
                     track(time: false)
                 }
-            }.font(.system(size: 9)).foregroundStyle(.secondary)
+            }
+            .font(.system(size: 10, weight: .medium)).monospacedDigit()
+            .lineLimit(1).fixedSize(horizontal: false, vertical: true)
+        } else if capsuleStyle == .docked {
+            VStack(spacing: 3) {
+                HStack(spacing: 4) {
+                    Image(systemName: "hourglass").frame(width: 9)
+                    track(time: true)
+                    Text(percent(available)).fixedSize().frame(width: 32, alignment: .trailing)
+                }
+                HStack(spacing: 4) {
+                    Image(systemName: "bolt.fill").frame(width: 9)
+                    track(time: false)
+                    Text(percent(used)).fixedSize().frame(width: 32, alignment: .trailing)
+                }
+            }
+            .font(.system(size: 10, weight: .medium)).monospacedDigit()
+            .lineLimit(1).fixedSize(horizontal: false, vertical: true)
         } else if inline {
             VStack(spacing: 4) {
                 HStack(spacing: 6) {
