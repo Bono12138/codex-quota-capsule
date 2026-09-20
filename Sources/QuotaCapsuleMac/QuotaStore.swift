@@ -97,6 +97,7 @@ final class QuotaStore: ObservableObject {
     private let configuration: AppConfiguration
     private let userDefaults: UserDefaults
     private let historyStore: QuotaHistoryStore
+    let usageBudgetState: UsageBudgetState
     private let quotaFetcher: @Sendable (QuotaLocale) async -> AgentQuotaSnapshot
     private let refreshWatchdogSeconds: TimeInterval
     private var locale: QuotaLocale
@@ -128,6 +129,7 @@ final class QuotaStore: ObservableObject {
     ) {
         self.configuration = configuration
         self.userDefaults = userDefaults
+        usageBudgetState = UsageBudgetState(defaults: userDefaults, prefix: configuration.userDefaultsKeyPrefix)
         self.quotaFetcher = quotaFetcher
         self.refreshWatchdogSeconds = max(0.01, refreshWatchdogSeconds)
         historyStore = QuotaHistoryStore(configuration: configuration, userDefaults: userDefaults)
@@ -195,7 +197,12 @@ final class QuotaStore: ObservableObject {
             while !Task.isCancelled {
                 try? await Task.sleep(nanoseconds: 1_000_000_000)
                 await MainActor.run {
-                    self?.currentTime = Date()
+                    if let self {
+                        let previousStatus = self.visibleStatusText
+                        self.currentTime = Date()
+                        self.usageBudgetState.update(snapshot: self.snapshot, confirming: self.isConfirmingQuotaChange, now: self.currentTime)
+                        if self.visibleStatusText != previousStatus { self.refreshStatusBarPresentation() }
+                    }
                 }
             }
         }
@@ -455,7 +462,35 @@ final class QuotaStore: ObservableObject {
         if isRefreshing && snapshot.sourceStatus != .ok {
             return copy.loadingStatus
         }
-        return snapshot.sourceStatus == .stale ? copy.statusStale : displayModel.statusLabel
+        if snapshot.sourceStatus != .ok { return snapshot.sourceStatus == .stale ? copy.statusStale : displayModel.statusLabel }
+        if isConfirmingQuotaChange { return copy.sourceStatusConfirming }
+        if currentTime.timeIntervalSince(snapshot.fetchedAt) > 180 { return copy.statusStale }
+        if snapshot.fiveHourWindow?.remainingPercent == 0 {
+            return budgetCopy.text("5 小时额度已用尽", "5 小時額度已用盡", "5h quota exhausted")
+        }
+        if let window = snapshot.weeklyWindow, window.remainingPercent <= 0 { return budgetCopy.text("已用尽", "已用盡", "Exhausted") }
+        return budgetCopy.status(usageBudgetState.result, configured: usageBudgetState.plan != nil)
+    }
+
+    var budgetCopy: BudgetCopy { BudgetCopy(locale: copy.locale) }
+
+    var budgetTone: CapsuleLevel {
+        guard snapshot.sourceStatus == .ok, !isConfirmingQuotaChange,
+              currentTime.timeIntervalSince(snapshot.fetchedAt) <= 180 else { return .unknown }
+        if snapshot.fiveHourWindow?.remainingPercent == 0 { return .danger }
+        if snapshot.weeklyWindow?.remainingPercent == 0 { return .danger }
+        switch usageBudgetState.result.state {
+        case .active: return .safe
+        case .allocatedSpent, .reserved: return .watch
+        default: return .unknown
+        }
+    }
+
+    func saveUsagePlan(_ plan: UsagePlan) {
+        objectWillChange.send()
+        usageBudgetState.save(plan)
+        usageBudgetState.update(snapshot: snapshot, confirming: isConfirmingQuotaChange, now: currentTime)
+        refreshStatusBarPresentation()
     }
 
     var visibleCompactText: String {
@@ -701,7 +736,7 @@ final class QuotaStore: ObservableObject {
             if let resetCreditBank = attemptSnapshot.resetCreditBank {
                 historyStore.recordResetCreditBank(resetCreditBank)
             }
-            historyStore.recordWeeklySnapshot(attemptSnapshot)
+            historyStore.recordQuotaSnapshot(attemptSnapshot)
             let readings = historyStore.recentWeeklyReadings(now: now)
             let forecastReduction = QuotaRefreshReducer.reduceForecastResult(
                 currentForecast: runwayForecast,
@@ -724,6 +759,7 @@ final class QuotaStore: ObservableObject {
                         provider: previousSnapshot.provider,
                         sourceStatus: .ok,
                         fetchedAt: previousSnapshot.fetchedAt,
+                        fiveHourWindow: attemptSnapshot.fiveHourWindow ?? previousSnapshot.fiveHourWindow,
                         weeklyWindow: acceptedWindow,
                         resetCreditBank: previousSnapshot.resetCreditBank,
                         errorMessage: nil
@@ -732,6 +768,7 @@ final class QuotaStore: ObservableObject {
             }
         }
         displayModel = makeDisplayModel()
+        usageBudgetState.update(snapshot: snapshot, confirming: isConfirmingQuotaChange, now: now)
         refreshStatusBarPresentation()
         if attemptSnapshot.sourceStatus == .ok, !isConfirmingQuotaChange {
             recordQuotaStateSample()

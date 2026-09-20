@@ -1,4 +1,4 @@
-import type { CapsuleLevel, PercentageBand, WeeklyRunwayForecast, WeeklyRunwayState } from "@quota-capsule/core";
+import type { CapsuleLevel, PercentageBand, QuotaWindow, WeeklyRunwayForecast, WeeklyRunwayState } from "@quota-capsule/core";
 
 export type CapsuleDisplayMetric = {
   label: string;
@@ -15,6 +15,36 @@ export type CapsuleDisplayModel = {
   detailMetrics: CapsuleDisplayMetric[];
   confidenceText: string;
 };
+
+export type FiveHourDisplayModel = {
+  title: string;
+  usedPercent: number | null;
+  remainingPercent: number | null;
+  usageText: string;
+  resetText: string;
+};
+
+export function createFiveHourDisplayModel(window: QuotaWindow | undefined): FiveHourDisplayModel {
+  if (!window) {
+    return {
+      title: "5 小时额度",
+      usedPercent: null,
+      remainingPercent: null,
+      usageText: "Codex 暂未提供 5 小时额度读数",
+      resetText: "",
+    };
+  }
+  const usedPercent = safePercent(window.usedPercent);
+  const remainingPercent = safePercent(window.remainingPercent);
+  const timestamp = formatMinuteTimestamp(window.resetsAt);
+  return {
+    title: "5 小时额度",
+    usedPercent,
+    remainingPercent,
+    usageText: "已用 " + formatNumber(usedPercent ?? 0) + "% · 剩余 " + formatNumber(remainingPercent ?? 0) + "%",
+    resetText: "重置：" + timestamp,
+  };
+}
 
 const STATUS_LABELS: Record<WeeklyRunwayState, string> = {
   unavailable: "数据暂不可用",
@@ -74,6 +104,19 @@ function shouldPromptCreditUse(forecast: WeeklyRunwayForecast): boolean {
   if (forecast.state !== "earlyEstimate") return false;
   const band = forecast.projectedRemainingBandAtReset;
   return band === null || Math.min(band.lower, band.upper) >= 0;
+}
+
+function formatMinuteTimestamp(date: Date): string {
+  const parts = new Intl.DateTimeFormat("zh-CN", {
+    month: "numeric",
+    day: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+    hourCycle: "h23",
+  }).formatToParts(date);
+  const value = (type: Intl.DateTimeFormatPartTypes) => parts.find((part) => part.type === type)?.value ?? "--";
+  return value("month") + "月" + value("day") + "日 " + value("hour") + ":" + value("minute");
 }
 
 function toneFor(state: WeeklyRunwayState): CapsuleLevel {

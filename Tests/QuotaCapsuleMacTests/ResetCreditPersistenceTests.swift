@@ -7,6 +7,41 @@ import Testing
 @Suite("Reset credit persistence")
 struct ResetCreditPersistenceTests {
     @MainActor
+    @Test("one capture stores five-hour and weekly raw windows separately")
+    func quotaWindowsShareOneCaptureWithoutMixingTypes() throws {
+        let context = try TestStoreContext()
+        defer { context.cleanup() }
+        let now = Date(timeIntervalSince1970: 2_000_000_000)
+        context.store.recordQuotaSnapshot(AgentQuotaSnapshot(
+            provider: "codex",
+            sourceStatus: .ok,
+            fetchedAt: now,
+            fiveHourWindow: QuotaWindow(
+                label: "five_hour",
+                windowMinutes: 300,
+                usedPercent: 23,
+                remainingPercent: 77,
+                resetsAt: now.addingTimeInterval(10_000)
+            ),
+            weeklyWindow: QuotaWindow(
+                label: "weekly",
+                windowMinutes: 10_080,
+                usedPercent: 2,
+                remainingPercent: 98,
+                resetsAt: now.addingTimeInterval(500_000)
+            ),
+            errorMessage: nil
+        ))
+
+        var database: OpaquePointer?
+        #expect(sqlite3_open_v2(context.databaseURL.path, &database, SQLITE_OPEN_READONLY, nil) == SQLITE_OK)
+        defer { sqlite3_close(database) }
+        #expect(scalarInt(database: database, sql: "SELECT COUNT(*) FROM captures") == 1)
+        #expect(scalarInt(database: database, sql: "SELECT COUNT(*) FROM quota_windows WHERE window_type = 'five_hour'") == 1)
+        #expect(scalarInt(database: database, sql: "SELECT COUNT(*) FROM quota_windows WHERE window_type = 'weekly'") == 1)
+    }
+
+    @MainActor
     @Test("complete bank samples coalesce and expiry is classified locally")
     func bankHistoryCoalescesAndExpires() throws {
         let context = try TestStoreContext()
@@ -117,6 +152,14 @@ struct ResetCreditPersistenceTests {
             result.insert(String(cString: pointer))
         }
         return result
+    }
+
+    private func scalarInt(database: OpaquePointer?, sql: String) -> Int {
+        var statement: OpaquePointer?
+        guard sqlite3_prepare_v2(database, sql, -1, &statement, nil) == SQLITE_OK else { return -1 }
+        defer { sqlite3_finalize(statement) }
+        guard sqlite3_step(statement) == SQLITE_ROW else { return -1 }
+        return Int(sqlite3_column_int(statement, 0))
     }
 }
 

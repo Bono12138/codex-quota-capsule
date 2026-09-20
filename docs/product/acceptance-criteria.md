@@ -1,189 +1,37 @@
-# 产品验收标准
+# Acceptance criteria
 
-## 为什么这次会漏问题
+Updated: 2026-09-20
 
-这次漏问题的核心原因是验收口径太偏“工程可运行”：
+## Budget behavior
 
-- 之前主要验证了构建、进程启动、截图能看到胶囊、探针能读到一次真实数据。
-- 没有把“用户手感”列为硬性验收，例如拖动过程是否顺滑、有没有抽搐。
-- 没有把“首轮读取”和“后台自动刷新”拆开验收，导致启动中、读取失败、读取成功三种状态混在一起。
-- 没有把“GUI app 环境”和“终端环境”分开看。终端能读到 Codex，不等于从 `.app` 里启动的子进程也稳定。
-- 视觉验收只看了主胶囊，没有逐项检查展开态文本是否截断、来源是否可读、边缘阴影是否像脏边。
+- No budget is activated until the user saves a schedule.
+- Only planned time before the earliest known eligible deadline receives allocation.
+- Allocations sum to the spendable balance; reserve never creates negative allowances.
+- Idling or slowing consumption during a session does not enlarge its fixed allocation.
+- Account deltas subtract across devices; missing intervals are not labeled as sleep.
+- Unused quota can be redistributed next session; restart alone cannot reallocate.
+- Explicit edits, reset/endpoint changes and time-zone changes re-evaluate allocation.
+- Overnight weekdays, full days, DST, no remaining sessions and invalid data are tested.
+- Expiry alone cannot create replenishment. New-session and deadline boundaries require fresh readings.
+- Five-hour exhaustion is clear even if weekly allowance remains.
 
-后续发布不能只说“能启动”。常驻小工具的最低标准是：用户扫一眼能懂、拖一下顺手、刷新失败也解释得清楚。
+## User interface
 
-## 必须通过的产品验收
+- Compact and expanded surfaces show the exact next deadline.
+- Expanded reading order starts with deadline and immediate quota limits.
+- Setup/edit is discoverable; example hours are not silently treated as user preferences.
+- Allocation, actual weekly remaining and five-hour use are clearly distinguished.
+- Chinese and English text is readable at supported widths, with meaningful line breaks.
+- Keyboard focus, editing, cancel/save, expansion and language switching are checked in the native app.
+- Light/dark screenshots cover setup, active, upcoming, spent, reserved, no-session and unavailable states.
+- Missing or stale data never carries a new green assurance.
 
-### 状态显示
+## Engineering and privacy
 
-- 启动首轮读取时显示“读取中”，不能显示成“数据暂不可用”。
-- 读取成功后，菜单栏和浮窗必须显示同一套用户状态：初步估算、够用、波动较大、可能不够、已用尽或数据暂不可用。
-- 第一个有效周额度读数必须产生“初步估算”和低置信原因；不能因缺少数小时历史而扣住全部产品价值。
-- 至少一次真实向上增长在不足 6 小时内也必须能形成 recent/activity 证据并参与判断。
-- 状态必须基于“额度已用”和“时间进度”的节奏判断，不用“预计重置余量”冒充已用额度。
-- 读取失败时，如果已有上次成功数据，要继续显示上次成功数据，并在详情里说明最近一次刷新失败。
-- 没有任何成功数据时，才允许显示“数据暂不可用”或具体读取失败原因。
-- Codex app-server 的 timeout、缺少回应、瞬时 source error 需要先短退避重试；未登录和找不到 CLI 这类确定性失败不做无意义重试。
-- 周额度的重置时间只在至少三次一致读数、跨度至少两分钟后确认；单次 reset 抖动或用量回退不能重写当前周期。
-- 当前周期所有已接受读数仍为 0% 时，必须把有效的非后退 `resetsAt` 识别为尚未使用窗口的临时锚点并跟随最新读数，即使中间发生休眠、重启或长轮询间隔；第一次正向用量出现后立即停止跟随，不能继续冻结在旧的 0% 和旧重置时间。
-- 不满足“前移至少六小时”或“用量下降至少两个百分点”的重置时间修正，在三次一致读数且跨度至少两分钟后必须作为同一周期的时间修正采用；不能无限停留在校准态。
-- 单次 reset 或修正候选必须进入可见的“正在校准/新数据确认中”状态：继续显示上次确认的百分比，不更新时间戳为“刚刚成功”，也不能沿用旧的周速度结论冒充实时判断。
-- 确认状态必须明确说明最新读取已经成功、当前显示的是哪次已确认数据以及何时再次检查；不能误写成“实时数据尚未恢复”。
-- 周窗口刚刷新后，`weeklyWindow.usedPercent=0`、`remainingPercent=100` 是有效数据；本周压力可以显示低置信度或观察中，不能显示成“暂时没有周窗口数据”。
-- `暂时没有周窗口数据` 只用于 app-server 确实没有返回 weekly window，不能用于“刚刷新、样本不足、无法预测速度”的情况。
+Run Node tests/build/lint, Swift tests/core spec, repository/quota-surface audits, and release-artifact privacy scan. Render tests use synthetic values. Preserve the existing history and authentication state. Verify one installed app, signing, version and commit identity.
 
-### 预测数学
+Plan and anchor data remain local. No private user-home path, database, raw authenticated response or personal usage measurement belongs in a public commit.
 
-- 整数百分比按 ±0.5 个百分点区间传播，不允许把 `0%` 解释为确定的零速度。
-- activity 证据必须同时传播连续上涨段起点和终点的量化误差；例如 5% → 9% 的增长区间是 [3, 5]，连续 5% → 6% → 7% 应按首尾得到 [1, 3]，共享的中间读数不能重复扩宽。
-- 同一干净单调段只使用一次首尾测量误差；5%、5%、5%、9% 与 5%、9% 必须得到相同 activity 区间，增加轮询频率不能凭空放大预测范围。
-- 周期证据从第一次有效读数开始；recent 证据需要真实增长但没有固定等待时长；activity 证据会随空闲时间下降；历史周期只作为低权重先验。
-- 下降修正、reset candidate、交替数据流和 stale 样本不能算成正向消耗。
-- 周期与历史证据组成长期基线；recent 与 activity 是同一批短期读数的相关视角，预测时只能选其一，禁止把同一段增长重复投票。
-- 置信度也必须按周期、短期、历史三组独立证据计算；recent 与 activity 同时存在时仍只算一组，缺少合格历史周期时不得标为高置信度。
-- 短期速度相对长期基线的偏离必须按一天时间常数向均值回归，并按真实短期覆盖时长降权；约 7 小时的集中使用不能原样外推到剩余近 6 天。较慢的受支持下界仍须保留，以免把真实分歧抹成虚假确定性。
-- 下一刷新点必须取 `min(自然周重置, 最早已知可用 codexRateLimits 重置券到期)`；已兑换、兑换中、已过期、无到期时间、非 Codex 限额券和 count-only 详情不能改变终点。
-- 可持续速度等于 `剩余额度 / 距下一刷新点时间`；未来 24 小时建议等于该速度乘 `min(24 小时, 距下一刷新点时间)`，用户显示向下取整。
-- 周期速度证据仍从真实周周期起点计算；刷新进度用真实周周期起点为起点、选中的下一刷新点为终点，不能把重置券到期伪造为已经发生的周重置。
-- conservative 区间仍高于零才是“够用”；融合后的预测区间跨零是“波动较大”；optimistic 区间仍低于零才是“可能不够”。单一短期证据不能直接触发风险状态。
-- 重置余量必须保留原始正负边界；跨零时应用“较快节奏可能提前用完、较慢情景最多剩余”的自然语言，禁止把负值截成具有虚假精度的 `0%–Y%`。
-- 主界面必须显示真实观察窗口及其用量变化，例如“近 8 小时已用约 16%–18%”；归一化 `%/天` 只能出现在展开的诊断信息中。
-- 共享 polling-equivalence fixture 必须覆盖稀疏轮询、密集平坦轮询、正值投影、负值投影和跨零投影。
-- Swift 与 TypeScript 必须使用同一共享 fixture；任何算法变化必须在同一 PR 更新双端测试、方法文档和 changelog。
-- 共享 fixture 必须覆盖“应用间隙后的 0% 临时重置时间跳变 → 固定重置时间上的正向用量”序列，并断言双端采用最新百分比而不是停留在校准态。
+## Evidence required for release
 
-### 数据来源
-
-- 详情页必须直接写清楚来源：`Codex app-server`。
-- 详情页必须写清楚接口：`rateLimits/read`。
-- 自然重置先到时，必须把“周额度重置”写成完整日期、时间和倒计时；重置券先到时，必须写明最早券的精确到期分钟、到期前使用动作和刷新额度结果。
-- 必须显示最近一次成功数据读取时间。
-- 必须显示下次自动读取倒计时；自动读取仍为每 60 秒一次，并提供手动刷新。
-- 最近一次尝试和失败原因保留在数据诊断区，不挤占主判断。
-- 错误信息要压缩成人能看懂的一两行，不能把整段日志塞给用户。
-- `rateLimitResetCredits.availableCount` 是当前可用券数量的权威值；`credits == null`、空数组和被截断详情必须分别呈现为“只有数量”“完整为零”和“另有详情未返回”。
-- 每张已返回且状态为 available 的重置券必须在展开面板最下方出现一次，按到期时间排序；本机时区显示到分钟，不显示秒。
-- 原始券 ID、description 和 referral 内容不得进入领域模型、SQLite 或 analytics；SQLite 只保存 SHA-256 指纹、安全标题和秒级事实时间。
-- 只在完整详情下判定重置券消失；到期后消失记 expired，未到期消失默认 unknown，只有同轮确认了周重置且恰好少一张才可记 likely redeemed。
-- 更早到期的可用完整重置券必须改变刷新终点、进度、预算和投影；若预计仍会留下额度，显示“抓紧使用”，但不能覆盖“可能先用尽”的风险判断。
-- 每次确认兑换或自然重置后，必须按上游返回的新周重置时间与剩余券重新计算；本版不提供自动兑换按钮。
-
-### 互动体验
-
-- 胶囊必须可以拖动位置。
-- 拖动过程不能抽搐、跳跃或明显追不上鼠标。
-- 点击胶囊展开和收起不能和拖拽互相干扰。
-- 点击胶囊顶部条必须稳定展开或收起；点击左右 resize 把手但没有形成拖拽时，也按普通点击处理。
-- resize 热区只能覆盖顶部胶囊操作条，不能贯穿整个展开详情面板，避免吞掉详情区按钮、菜单、链接或滚动区域。
-- 展开和收起动画必须克制，不能出现大幅弹回、白色横条、方框残影或透明窗口绘制残留。
-- 展开或收起后，窗口位置不能突然跳到屏幕角落。
-- 这类手感问题必须让人手动验收一次；自动化只能验证坐标变化，不能完整代表手感。
-
-### 自动刷新
-
-- app 启动后必须立即发起一次读取。
-- 后台必须每 60 秒尝试刷新。
-- 刷新中不能阻塞 UI。
-- 单次刷新失败不能清空上次成功状态。
-- Codex app-server 启动或同步较慢时，读取超时阈值不能太短；当前标准是 30 秒。
-- Codex app-server 瞬时失败不能立刻打到界面；短退避重试后仍失败，才更新最近失败说明。
-
-### 视觉质量
-
-- 主胶囊边缘不能出现脏边、毛边或过重阴影。
-- 主胶囊和展开面板的阴影必须跟随圆角形状，不能出现方形阴影、矩形底板或透明窗口残影。
-- 折叠胶囊不能重复显示同一个已用百分比；状态、精确到分钟的下一额度节点、时间进度和用量进度要各自有明确位置。用户不展开详情也必须看到下一次自然重置或当前选定的重置券到期时间。
-- 停靠迷你形态必须保留精确到分钟的下一额度节点，不能为了缩小尺寸再次隐藏用户最常查的时间。
-- 展开详情的信息顺序必须是：结论、置信原因、下一额度节点、时间/用量、未来 24 小时建议、最近 24 小时、观察速度与可持续速度、趋势、数据读取、操作、诊断。
-- 未来 24 小时建议是主行动数字，视觉顺序必须早于最近 24 小时回顾。
-- 折叠胶囊右侧不能留下大片无意义空白；如果保留 resize affordance，必须看起来像可操作把手。
-- 胶囊尺寸调整不能显示成孤立右侧竖线。
-- 收起胶囊释放到屏幕边缘吸附区时进入停靠迷你形态，迷你形态必须完整可见。
-- 展开详情面板拖到屏幕边缘吸附区时，也必须收起为停靠迷你形态。
-- 靠边隐藏不能把主胶囊半截藏到屏幕外；点击停靠形态后恢复完整胶囊并展开详情。
-- 停靠隐藏态只显示小胶囊，不能在小胶囊下方残留展开详情、空白底板或大块透明内容。
-- 菜单栏常驻项使用短状态，例如 `够用 35%`；tooltip、菜单头部和桌面胶囊必须显示同一套周速度状态与本周已用比例。
-- 菜单栏常驻项不可作为唯一入口。刷新、提交反馈、带地球图标和 `Language` 文本的语言菜单，以及“更多操作”必须作为桌面胶囊展开面板的四个同级入口；新手引导、联系作者、关于与反馈和退出从“更多操作”继续进入。
-- 状态栏菜单展开期间不能因每秒时钟或后台刷新重建；状态栏语言子菜单保持展开 10 秒不得闪烁、关闭或丢失当前选择，菜单关闭后再一次性应用最新状态。
-- 悬浮面板必须直接显示带地球图标和 `Language` 文本的一级语言菜单；简体中文、繁體中文和 English 是该菜单里的直接动作，不能藏在“更多操作”里，也不能形成嵌套菜单。
-- 展开面板不能有文字截断，尤其是数据来源、接口、刷新说明。
-- 进度条、数值、状态标签要对齐，不能因为刷新 spinner 或长文本导致布局跳动。
-- 截图必须覆盖折叠胶囊、展开面板、用户引导、反馈/设置窗口。
-- 反馈面板里的抖音二维码必须来自 app bundle 内资源，打包后的 `.app` 不能依赖开发机源码路径。
-
-## 发布前验证清单
-
-每次打包前必须完成：
-
-- `npm run mac:spec`
-- `npm test`
-- `npm run build`
-- `npm run lint`
-- `npm run probe:codex:rate-limits`
-- `npm run mac:run -- --verify`
-- `npm run mac:package`
-- `npm run audit:repository`
-- `swift test`
-- `git diff --check`
-- `codesign --verify --deep --strict --verbose=2 "dist/beta/Quota Capsule Beta.app"`
-- `PORT=8787 QUOTA_CAPSULE_ANALYTICS_FILE=local-state/analytics/events.ndjson npm run analytics:start` 后，用一条合法事件和一条含敏感字段的事件验证 collector 接收/拒收逻辑。
-- app 端配置 `QUOTA_CAPSULE_PUBLIC_ANALYTICS_ENDPOINT` 后，至少验证 Beta 的 `app_launched`、`quota_refresh_succeeded`、`quota_state_sampled`、`settings_opened`、`feedback_nudge_shown` 能进入 collector 输出文件；产品改进事件在用户未允许时不能进入远程队列。
-
-每次 UI 修改后还必须完成：
-
-- 截图主胶囊。
-- 截图展开面板。
-- 截图反馈/设置窗口，确认抖音二维码尺寸、白底和提示文案可读。
-- 截图三语引导中的最长文案状态，确认按钮和正文没有截断。
-- 任一语言报告 UI bug 后，必须同时检查简中、繁中、英文是否共享同一布局或交互风险。
-- 新手引导当前步骤高亮要清楚，窗口内不能出现大块未利用空白。
-- 外接屏幕断开后，再次执行“显示悬浮胶囊”必须把胶囊移回当前可见屏幕；不能只恢复旧屏幕上的不可见坐标。
-- 菜单栏必须提供简体中文、繁體中文、English 三种界面语言切换入口。
-- 语言切换入口必须包含 `Language`，语言选择按钮必须有图标或短码辅助识别。
-- 新用户首次打开必须先看到语言选择，再进入分步新手引导。
-- 状态栏必须由 AppKit `NSStatusItem` 持有，常驻文案保持短状态，例如 `够用 5%`，避免长文案被 macOS 挤出菜单栏。
-- 状态栏菜单必须有一级“联系作者”入口，点击一次即可看到作者、邮箱、X、抖音号和常用操作。
-- 展开面板必须在“本周压力”下方提供低优先级操作区，直接展示“立即刷新”“提交反馈”“Language / 语言”“更多操作”四个同级入口；语言菜单提供三种语言，“更多操作”备份打开状态栏菜单、显示/隐藏悬浮胶囊、查看新手引导、联系作者、关于与反馈和退出。状态栏不可见或被系统折叠时，用户仍能操作产品。
-- 数据来源必须固定放在展开面板最底部，不能挤占主判断、核心指标和本周压力的位置。
-- 重置券银行属于低频事实层，固定放在展开面板诊断区之后的最底部；收起胶囊和菜单栏标题不得出现券数量。若最早券到期已被选为当前额度节点，收起胶囊必须显示这一节点的到期分钟，但不展开完整券列表。
-- “提交反馈”必须一键打开 GitHub Issue 或邮件草稿，并复制可交给 Codex 的安全提示词；点击后必须显示明确成功反馈。关于与反馈页必须保留邮件、X、抖音等备选渠道。
-- “关于与反馈”必须展示产品介绍、作者信息、当前可用能力、后续计划、内测感谢和反馈说明。
-- 每次发布前必须更新“关于与反馈”里的当前功能和未来计划，不能把过期路线图带进新版本。
-- 面向用户的“关于与反馈”界面不能显示“发布前必须更新本页”这类开发者提醒；提醒只放在发布清单和产品文档。
-- 反馈窗口的抖音号复制区域必须有复制视觉引导，重新打开窗口后不能继续显示已复制态。
-- 产品改进数据授权必须可以撤销，路径为：关于与反馈 -> 高级数据设置 -> 本地数据与隐私授权 -> 不参与产品改进计划。
-- 撤销产品改进授权和清空本地历史都必须二次确认；确认弹窗需要清楚说明影响，并提供明确的保留选项。
-- 验证菜单栏状态和浮窗状态一致。
-- 用确定性 mock 逐一截图/检查初步估算、够用、波动较大、可能不够、已用尽、读取失败和不可用。
-- 用真实已安装 app 核对一次数据库最后成功读数、界面本周已用、重置时间、下次自动读取倒计时和运行进程路径。
-- 用真实已安装 app 核对权威券数量、每一条可用券的本地到期分钟和 SQLite 秒级事实；确认当前详情条数不足时有明确缺失说明。
-- 清空本地历史必须同时删除额度快照、重置券事实和银行状态段，并继续经过二次确认。
-- 发布结论必须记录实际观察证据；不能只凭构建和单元测试宣称真实使用已修好。
-- 拖动胶囊至少 3 秒，确认没有抽搐。
-- 在简中、繁中、英文下分别点击展开/收起至少 3 次，确认没有误触发拖动、缩放或贴边迷你形态。
-- 在简中、繁中、英文下分别检查展开面板操作区里的“立即刷新”“提交反馈”“Language / 语言”“更多操作”；确认语言入口不依赖当前界面语言即可识别，三种语言是 Language 菜单里的直接动作，“更多操作”不再包含语言项，并确认动作触发且面板不会被误收起。
-- 在简中、繁中、英文下分别展开状态栏语言子菜单并保持至少 10 秒，同时等待一轮秒级时钟更新；确认菜单不闪烁、不自动关闭，关闭菜单后状态才更新到最新值。
-- 展开面板详情区里的按钮、菜单和链接点击后不能导致面板自动折叠；只有点击胶囊头部背景才触发展开/收起。
-- 收起态和展开态都必须能通过左右边缘调整宽度；拖拽边缘时不应触发展开/收起。
-- 展开态详情区左右边缘仍必须允许按钮、菜单、链接和滚动命中；resize 光标和 resize 触发只应出现在顶部胶囊条的左右把手区域。
-- 在胶囊靠近屏幕边缘时点击展开/收起，确认轻微鼠标位移不会被误判为贴边隐藏。
-- 录屏或人工观察展开/收起动画，确认没有横条、方框残影和过度弹跳。
-
-## 调研得到的验收启发
-
-- Apple `NSStatusItem` 是 AppKit 的传统菜单栏常驻项。当前版本用 AppDelegate 持有 `NSStatusItem`，状态栏标签必须跟随真实状态更新，并保持短文案。来源：https://developer.apple.com/documentation/appkit/nsstatusitem
-- Apple `isMovableByWindowBackground` 文档说明了窗口背景可拖动的系统能力，但无边框 SwiftUI 浮窗里仍要验证真实拖动手感，因为内容手势和窗口移动会互相影响。来源：https://developer.apple.com/documentation/appkit/nswindow/ismovablebywindowbackground
-- Apple `scheduledTimer` 文档说明它会被加入当前 run loop 的默认模式。对常驻刷新任务，后台 `Task.sleep` 循环比依赖默认 run loop timer 更适合当前场景。来源：https://developer.apple.com/documentation/foundation/timer/scheduledtimer%28timeinterval%3Ainvocation%3Arepeats%3A%29
-- Swift Snapshot Testing 这类工具可以补足静态视觉回归，但动效、拖拽和常驻浮窗手感仍需要录屏或人工验收。来源：https://github.com/pointfreeco/swift-snapshot-testing
-
-## 人工验收边界
-
-以下事项必须让真实用户或项目 owner 过一遍：
-
-- 拖拽手感。
-- 展开/收起动效。
-- 常驻位置是否挡住工作区。
-- 视觉是否“愿意一直放在屏幕上”。
-- 错误文案是否看得懂。
-
-这些不适合只靠自动化判断。自动化负责发现确定性问题，人工负责判断手感和审美。
+Automated tests do not prove live usability or reduced waste. Record actual UI checks and any untested states. Merge only after CI/review; build a public binary from the exact merged commit. Follow [the release checklist](../operations/release-checklist.md).

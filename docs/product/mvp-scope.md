@@ -1,48 +1,28 @@
-# MVP 范围
+# Current scope
 
-更新：2026-07-26
+Updated: 2026-09-20. Native development version: 0.5.0.
 
-## 当前必须维护的 P0
+## Implemented
 
-- Provider-neutral quota model：周窗口、重置时间、已用/剩余比例和数据质量不能绑死具体 UI。
-- Weekly Only 预测状态：`earlyEstimate`、`enough`、`watch`、`mayRunOut`、`exhausted`、`unavailable`。
-- 第一次有效读数立即给出低置信初步估算；真实增长出现后自适应升级判断。
-- 周期、最近 24 小时、活动节奏和弱历史先验的有界证据融合。
-- 未来 24 小时建议、刷新余量区间、观察速度与可持续速度对比。
-- 当前 burn horizon 取自然周重置与最早已知可用重置券到期时间的较早者；刷新后读取新状态并重复计算。
-- stale/error 保护：可保留上次成功百分比，但暂停新的速度与预算结论。
-- 只读 Codex app-server `rateLimits/read` 数据源，不修改登录、auth 或配置。
-- macOS 桌面胶囊、菜单栏、唯一 Beta 应用身份和单实例运行。
-- 本地快照历史、简中/繁中/英文、公开反馈与隐私边界。
-- 周额度重置、上次成功读取、下次自动读取必须分别显示。
-- 重置券事实层：权威数量、可用券逐张到期分钟、详情缺失说明，以及仅本机保存的发放/到期/生命周期历史。
+- Read-only Codex account weekly and optional real 300-minute generic windows.
+- Floating capsule, menu bar and expandable detail with prominent reset time.
+- Confirmed recurring session hours/weekdays, overnight and full-day support.
+- Reserve and today's workload weight.
+- Frozen current-session allocation, net account consumption deduction and next-session redistribution.
+- Local plan/anchor persistence alongside existing quota and credit history.
+- Minute-precision credit expiry and manual-redemption boundary.
+- Stale/error/confirmation suspension and five-hour exhaustion priority.
+- Simplified Chinese, Traditional Chinese and English.
+- Historical forecast disclosure, read timing, feedback and privacy controls.
 
-## 本轮 v0.3 Beta 的 P1
+## Deferred
 
-- 用真实安装包逐态验收：初步估算、够用、波动较大、可能不够、已用尽、读取失败、不可用。
-- 验证 60 秒自动读取、手动刷新、失败后冻结上次成功状态和倒计时更新。
-- 完成跨 Swift/TypeScript 共享 fixture、算法文档和变更控制。
-- 完成重置券安全解析、分钟级底部显示、长期本地去重历史、保守消失分类和“到期前使用最早券”的预算终点；不自动兑换。
-- 清理过期分支、工作树、旧应用和生成产物，只维护公开仓库。
-- 完整发布说明、校验和、版本/提交指纹、签名与单进程证据。
+- Multiple sessions per day and per-day custom calendars.
+- Automatic habit learning or causal adjustment of behavior affected by warnings.
+- Cross-device plan/history synchronization.
+- Choosing models or scheduling tasks automatically.
+- Automatic credit redemption or a claimed globally optimal credit policy.
+- Native Windows, production Chrome extension and additional providers.
+- Developer ID signing and notarization.
 
-## 明确延后
-
-- Chrome、Windows、移动端。
-- 多 provider 默认 dashboard。
-- 通知、主题、CSV/JSON 导出、CLI 输出。
-- 复杂历史分析、团队额度和账号切换。
-- 重置券自动兑换、复杂未来需求下的全局最优时机推荐。
-- 任何需要读取 prompt、session 正文、代码内容或 auth 数据的功能。
-
-## 发布阻塞项
-
-- 第一次有效读数仍被固定等待时间挡住。
-- 隐藏预算余量、整数百分比当作精确连续值，或 Swift/TypeScript 算法不一致。
-- stale/error 仍能显示新的绿色安全结论。
-- 重置时间与数据读取时间混用，或下次自动读取不可见。
-- Codex source 不可靠、应用不能干净退出、出现多个常驻应用/进程。
-- 三语、隐私、安装/卸载或公开反馈路径不完整。
-- UI 仍像工程 demo，或核心判断被低优先级诊断信息挤掉。
-- 重置券权威数量与详情完整度混淆、到期分钟错误、原始 ID/描述进入本地库或任何重置券字段进入 analytics。
-- 已知更早到期的可用重置券未能缩短预算终点，或已兑换/过期/无到期时间/非 Codex 限额券错误地改变终点。
+The TypeScript browser lab is maintained for source/forecast experiments. New native session-budget behavior is not yet ported there. Release contents are determined by release notes, not the source version alone.

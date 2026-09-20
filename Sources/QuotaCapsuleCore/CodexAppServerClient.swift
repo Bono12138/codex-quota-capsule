@@ -120,10 +120,16 @@ public enum CodexAppServerClient {
     }
 
     private static func completenessScore(_ snapshot: AgentQuotaSnapshot) -> Int {
+        if snapshot.sourceStatus == .ok, snapshot.weeklyWindow != nil, snapshot.fiveHourWindow != nil {
+            return 5
+        }
         if snapshot.sourceStatus == .ok, snapshot.weeklyWindow != nil {
+            return 4
+        }
+        if snapshot.sourceStatus == .ok, snapshot.fiveHourWindow != nil {
             return 3
         }
-        if snapshot.weeklyWindow != nil {
+        if snapshot.weeklyWindow != nil || snapshot.fiveHourWindow != nil {
             return 1
         }
         return 0
@@ -271,6 +277,10 @@ public enum CodexExecutableResolver {
 
     public static func candidatePaths(environmentPath: String, homeDirectory: String) -> [String] {
         let explicitCandidates = [
+            "/Applications/ChatGPT.app/Contents/Resources/codex",
+            "/Applications/Codex.app/Contents/Resources/codex",
+            "\(homeDirectory)/Applications/ChatGPT.app/Contents/Resources/codex",
+            "\(homeDirectory)/Applications/Codex.app/Contents/Resources/codex",
             "\(homeDirectory)/.local/bin/codex",
             "\(homeDirectory)/.codex/packages/standalone/current/bin/codex",
             "/opt/homebrew/bin/codex",
@@ -310,7 +320,7 @@ public final class ProcessCodexRPCTransport: CodexRPCTransport, @unchecked Senda
         errorOutput = Pipe()
 
         process.executableURL = URL(fileURLWithPath: codexPath)
-        process.arguments = ["-s", "read-only", "-a", "untrusted", "app-server"]
+        process.arguments = ["-s", "read-only", "-a", "on-request", "app-server"]
         process.standardInput = input
         process.standardOutput = output
         process.standardError = errorOutput

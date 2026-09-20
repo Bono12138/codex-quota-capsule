@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import type { WeeklyRunwayForecast } from "@quota-capsule/core";
-import { createCapsuleDisplayModel } from "./capsule-view";
+import type { QuotaWindow, WeeklyRunwayForecast } from "@quota-capsule/core";
+import { createCapsuleDisplayModel, createFiveHourDisplayModel } from "./capsule-view";
 
 function forecast(overrides: Partial<WeeklyRunwayForecast> = {}): WeeklyRunwayForecast {
   return {
@@ -32,7 +32,7 @@ function forecast(overrides: Partial<WeeklyRunwayForecast> = {}): WeeklyRunwayFo
 }
 
 describe("createCapsuleDisplayModel", () => {
-  it("renders the same Weekly Only hierarchy as the native app", () => {
+  it("renders the same weekly prediction hierarchy as the native app", () => {
     const model = createCapsuleDisplayModel(forecast({
       burnHorizonAt: new Date(2026, 6, 20, 8, 11),
       burnHorizonSource: "naturalReset",
@@ -49,7 +49,35 @@ describe("createCapsuleDisplayModel", () => {
     expect(model.detailMetrics.map((metric) => metric.value)).toEqual(["42%", "28%", "≤12%", "4–6%"]);
     expect(model.confidenceText).toContain("已观察到 2 次实际增长");
     expect(model.primaryHorizonText).toBe("下次重置 · 7月20日 08:11");
-    expect(JSON.stringify(model)).not.toContain("5 小时");
+  });
+
+  it("renders a real five-hour reading without feeding it into weekly prediction", () => {
+    const window: QuotaWindow = {
+      label: "five_hour",
+      windowMinutes: 300,
+      usedPercent: 23,
+      remainingPercent: 77,
+      resetsAt: new Date(2026, 6, 13, 16, 7),
+    };
+
+    expect(createFiveHourDisplayModel(window)).toEqual({
+      title: "5 小时额度",
+      usedPercent: 23,
+      remainingPercent: 77,
+      usageText: "已用 23% · 剩余 77%",
+      resetText: "重置：7月13日 16:07",
+    });
+    expect(createCapsuleDisplayModel(forecast()).detailMetrics[1].value).toBe("28%");
+  });
+
+  it("explains a missing five-hour reading without inventing zero usage", () => {
+    expect(createFiveHourDisplayModel(undefined)).toEqual({
+      title: "5 小时额度",
+      usedPercent: null,
+      remainingPercent: null,
+      usageText: "Codex 暂未提供 5 小时额度读数",
+      resetText: "",
+    });
   });
 
   it("labels a cross-zero forecast as uncertain rather than definitively fast", () => {

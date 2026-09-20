@@ -41,7 +41,7 @@ npm test
 npm run build
 npm run lint
 npm run audit:repository
-npm run audit:weekly-only
+npm run audit:quota-surfaces
 swift test
 swift run QuotaCapsuleCoreSpec
 swift build --product QuotaCapsuleMac

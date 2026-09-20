@@ -1,84 +1,32 @@
-# Quota Capsule / 额度胶囊
+# Quota Capsule
 
-Languages: [简体中文](README.zh-CN.md) | [English](README.en.md) | [Bilingual](README.md)
+[简体中文](README.zh-CN.md) · [Project home](README.md) · [Releases](https://github.com/Bono12138/codex-quota-capsule/releases)
 
-**A local-first macOS quota runway assistant for heavy Codex users.**
+A local-first macOS quota companion for Codex. View weekly and five-hour limits, and allocate weekly quota to the hours you actually plan to work.
 
-> Before the next real refresh, will my quota run out—or be wasted?
+## Version status
 
-![Quota Capsule collapsed and expanded](docs/assets/product/quota-capsule-expanded.png)
+The source development version is **0.5.0**. Check each [Release](https://github.com/Bono12138/codex-quota-capsule/releases) for its exact download contents. The older v0.3.6-beta.1 binary does not contain session budgeting.
 
-## Why It Exists
+## Planned session budgets
 
-A quota percentage tells you how much has been used. It does not tell you whether the remaining quota can support the way you are working now.
+Confirm your working hours, weekdays, reserve, and today's workload before budgeting starts. Sleep and other unscheduled hours receive no allocation. Overnight and full-day schedules are supported.
 
-Heavy AI-native users may run several tasks at once, repeatedly check the usage page, hold back even when paid quota is still available, or discover too late that a large balance will expire at reset. Quota Capsule closes that judgment gap by comparing quota usage with elapsed time, recent pace, current activity, and available history.
+With 60% remaining and three equal four-hour sessions before the deadline, each session initially gets 20%. Spending 5% leaves 15% for the current session. Slowing down does not increase its allocation. The next session redistributes the actual remaining balance.
 
-It reports six honest states—Early estimate, On track, Uncertain pace, May run out, Exhausted, and Data unavailable—plus a next-24-hour budget and a forecast range for the balance at refresh. The current refresh horizon is the earlier of the natural weekly reset or the earliest known available reset-credit expiry.
+The deadline is the earlier of the natural weekly reset and the earliest known available reset-credit expiry. This assumes you plan to redeem before expiry; expiration itself never restores quota. After redemption, fresh confirmed readings determine the next deadline.
 
-When a reset credit expires first and quota would otherwise remain unused, the app says `Use before reset`, recalculates refresh progress and budget to that deadline, and shows the exact expiry. After redemption or a natural reset, it reads the new weekly reset and remaining credits before calculating again.
-
-Codex is the first supported provider, and the architecture remains agent-extensible. Other agent communities can contribute local source adapters while reusing the shared quota model, prediction engine, UI states, and product surface.
-
-## Product Surfaces
-
-Quota Capsule is designed to stay quiet until the user needs more detail:
-
-- A small floating desktop capsule with the current judgment and weekly usage.
-- A menu bar status item for glanceable, always-available context.
-- An expanded panel with refresh and usage progress, pace evidence, forecast confidence, a sustainable line, the next refresh timing, and local history.
-
-![Quota Capsule collapsed](docs/assets/product/quota-capsule-collapsed.png)
-
-![Quota Capsule in the macOS menu bar](docs/assets/product/quota-capsule-menu-bar.png)
-
-## Current Beta
-
-The current public prerelease is [v0.3.6-beta.1](https://github.com/Bono12138/codex-quota-capsule/releases/tag/v0.3.6-beta.1). It includes:
-
-- Native floating desktop capsule and menu bar item.
-- Read-only Codex app-server rate-limit source.
-- Immediate first-reading estimates with adaptive cycle, recent, activity, and historical evidence.
-- Next-24-hour budget, actual last-24-hour usage, reset-balance range, and a plain-language confidence reason.
-- Separate weekly-reset, last-successful-read, and next-automatic-read timing.
-- Current-cycle trend with a sustainable line, forecast band, and reset marker.
-- Local history snapshots and privacy-safe reset-credit count, expiry timing, and lifecycle history.
-- Multilingual UI and public feedback links.
-
-See [Forecast Methodology](docs/product/forecast-methodology.md) for equations, uncertainty, confidence, stale behavior, limits, and change control.
+Five-hour exhaustion takes priority over weekly budget status. Stale, failed, and unconfirmed data pause budget advice. Historical usage remains available under “Observed usage reference”: it may already reflect reactions to warnings and is not unconstrained demand.
 
 ## Install
 
-### Download the current beta
+Requires macOS 14+ and a signed-in ChatGPT/Codex desktop installation or compatible Codex CLI. Download the ZIP from [Releases](https://github.com/Bono12138/codex-quota-capsule/releases), move Quota Capsule Beta.app into Applications, and keep one installed copy.
 
-You do not need a GitHub account to download the public app.
+A GitHub account is not required to download. This beta is ad-hoc signed and not notarized. Read [INSTALL.md](INSTALL.md) and the [first-time guide](docs/getting-started.en.md).
 
-Read [First-time setup](docs/getting-started.en.md) for a non-developer walkthrough.
+Check the last successful reading after launch. In a version supporting session budgets, open “Set usage hours” and confirm your plan. Language is available at the top menu level.
 
-Download `Quota-Capsule-Beta-macOS.zip` from the [v0.3.6-beta.1 release](https://github.com/Bono12138/codex-quota-capsule/releases/tag/v0.3.6-beta.1).
-
-The current beta uses ad-hoc signing and is not yet notarized. macOS may require opening the app from Finder with **Right-click → Open**. See [INSTALL.md](INSTALL.md) for system requirements and Gatekeeper guidance.
-
-<details>
-<summary>Codex-assisted installation</summary>
-
-```text
-Please install and run Quota Capsule on this Mac:
-1. Open https://github.com/Bono12138/codex-quota-capsule
-2. Read README.md, INSTALL.md, AGENTS.md, and package.json first.
-3. Do not modify my Codex login state, log me out, reinstall Codex, or replace Codex binaries.
-4. Only do local clone, dependency install, build, test, and launch.
-5. Do not read, copy, print, or upload auth tokens, cookies, API keys, prompt text, session text, code content, or private file paths.
-6. If Node, npm, Swift, Xcode Command Line Tools, or Codex CLI is missing, tell me before changing the system.
-7. Run npm ci, npm test, npm run build, npm run audit:repository, swift test, and swift run QuotaCapsuleCoreSpec.
-8. Run npm run mac:install and verify that exactly one running process comes from /Applications.
-9. After it launches, tell me how to open it again.
-```
-
-</details>
-
-<details>
-<summary>Build from source</summary>
+## Development
 
 ```bash
 git clone https://github.com/Bono12138/codex-quota-capsule.git
@@ -86,62 +34,36 @@ cd codex-quota-capsule
 npm ci
 npm test
 npm run build
+npm run lint
 npm run audit:repository
+npm run audit:quota-surfaces
 swift test
 swift run QuotaCapsuleCoreSpec
 npm run mac:install
 ```
 
-</details>
+- Sources/QuotaCapsuleCore: Swift quota domain, session planner, observed forecasts, source and history.
+- Sources/QuotaCapsuleMac: production native app, UI and local budget persistence.
+- Tests: Swift regression and synthetic rendering tests.
+- packages/core and packages/source-codex: TypeScript forecast/source experiments.
+- apps/desktop: browser forecast lab; session-budget parity is not implemented.
+- packages/analytics-collector: optional consent-gated event collector.
+- docs: product contract, methodology, acceptance and decisions.
 
-## Privacy Boundary
+The session planner, persistence and UI are separated into UsageBudgetPlanner, UsageBudgetState and UsageBudgetViews. Existing quota history is retained.
 
-- Quota data is read and computed locally by default.
-- Product events are not uploaded unless an analytics endpoint is explicitly configured and the relevant consent is enabled.
-- Prompt text, session text, code content, private file paths, account credentials, auth tokens, and cookies stay on this Mac.
-- Reset-credit raw IDs, descriptions, and referral payloads are not stored; only a SHA-256 identity fingerprint and safe timestamps/status facts remain in local history until the user clears it.
-- Missing or stale quota data is shown as `Data unavailable`; stale percentages never produce a new safety judgment.
+## Privacy and limits
 
-## Reuse and Integration
+Plans and session allocations stay local and are not included in outbound analytics. Existing product events require an explicitly configured endpoint and relevant consent. Never submit credentials, private paths, raw account responses or quota databases in issues.
 
-Quota Capsule is MIT-licensed. Another macOS product can adopt the whole project or reuse selected layers:
+Account snapshots reflect cumulative usage across devices, but cannot attribute timing within sampling gaps. One recurring session per selected weekday is supported at whole-hour precision, including overnight and full-day schedules. Multiple daily sessions, automatic habit learning, cross-device plan sync and causal evaluation of warnings are future work.
 
-- `Sources/QuotaCapsuleCore/`: provider-neutral Swift quota model, forecasting, history, and the read-only Codex source.
-- `Sources/QuotaCapsuleMac/`: native floating capsule, expanded panel, menu bar surface, settings, and local persistence.
-- `packages/core/` and `packages/source-codex/`: TypeScript model and source packages for Web, Chrome, or adapter exploration.
-- `docs/product/`: product contract, forecast methodology, acceptance criteria, and edge-case decisions.
+Budgets are allocations, not promises of task completion or predictions of unconstrained demand.
 
-You are welcome to integrate, modify, merge, or redistribute the code under the terms of [LICENSE](LICENSE). Contributions for other agent-provider adapters are also welcome.
+[Session mathematics](docs/product/session-budget-methodology.md) · [Documentation](docs/README.md) · [Acceptance](docs/product/acceptance-criteria.md) · [Changelog](CHANGELOG.md)
 
-## Project Structure
+## Feedback and license
 
-```text
-Sources/QuotaCapsuleMac/   Native macOS floating capsule and menu bar app.
-Sources/QuotaCapsuleCore/  Swift provider-neutral model, forecasting, and Codex source.
-apps/desktop/              Vite UI mock for Web/Chrome exploration.
-packages/core/             TypeScript provider-neutral model and prediction engine.
-packages/source-codex/     Codex-first local source probe.
-docs/product/              Product brief, forecast methodology, roadmap, and acceptance criteria.
-docs/decisions/            Project decision records.
-```
-
-## Roadmap
-
-- Better onboarding and in-product guidance.
-- Longer-term history and usage-rhythm review.
-- Chrome version.
-- More agent-provider adapters.
-- Signed, notarized, packaged macOS distribution after the beta stabilizes.
-
-## Feedback
-
-- GitHub Issues: <https://github.com/Bono12138/codex-quota-capsule/issues>
-- Email: `mmz1218bono@gmail.com`
-- X: <https://x.com/starlightsz0>
-- Douyin: 火腿肠 (`huotuichang439`)
-
-<img src="docs/assets/douyin-qr-scan.png" alt="Douyin QR code" width="180" />
-
-## License
+[Issues](https://github.com/Bono12138/codex-quota-capsule/issues) · Email: mmz1218bono@gmail.com · [X](https://x.com/starlightsz0) · Douyin: huotuichang439
 
 MIT. See [LICENSE](LICENSE).

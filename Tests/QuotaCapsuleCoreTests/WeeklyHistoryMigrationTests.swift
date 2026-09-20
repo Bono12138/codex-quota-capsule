@@ -29,14 +29,14 @@ struct WeeklyHistoryMigrationTests {
         )
     }
 
-    @Test("schema v3 explicitly purges short windows and derived fields")
-    func migrationContractIsWeeklyAndRawOnly() {
-        #expect(WeeklyHistoryMigration.schemaVersion == 3)
-        #expect(WeeklyHistoryMigration.cleanupStatements.contains { $0.contains("window_type = '5h'") })
+    @Test("schema v4 preserves raw five-hour history and clears weekly derived fields")
+    func migrationPreservesSupportedRawWindows() {
+        #expect(WeeklyHistoryMigration.schemaVersion == 4)
+        #expect(WeeklyHistoryMigration.cleanupStatements.allSatisfy { !$0.contains("DELETE FROM quota_windows WHERE window_type") })
         #expect(WeeklyHistoryMigration.cleanupStatements.contains { $0.contains("burn_rate_percent_per_min = NULL") })
         #expect(WeeklyHistoryMigration.cleanupStatements.contains { $0.contains("reset_detected = 0") })
         #expect(WeeklyHistoryMigration.cleanupStatements.allSatisfy { !$0.contains("user_version") })
-        #expect(WeeklyHistoryMigration.versionStatement == "PRAGMA user_version = 3")
+        #expect(WeeklyHistoryMigration.versionStatement == "PRAGMA user_version = 4")
     }
 
     @Test("history selection keeps a full two-cycle horizon before applying its bound")

@@ -30,7 +30,7 @@ func weeklySnapshot(
     )
 }
 
-func testParsesOnlyTheWeeklyWindow() throws {
+func testParsesFiveHourAndWeeklyWindows() throws {
     let fetchedAt = Date(timeIntervalSince1970: 1_788_270_000)
     let result = """
     {
@@ -43,11 +43,13 @@ func testParsesOnlyTheWeeklyWindow() throws {
 
     let snapshot = try CodexRateLimitParser.parse(resultData: result, fetchedAt: fetchedAt)
     expect(snapshot.sourceStatus == .ok, "weekly payload should parse")
+    expect(snapshot.fiveHourWindow?.windowMinutes == 300, "the selected five-hour window must be 300 minutes")
+    expect(snapshot.fiveHourWindow?.usedPercent == 17, "five-hour usage must retain its source value")
     expect(snapshot.weeklyWindow?.windowMinutes == 10_080, "the selected window must be weekly")
     expect(snapshot.weeklyWindow?.usedPercent == 41, "weekly usage must retain its source value")
 }
 
-func testRejectsPayloadWithoutWeeklyWindow() {
+func testAcceptsPayloadWithOnlyFiveHourWindow() {
     let snapshot = CodexRateLimitParser.parse(
         result: [
             "rateLimits": [
@@ -56,8 +58,9 @@ func testRejectsPayloadWithoutWeeklyWindow() {
         ],
         fetchedAt: Date(timeIntervalSince1970: 1_788_270_000)
     )
-    expect(snapshot.sourceStatus == .error, "non-weekly data must not become a successful snapshot")
-    expect(snapshot.weeklyWindow == nil, "non-weekly data must not be relabelled")
+    expect(snapshot.sourceStatus == .ok, "a valid five-hour reading is usable")
+    expect(snapshot.fiveHourWindow?.usedPercent == 17, "five-hour data must be labelled explicitly")
+    expect(snapshot.weeklyWindow == nil, "five-hour data must not be relabelled as weekly")
 }
 
 func testPreservesFractionalWeeklyUsage() {
@@ -95,7 +98,7 @@ func testBuildsWeeklyDisplayModel() {
     expect(model.metrics.count == 4, "weekly display should keep four decision metrics")
     expect(
         model.metrics.map(\.label) == ["本周时间", "本周已用", "未来 24 小时建议", "最近 24 小时"],
-        "metric hierarchy should be weekly-only"
+        "weekly forecast should keep four decision metrics"
     )
 }
 
@@ -137,6 +140,7 @@ func testAppServerReadsWeeklyQuotaAcrossNotifications() {
         fetchedAt: Date(timeIntervalSince1970: 1_788_270_000)
     )
     expect(snapshot.sourceStatus == .ok, "app-server snapshot should be successful")
+    expect(snapshot.fiveHourWindow?.usedPercent == 62, "app-server should select five-hour usage")
     expect(snapshot.weeklyWindow?.usedPercent == 24, "app-server should select weekly usage")
     expect(
         transport.sent.compactMap { $0["method"] as? String } == ["initialize", "initialized", "account/rateLimits/read"],
@@ -249,19 +253,19 @@ func testWeeklyHistoryMigrationSQLIsIdempotent() {
         execute("COMMIT")
     }
 
-    expect(scalarInt("PRAGMA user_version") == 3, "migration should set schema version 3")
-    expect(scalarInt("SELECT COUNT(*) FROM quota_windows WHERE window_type = '5h'") == 0, "migration should purge legacy rows")
+    expect(scalarInt("PRAGMA user_version") == 4, "migration should set schema version 4")
+    expect(scalarInt("SELECT COUNT(*) FROM quota_windows WHERE window_type = '5h'") == 1, "migration should preserve raw short-window history")
     expect(scalarInt("SELECT COUNT(*) FROM quota_windows WHERE window_type = 'weekly'") == 1, "migration should preserve weekly rows")
     expect(
         scalarInt("SELECT COUNT(*) FROM quota_windows WHERE window_type = 'weekly' AND burn_rate_percent_per_min IS NULL AND projected_remaining_at_reset IS NULL AND reset_detected = 0") == 1,
         "migration should erase legacy derived fields"
     )
-    expect(scalarInt("SELECT COUNT(*) FROM captures") == 1, "migration should remove orphaned captures")
+    expect(scalarInt("SELECT COUNT(*) FROM captures") == 2, "migration should preserve captures with supported raw windows")
 }
 
 do {
-    try testParsesOnlyTheWeeklyWindow()
-    testRejectsPayloadWithoutWeeklyWindow()
+    try testParsesFiveHourAndWeeklyWindows()
+    testAcceptsPayloadWithOnlyFiveHourWindow()
     testPreservesFractionalWeeklyUsage()
     testBuildsWeeklyDisplayModel()
     testAppServerReadsWeeklyQuotaAcrossNotifications()

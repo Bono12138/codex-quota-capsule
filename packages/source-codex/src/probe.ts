@@ -153,8 +153,13 @@ export function parseCodexRateLimits(
   result: unknown,
   options: CodexRateLimitParseOptions,
 ): AgentQuotaSnapshot {
-  const rateLimits = readObject(readObject(result).rateLimits);
-  const resetCreditBank = parseResetCreditBank(readObject(result).rateLimitResetCredits, options.fetchedAt);
+  const root = readObject(result);
+  const buckets = readObject(root.rateLimitsByLimitId);
+  const genericBucket = readObject(buckets.codex);
+  const rateLimits = Object.keys(genericBucket).length > 0
+    ? readObject(Object.keys(readObject(genericBucket.rateLimits)).length > 0 ? genericBucket.rateLimits : genericBucket)
+    : readObject(root.rateLimits);
+  const resetCreditBank = parseResetCreditBank(root.rateLimitResetCredits, options.fetchedAt);
   const windows = ["primary", "secondary"]
     .map((key) => parseRateLimitWindow(rateLimits[key]))
     .filter((window): window is QuotaWindow => Boolean(window));
@@ -165,8 +170,14 @@ export function parseCodexRateLimits(
       && window.resetsAt.getTime() - options.fetchedAt.getTime() <= 8 * 24 * 60 * 60_000,
   );
   const weeklyWindow = weeklyCandidate ? { ...weeklyCandidate, label: "weekly" } : undefined;
+  const fiveHourCandidate = windows.find((window) =>
+    Math.abs(window.windowMinutes - 300) <= 30
+      && window.resetsAt.getTime() > options.fetchedAt.getTime()
+      && window.resetsAt.getTime() - options.fetchedAt.getTime() <= 6 * 60 * 60_000,
+  );
+  const fiveHourWindow = fiveHourCandidate ? { ...fiveHourCandidate, label: "five_hour" } : undefined;
 
-  if (!weeklyWindow) {
+  if (!weeklyWindow && !fiveHourWindow) {
     return {
       provider: "codex",
       sourceStatus: "error",
@@ -180,6 +191,7 @@ export function parseCodexRateLimits(
     provider: "codex",
     sourceStatus: "ok",
     fetchedAt: options.fetchedAt,
+    ...(fiveHourWindow ? { fiveHourWindow } : {}),
     weeklyWindow,
     ...(resetCreditBank ? { resetCreditBank } : {}),
   };

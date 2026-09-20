@@ -48,10 +48,22 @@ public enum QuotaRefreshReducer {
         now: Date,
         locale: QuotaLocale = .zhHans
     ) -> WeeklyForecastRefreshReduction {
-        guard newSnapshot.sourceStatus == .ok, newSnapshot.weeklyWindow != nil else {
+        guard newSnapshot.sourceStatus == .ok else {
             return WeeklyForecastRefreshReduction(
                 forecast: currentForecast,
                 shouldAdoptLiveSnapshot: false,
+                acceptedResetTransition: false
+            )
+        }
+        guard newSnapshot.weeklyWindow != nil else {
+            return WeeklyForecastRefreshReduction(
+                forecast: WeeklyRunwayPredictor.predict(
+                    snapshot: newSnapshot,
+                    quality: WeeklyQualityEngine.analyze([], now: now),
+                    now: now,
+                    locale: locale
+                ),
+                shouldAdoptLiveSnapshot: true,
                 acceptedResetTransition: false
             )
         }
@@ -79,7 +91,8 @@ public enum QuotaRefreshReducer {
         attemptText: String,
         locale: QuotaLocale = .zhHans
     ) -> QuotaRefreshReduction {
-        if newSnapshot.sourceStatus == .ok, newSnapshot.weeklyWindow != nil {
+        if newSnapshot.sourceStatus == .ok,
+           newSnapshot.weeklyWindow != nil || newSnapshot.fiveHourWindow != nil {
             return QuotaRefreshReduction(
                 snapshot: newSnapshot,
                 lastRefreshText: attemptText,
@@ -91,11 +104,12 @@ public enum QuotaRefreshReducer {
 
         let cleanedError = cleanError(newSnapshot.errorMessage, locale: locale)
         if (currentSnapshot.sourceStatus == .ok || currentSnapshot.sourceStatus == .stale),
-           currentSnapshot.weeklyWindow != nil {
+           currentSnapshot.weeklyWindow != nil || currentSnapshot.fiveHourWindow != nil {
             let stale = AgentQuotaSnapshot(
                 provider: currentSnapshot.provider,
                 sourceStatus: .stale,
                 fetchedAt: currentSnapshot.fetchedAt,
+                fiveHourWindow: currentSnapshot.fiveHourWindow,
                 weeklyWindow: currentSnapshot.weeklyWindow,
                 resetCreditBank: currentSnapshot.resetCreditBank,
                 errorMessage: cleanedError
@@ -113,6 +127,7 @@ public enum QuotaRefreshReducer {
             provider: newSnapshot.provider,
             sourceStatus: .error,
             fetchedAt: newSnapshot.fetchedAt,
+            fiveHourWindow: nil,
             weeklyWindow: nil,
             errorMessage: cleanedError
         )

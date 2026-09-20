@@ -22,7 +22,8 @@ button {
 .surface {
   min-height: 100vh;
   display: grid;
-  place-items: center;
+  justify-items: center;
+  align-items: start;
   padding: 40px;
   background:
     linear-gradient(135deg, rgba(32, 39, 43, 0.96), rgba(18, 22, 24, 0.98)),
@@ -224,6 +225,47 @@ h1 {
   color: rgba(248, 251, 249, 0.9);
   font-size: 13px;
   font-weight: 800;
+}
+
+.five-hour-panel {
+  display: grid;
+  gap: 8px;
+  padding: 12px;
+  border: 1px solid rgba(92, 169, 255, 0.28);
+  border-radius: 12px;
+  background: rgba(68, 137, 224, 0.1);
+}
+
+.five-hour-heading {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.five-hour-heading .eyebrow,
+.five-hour-panel p {
+  margin: 0;
+}
+
+.five-hour-heading strong,
+.five-hour-panel p {
+  color: rgba(248, 251, 249, 0.82);
+  font-size: 12px;
+}
+
+.five-hour-track {
+  height: 5px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.12);
+}
+
+.five-hour-track span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: #5ca9ff;
 }
 
 .nudge {
